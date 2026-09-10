@@ -18,6 +18,8 @@ Dashboard, Quotes, Products, Customers, Orders — same seed data and totals.
 
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
 Edits are role-gated and write to a working copy only (master stays sealed).
+Sales can **add customers**; Finance can **add products/orders** and **define custom fields**.
+See the Fields view for the full permission network.
 Mobile layouts wrap field grids / entity cards / session chrome at ≤860px / ≤420px.
 
 ## Build the `.exe` (Visual Studio)
