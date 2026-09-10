@@ -61,5 +61,28 @@ public:
     virtual void postShipment(const std::string& shipmentId) = 0;
 };
 
-}  // namespace bos
+/// Result of committing staged actions (+ optional working-copy edits).
+struct PostCommitResult {
+    int count = 0;
+    std::string summary;
+};
 
+/// Stage operational actions; commit on Post via IIntakeService + action ledger.
+class IPostCommitService {
+public:
+    virtual ~IPostCommitService() = default;
+
+    virtual void stageAcceptQuote(const std::string& quoteNo, const std::string& actor) = 0;
+    virtual void stageReceivePo(const std::string& poNo, const std::string& actor) = 0;
+    virtual void stagePostShipment(const std::string& shipmentId,
+                                   const std::string& actor) = 0;
+
+    /// Finalize pending intake, write action repo for actor/day, clear pending.
+    virtual PostCommitResult commit(const std::string& actor) = 0;
+
+    virtual void clearPending() = 0;
+    virtual std::size_t pendingCount() const = 0;
+    virtual std::string describePendingAndToday(const std::string& actor) const = 0;
+};
+
+}  // namespace bos

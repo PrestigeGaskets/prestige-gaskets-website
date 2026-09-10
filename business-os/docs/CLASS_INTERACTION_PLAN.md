@@ -24,20 +24,24 @@ sibling concretes.
 | Abstract contract | Concrete implementation(s) |
 |---|---|
 | `IDataStore` | `InMemoryStore`, `MasterStore`, `WorkingCopyStore`, `ExcelStore` (stub) |
+| `IWorkingCopyMutations` | `WorkingCopyStore` (intake + field mutators; dual inheritance with `IDataStore`) |
 | `ICustomerRepository` / `IProductCatalog` / `IQuoteRepository` / `IOrderRepository` | `CustomerRepository`, `ProductCatalog`, `QuoteRepository`, `OrderRepository` |
-| `IQuoteService` / `IInventoryService` / `IDashboardService` | `QuoteService`, `InventoryService`, `DashboardService` |
+| `IDailyActionRepository` | `DailyActionRepository` (stage / posted ledger for reports) |
+| `IQuoteService` / `IInventoryService` / `IDashboardService` / `IRelationService` / `IIntakeService` / `IPostCommitService` | `QuoteService`, `InventoryService`, `DashboardService`, `RelationService`, `IntakeService`, `PostCommitService` |
 | `IRolePolicy` | `RoleHierarchy` |
 | `IWorkspaceSession` | `WorkspaceSession` (owns sealed master + working copy) |
 | `ICommand` / `ICommandInvoker` | `SnapshotCommand` / `CommandInvoker` |
 | `IUserInterface` | `ConsoleUi` (future: Win32/Qt shell) |
 
 **Encapsulation:** master data is sealed inside `MasterStore`; user mutations go
-only through `WorkingCopyStore` mutators invoked via `IWorkspaceSession::runMutation`
-(Command pattern with undo/redo). Role checks go through `IRolePolicy`, not
-scattered `if (role == …)` in UI code.
+only through `IWorkingCopyMutations` / `WorkingCopyStore` mutators invoked via
+`IWorkspaceSession::runMutation` (Command pattern with undo/redo). Role checks go
+through `IRolePolicy`, not scattered `if (role == …)` in UI code. Stage/Post
+orchestration lives in `IPostCommitService` — Application only routes commands.
 
 **Polymorphism:** swap `ConsoleUi` → native GUI without touching services; swap
-`InMemoryStore` / working session → `ExcelStore` without touching repositories.
+`InMemoryStore` / working session → `ExcelStore` without touching repositories;
+swap `DailyActionRepository` → durable backend store without touching Post logic.
 
 ## Workbook → class map
 
@@ -57,10 +61,10 @@ scattered `if (role == …)` in UI code.
 ```
 main()
   └─ Application::run()          // composition root
-       ├─ WorkspaceSession       // : IWorkspaceSession (Master + WorkingCopy)
+       ├─ WorkspaceSession       // : IWorkspaceSession (Master + WorkingCopy : IDataStore + IWorkingCopyMutations)
        ├─ RoleHierarchy          // : IRolePolicy
-       ├─ *Repository / Catalog  // : I*Repository
-       ├─ *Service               // : I*Service  (depend on I*Repository only)
+       ├─ *Repository / Catalog  // : I*Repository (+ IDailyActionRepository)
+       ├─ *Service               // : I*Service  (Intake → IWorkingCopyMutations; PostCommit → IDailyActionRepository + IIntakeService + IWorkspaceSession)
        └─ ConsoleUi              // : IUserInterface
             └─ polymorphic view calls → services
 ```
@@ -107,9 +111,12 @@ main()
 4. **DashboardService** only aggregates; it never mutates master data.
 5. **Application** is the only composition root; services stay UI-free and
    depend on **interfaces**, not concrete siblings.
-6. **IDataStore** isolates persistence; **IWorkspaceSession** isolates
-   master/working-copy + edit/post/undo.
+6. **IDataStore** isolates persistence; **IWorkingCopyMutations** isolates
+   intake/field writes; **IWorkspaceSession** isolates master/working-copy +
+   edit/post/undo.
 7. **ICommand** units every working-copy mutation for undo/redo.
+8. **IPostCommitService** owns stage → finalize intake → action-repo write;
+   **IDailyActionRepository** is the ledger port (no Activity UI).
 
 ## Master table relationships
 
