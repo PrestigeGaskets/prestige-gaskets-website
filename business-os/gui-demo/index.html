@@ -27,12 +27,17 @@
           <select id="roleSelect"></select>
         </label>
         <span id="copyPill" class="pill">Working · clean</span>
-        <div class="toolbar" role="toolbar" aria-label="Workspace">
+          <div class="toolbar" role="toolbar" aria-label="Workspace">
           <button type="button" id="btnEdit" class="btn">Edit</button>
           <button type="button" id="btnPost" class="btn btn-primary">Post</button>
-          <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
-          <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
-          <button type="button" id="btnDiscard" class="btn btn-danger" disabled>Discard</button>
+          <details class="toolbar-more">
+            <summary aria-label="More workspace actions">⋯</summary>
+            <div class="toolbar-more-body">
+              <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
+              <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
+              <button type="button" id="btnDiscard" class="btn btn-danger" disabled>Discard</button>
+            </div>
+          </details>
         </div>
       </div>
     </header>
@@ -164,18 +169,18 @@
       <button type="button" class="dock-btn" data-go="orders" data-dock="orders">
         <span class="dock-ico">📦</span><span>Orders</span>
       </button>
+      <button type="button" class="dock-btn" data-go="shipment" data-dock="shipment">
+        <span class="dock-ico">🚚</span><span>Despatch</span>
+      </button>
       <button type="button" class="dock-btn" data-go="po-entry" data-dock="po-entry">
         <span class="dock-ico">🛒</span><span>PO</span>
-      </button>
-      <button type="button" class="dock-btn" data-go="quotes" data-dock="quotes">
-        <span class="dock-ico">📝</span><span>Quotes</span>
       </button>
       <button type="button" class="dock-btn" id="dockMore" data-open-shortcuts>
         <span class="dock-ico">⚡</span><span>More</span>
       </button>
     </nav>
+    <div id="addFromOrderPanel" class="afo-overlay" hidden></div>
   </div>
-  <div id="addFromOrderPanel" class="afo-overlay" hidden></div>
   <script src="app.js"></script>
 </body>
 </html>

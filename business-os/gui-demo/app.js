@@ -902,6 +902,7 @@
         (key === "hub" && view === "hub") ||
         (key === "orders" && view === "orders") ||
         (key === "po-entry" && view === "po-entry") ||
+        (key === "shipment" && view === "shipment") ||
         (key === "quotes" && view === "quotes");
       btn.classList.toggle("is-active", on);
     });
@@ -1002,6 +1003,13 @@
     if (target === "shipment") {
       hub = "shipping";
       localStorage.setItem(HUB_KEY, hub);
+      // Prefer a shipment that already has lines when opening Despatch on phone.
+      const cur = working.shipments.find((s) => s.shipmentId === shipId);
+      if (!cur?.lines?.length) {
+        const withLines = working.shipments.find((s) => (s.lines || []).length);
+        if (withLines) shipId = withLines.shipmentId;
+      }
+      shipTab = "lines";
     }
     if (target === "customers") {
       hub = "quoting";
@@ -1644,8 +1652,10 @@
         <div class="afo-stat"><span class="k">Invoice</span><span class="v mono">${inv ? `${inv.invoiceNo} · ${inv.status}` : "—"}</span></div>
       </div>` : `<p class="note">Enter a sales acknowledgement number (e.g. O-501) and Lookup to load order stats for despatch.</p>`;
 
+    const anyOrderEditable = ord && oi >= 0 && !(statusDis && custDis && printDis && methodDis && viaDis && payDis);
     const editFields = ord && oi >= 0 ? `
-      <div class="po-section"><div class="po-section-head">Order fields (role-gated)</div>
+      <details class="afo-order-fields"${anyOrderEditable ? " open" : ""}>
+        <summary>Order fields (role-gated)${anyOrderEditable ? "" : " · view only"}</summary>
         <div class="field-grid" style="padding:0.55rem">
           <div class="field ${statusDis ? "is-locked" : ""}"><label>Status</label>
             <select data-path="orders.${oi}.status" ${statusDis ? "disabled" : ""}>
@@ -1675,7 +1685,7 @@
           </div>
         </div>
         <p class="note" style="padding:0 0.55rem 0.55rem">Editable when your role allows · Sales / Shipping / Manager / Admin. Viewer sees stats only.</p>
-      </div>` : "";
+      </details>` : "";
 
     const lineRows = ord ? (ord.lines || []).map((l, li) => {
       const shipped = qtyAlreadyShipped(ord.orderNo, l.sku);
@@ -1699,13 +1709,37 @@
       </tr>`;
     }).join("") : "";
 
+    const phoneLineCards = ord ? (ord.lines || []).map((l, li) => {
+      const shipped = qtyAlreadyShipped(ord.orderNo, l.sku);
+      const remain = Math.max(0, Number(l.qty) - shipped);
+      const prod = working.products.find((p) => p.sku === l.sku);
+      const qtyDis = !editMode || !canEdit("orders.lines.qty");
+      const skuDis = !editMode || !canEdit("orders.lines.sku");
+      const priceDis = !editMode || !canEdit("orders.lines.price");
+      const marked = addFromOrderLineMarks[l.line] !== false && remain > 0;
+      return `<article class="afo-phone-line">
+        <div class="apl-top">
+          <label><input type="checkbox" data-afo-line="${l.line}" ${marked ? "checked" : ""} ${remain <= 0 ? "disabled" : ""} /> Line ${l.line}</label>
+          <span class="mono">${l.sku}</span>
+        </div>
+        <p class="note" style="margin:0">${prod?.description || "—"}</p>
+        <div class="apl-meta">
+          <div><label>Ordered</label><input type="number" min="0" data-path="orders.${oi}.lines.${li}.qty" value="${l.qty}" ${qtyDis ? "disabled" : ""} /></div>
+          <div><label>Remain / OH</label><span>${remain} / ${prod ? prod.onHand : "—"}</span></div>
+          <div><label>SKU</label><input class="mono" data-path="orders.${oi}.lines.${li}.sku" value="${l.sku}" ${skuDis ? "disabled" : ""} /></div>
+          <div><label>Price</label><input type="number" min="0" step="0.01" data-path="orders.${oi}.lines.${li}.price" value="${l.price}" ${priceDis ? "disabled" : ""} /></div>
+        </div>
+      </article>`;
+    }).join("") : "";
+
     const linesBlock = ord ? `
       <div class="po-section"><div class="po-section-head">Lines to despatch</div>
-        <div class="table-wrap" style="padding:0.45rem">
+        <div class="table-wrap desktop-only" style="padding:0.45rem">
           <table class="data ship-lines"><thead><tr>
             <th></th><th>Line</th><th>SKU</th><th>Description</th><th>Ordered</th><th>Shipped</th><th>Remain</th><th>OH</th><th>Price</th><th>Ext</th>
           </tr></thead><tbody>${lineRows || `<tr><td colspan="10">No lines on acknowledgement</td></tr>`}</tbody></table>
         </div>
+        <div class="afo-phone-lines phone-only">${phoneLineCards || `<p class="note">No lines on acknowledgement</p>`}</div>
       </div>` : "";
 
     root.innerHTML = `
@@ -1729,10 +1763,10 @@
           ${stats}
           ${editFields}
           ${linesBlock}
-          <div class="afo-actions">
-            <button type="button" class="btn" data-action="afo-close">Cancel</button>
-            <button type="button" class="btn btn-primary" data-action="afo-commit" ${canCommit ? "" : "disabled"}>Add selected lines to shipment</button>
-          </div>
+        </div>
+        <div class="afo-actions">
+          <button type="button" class="btn" data-action="afo-close">Cancel</button>
+          <button type="button" class="btn btn-primary" data-action="afo-commit" ${canCommit ? "" : "disabled"}>Add to shipment</button>
         </div>
       </div>`;
 
@@ -1753,6 +1787,16 @@
       });
       ackInput.addEventListener("change", () => { addFromOrderAck = ackInput.value.trim(); });
     }
+    root.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        if (action === "afo-close") return closeAddFromOrder();
+        if (action === "afo-lookup") return lookupAddFromOrder();
+        if (action === "afo-commit") return commitAddFromOrder();
+      });
+    });
   }
 
   function addShipmentLinesFromOrder() {
@@ -1971,18 +2015,7 @@
     const reqs = shipmentRequirements(ship);
 
     ribbon.innerHTML = `
-      <button type="button" class="btn" data-action="new-shipment" title="New">New</button>
-      <button type="button" class="btn" data-action="open-shipment" title="Open">Open</button>
-      <button type="button" class="btn" data-action="next-ship-id" title="Next ID">Next ID</button>
-      <button type="button" class="btn" data-action="save-shipment" title="Save">Save</button>
-      <button type="button" class="btn" data-action="prev-shipment" title="Move Previous">Prev</button>
-      <button type="button" class="btn" data-action="next-shipment" title="Move Next">Next</button>
-      <button type="button" class="btn" data-action="delete-shipment" title="Delete">Delete</button>
-      <button type="button" class="btn" data-action="reload-shipment" title="Reload">Reload</button>
-      <button type="button" class="btn" data-action="print-shipment" title="Print">Print</button>
-      <button type="button" class="btn" data-action="email-shipment" title="Email">Email</button>
-      <button type="button" class="btn" data-action="ship-memos" title="Memos">Memos</button>
-      <button type="button" class="btn" data-action="ship-close-view" title="Close">Close</button>
+      <button type="button" class="btn btn-primary" data-action="new-shipment" title="New">New</button>
       <label class="po-picker">Shipment
         <select id="shipSelect">${working.shipments
           .map((s) => `<option value="${s.shipmentId}" ${s.shipmentId === ship.shipmentId ? "selected" : ""}>${s.shipmentId} — ${s.shipDate}</option>`)
@@ -1990,7 +2023,23 @@
       </label>
       <label class="po-picker">Plant
         <select id="shipPlantSelect">${PLANTS.map((p) => `<option ${p === shipPlant ? "selected" : ""}>${p}</option>`).join("")}</select>
-      </label>`;
+      </label>
+      <button type="button" class="btn ribbon-secondary" data-action="prev-shipment" title="Move Previous">Prev</button>
+      <button type="button" class="btn ribbon-secondary" data-action="next-shipment" title="Move Next">Next</button>
+      <details class="ribbon-more">
+        <summary>More shipment tools</summary>
+        <div class="ribbon-more-body">
+          <button type="button" class="btn" data-action="open-shipment" title="Open">Open</button>
+          <button type="button" class="btn" data-action="next-ship-id" title="Next ID">Next ID</button>
+          <button type="button" class="btn" data-action="save-shipment" title="Save">Save</button>
+          <button type="button" class="btn" data-action="delete-shipment" title="Delete">Delete</button>
+          <button type="button" class="btn" data-action="reload-shipment" title="Reload">Reload</button>
+          <button type="button" class="btn" data-action="print-shipment" title="Print">Print</button>
+          <button type="button" class="btn" data-action="email-shipment" title="Email">Email</button>
+          <button type="button" class="btn" data-action="ship-memos" title="Memos">Memos</button>
+          <button type="button" class="btn" data-action="ship-close-view" title="Close">Close</button>
+        </div>
+      </details>`;
 
     tree.innerHTML = `
       <div class="po-tree-root">Shipments</div>
@@ -2036,26 +2085,68 @@
 
     let detail = "";
     if (shipTab === "lines") {
+      const phoneCards = (ship.lines || []).map((l, li) => {
+        const skuDis = !editMode || !canEdit("shipments.lines.sku");
+        const qtyDis = !editMode || !canEdit("shipments.lines.qtyShipped");
+        const delDis = !editMode || !canEdit("shipments.lines.deliveryQty");
+        const binDis = !editMode || !canEdit("shipments.lines.warehouseBin");
+        return `<article class="phone-line-card">
+          <div class="plc-top">
+            <label><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} ${!editMode ? "disabled" : ""} /> Line ${l.line}</label>
+            <span class="plc-sku">${l.sku || "—"}</span>
+          </div>
+          <div class="plc-grid">
+            <div><label>Part ID</label><input data-path="shipments.${idx}.lines.${li}.sku" value="${l.sku}" ${skuDis ? "disabled" : ""} /></div>
+            <div><label>Order</label><button type="button" class="linkish" data-action="open-order" data-order="${l.orderNo || ""}">${l.orderNo || "—"}</button></div>
+            <div><label>Ship qty</label><input type="number" data-path="shipments.${idx}.lines.${li}.qtyShipped" value="${l.qtyShipped}" ${qtyDis ? "disabled" : ""} /></div>
+            <div><label>Delivery qty</label><input type="number" data-path="shipments.${idx}.lines.${li}.deliveryQty" value="${l.deliveryQty}" ${delDis ? "disabled" : ""} /></div>
+            <div><label>Bin</label><input data-path="shipments.${idx}.lines.${li}.warehouseBin" value="${l.warehouseBin || ""}" ${binDis ? "disabled" : ""} /></div>
+            <div><label>Open / complete</label><span>${l.openQty} · ${l.shipComplete ? "shipped" : "open"}</span></div>
+          </div>
+        </article>`;
+      }).join("") || `<p class="note" style="padding:0.55rem">No lines yet — tap <strong>Add From Order</strong> below.</p>`;
+
+      const postLabel = isStaged("post-shipment", "shipmentId", ship.shipmentId)
+        ? "Staged"
+        : ship.status === "Posted" && ship.reversalEntry
+          ? "Post Unpost"
+          : "Post DN";
       detail = `<div class="po-section"><div class="po-section-head">Detail Info</div>
         <div class="ship-detail-layout">
-          <div class="table-wrap" style="padding:0.45rem; flex:1; min-width:0">
+          <div class="table-wrap desktop-only" style="padding:0.45rem; flex:1; min-width:0">
             <table class="data ship-lines"><thead><tr>
               <th></th><th>Line</th><th>Part ID*</th><th>Revision</th><th>Warehouse / Bin</th>
               <th>Delivery Qty</th><th>Open Qty</th><th>Job Qty Shipped</th><th>Qty Shipped</th>
               <th>Shp Cmpl?</th><th>Invoiced Cmpl?</th><th>Delivery Date</th><th>Job ID</th><th>Order ID</th>
             </tr></thead><tbody>${linesRows || `<tr><td colspan="14">No lines — use Add From Order</td></tr>`}</tbody></table>
           </div>
-          <div class="ship-side-actions">
+          <div class="phone-line-cards phone-only">${phoneCards}</div>
+          <div class="ship-side-actions desktop-only">
             <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add</button>
             <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete</button>
             <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
             <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
             <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
             <button type="button" class="btn" data-action="ship-issue-dn" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>${ship.deliveryNoteIssued ? `DN ${ship.deliveryNoteNo || ship.shipmentId}` : "Issue DN"}</button>
-            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || (ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${isStaged("post-shipment", "shipmentId", ship.shipmentId) ? "Staged" : ship.status === "Posted" && ship.reversalEntry ? "Post Unpost" : "Post"}</button>
+            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || (ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
             <button type="button" class="btn" data-action="ship-unpost" ${!editMode || ship.status !== "Posted" ? "disabled" : ""}>${isStaged("unpost-shipment", "shipmentId", ship.shipmentId) ? "Unpost staged" : "Unpost DN"}</button>
           </div>
         </div>
+        <div class="ship-phone-bar phone-only">
+          <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
+          <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || (ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
+        </div>
+        <details class="ribbon-more phone-only" style="margin:0.35rem 0.45rem 0.6rem">
+          <summary>More despatch actions</summary>
+          <div class="ribbon-more-body">
+            <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add blank line</button>
+            <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete marked</button>
+            <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
+            <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
+            <button type="button" class="btn" data-action="ship-issue-dn" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>Issue DN</button>
+            <button type="button" class="btn" data-action="ship-unpost" ${!editMode || ship.status !== "Posted" ? "disabled" : ""}>Unpost DN</button>
+          </div>
+        </details>
       </div>`;
     } else if (shipTab === "attachments") {
       detail = `<div class="po-section"><div class="po-section-head">Attachments</div>
@@ -2135,8 +2226,9 @@
           · <button type="button" class="linkish" data-view="customers">Contact Management</button></p>
       </div>`;
     // Follow-ups / Calls / Attachments lead with the tab body so Management shortcuts land on content.
+    // Phone-first: Detail Info (lines + sticky actions) before long header blocks.
     form.innerHTML = shipTab === "lines"
-      ? `${headerForm}${detail}${linkNote}`
+      ? `${detail}${headerForm}${linkNote}`
       : `${compact}${detail}${headerForm}${linkNote}`;
 
     bindPaths(form);
@@ -2996,6 +3088,15 @@
         treeFilter = filterBtn.dataset.treeFilter;
         localStorage.setItem("rushmore-tree-filter-v1", treeFilter);
         return render();
+      }
+
+      const sectionHead = e.target.closest("#view-shipment .po-section-head");
+      if (sectionHead) {
+        const section = sectionHead.closest(".po-section");
+        if (section && !section.querySelector(".ship-detail-layout")) {
+          section.classList.toggle("is-open");
+          return;
+        }
       }
 
       const goBtn = e.target.closest("[data-go]");
