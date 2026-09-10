@@ -25,6 +25,7 @@ add_executable(BusinessOS
     src/QuoteService.cpp
     src/InventoryService.cpp
     src/DashboardService.cpp
+    src/DailyActionRepository.cpp
 )
 
 target_include_directories(BusinessOS PRIVATE include)

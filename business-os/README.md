@@ -17,14 +17,17 @@ Or open `gui-demo/index.html` directly. The home hub follows an M1-style
 **Sales Order / Purchasing Management** layout (Entry / Reports / Maintenance /
 M1 Business Analysis / Custom Reports / Close).
 Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
-ribbon actions, Requirements pane, **Add From Order**, and **Post** (issues OH).
+ribbon actions, Requirements pane, **Add From Order**, and detail **Post**
+(stages until toolbar **Post** issues OH).
 
 Open **PO Entry** for order `70286` / supplier `CITY0002`.
 
-**End-to-end intake** (see [docs/INTAKE_FLOW.md](docs/INTAKE_FLOW.md)):
+**End-to-end intake** (see [docs/INTAKE_FLOW.md](docs/INTAKE_FLOW.md) and
+[docs/ACTION_REPOSITORY.md](docs/ACTION_REPOSITORY.md)):
 
-- **Accept quote → Sales Order number** (`SO-…`) links Quote → Order → Invoice.
-- **Receive PO → GRN number** (`GRN-…`) links PurchaseOrder → GoodsReceipt → Product OH.
+- **Accept quote** / **Receive PO** / ship detail **Post** **stage** until toolbar **Post**.
+- Toolbar **Post** runs baked-in logic (SO / GRN / OH) and writes a **daily action
+  repository** for the active Role (backend/report lookup — no Activity UI).
 - Turn **Edit** on; role-gated fields update the working copy (master stays sealed).
 
 Other views: Quotes, Products, Customers, Sales Orders, Receipt Entry, Intake Map,

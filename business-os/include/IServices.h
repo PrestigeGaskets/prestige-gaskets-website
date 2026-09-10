@@ -44,7 +44,7 @@ public:
     virtual void print() const = 0;
 };
 
-/// End-to-end intake: Quote → Sales Order number; PO → GRN number + stock.
+/// End-to-end intake: Quote → Sales Order number; PO → GRN number + stock; Shipment → OH.
 class IIntakeService {
 public:
     virtual ~IIntakeService() = default;
@@ -57,6 +57,8 @@ public:
         const std::string& poNo,
         const std::vector<std::pair<int, double>>& qtys,
         const std::string& receivedBy) = 0;
+    /// Post a staged shipment → issue Product.onHand, mark lines complete.
+    virtual void postShipment(const std::string& shipmentId) = 0;
 };
 
 }  // namespace bos

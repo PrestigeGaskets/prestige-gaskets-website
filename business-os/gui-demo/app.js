@@ -12,6 +12,8 @@
   const EDIT_KEY = "rushmore-edit-v2";
   const POSTED_KEY = "rushmore-posted-v2";
   const ACTIVITY_KEY = "rushmore-activity-v2";
+  const PENDING_KEY = "rushmore-pending-v1";
+  const ACTION_REPO_KEY = "rushmore-action-repo-v1";
   const LOCALE = "en-GB";
   const CURRENCY = "GBP";
 
@@ -505,6 +507,8 @@
   let redoStack = [];
   let posted = loadJson(POSTED_KEY, null);
   let activity = loadJson(ACTIVITY_KEY, []);
+  let pending = loadJson(PENDING_KEY, []);
+  let actionRepo = loadJson(ACTION_REPO_KEY, []);
 
   function emptyAddr() {
     return { name: "", line1: "", line2: "", city: "", postcode: "", phone: "", fax: "" };
@@ -614,8 +618,8 @@
     return JSON.stringify(working) !== JSON.stringify(normalize(clone(MASTER)));
   }
 
-  function mutate(label, fn) {
-    if (!editMode) {
+  function mutate(label, fn, opts = {}) {
+    if (!editMode && !opts.force) {
       toast("Turn on Edit first.");
       return false;
     }
@@ -626,6 +630,57 @@
     persist();
     log(label);
     return true;
+  }
+
+  function businessDay(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function isoNow() {
+    return new Date().toISOString();
+  }
+
+  function persistPending() {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    syncButtons();
+  }
+
+  function persistActionRepo() {
+    localStorage.setItem(ACTION_REPO_KEY, JSON.stringify(actionRepo));
+  }
+
+  function stageAction(entry) {
+    pending = pending.filter((e) => {
+      if (e.type !== entry.type) return true;
+      if (entry.quoteNo) return e.quoteNo !== entry.quoteNo;
+      if (entry.poNo) return e.poNo !== entry.poNo;
+      if (entry.shipmentId) return e.shipmentId !== entry.shipmentId;
+      return true;
+    });
+    pending.push({
+      id: `ACT-${Date.now()}-${pending.length + 1}`,
+      day: businessDay(),
+      actor: role,
+      status: "staged",
+      stagedAt: isoNow(),
+      postedAt: "",
+      quoteNo: "",
+      orderNo: "",
+      poNo: "",
+      grnNo: "",
+      shipmentId: "",
+      customerId: "",
+      detail: "",
+      ...entry,
+    });
+    persistPending();
+  }
+
+  function isStaged(type, key, value) {
+    return pending.some((e) => e.type === type && e[key] === value);
   }
 
   function sumLines(lines, priceKey) {
@@ -671,12 +726,15 @@
 
   function syncButtons() {
     const dirty = isDirty();
+    const staged = pending.length;
     document.getElementById("btnEdit").classList.toggle("is-active", editMode);
     document.getElementById("btnEdit").textContent = editMode ? "Editing" : "Edit";
     document.getElementById("btnUndo").disabled = !undoStack.length;
     document.getElementById("btnRedo").disabled = !redoStack.length;
-    document.getElementById("btnPost").disabled = !dirty;
-    document.getElementById("btnDiscard").disabled = !dirty && !undoStack.length;
+    const postBtn = document.getElementById("btnPost");
+    postBtn.disabled = !dirty && staged === 0;
+    postBtn.textContent = staged ? `Post (${staged})` : "Post";
+    document.getElementById("btnDiscard").disabled = !dirty && !undoStack.length && staged === 0;
   }
 
   function setPath(path, value) {
@@ -1448,22 +1506,47 @@
     const ship = currentShipment();
     if (!ship) return;
     if (!canEdit("shipments.status") && !canAdd("shipments")) return toast("Role cannot post shipments.");
+    if (!editMode) return toast("Turn on Edit first.");
     const reqs = shipmentRequirements(ship);
     if (reqs.length) return toast(reqs[0].text);
     if (!ship.lines.length) return toast("Add lines before posting (Add From Order).");
-    if (!mutate(`Post shipment ${ship.shipmentId}`, () => {
-      ship.status = "Posted";
-      for (const l of ship.lines) {
-        if (!l.marked) continue;
-        const p = working.products.find((x) => x.sku === l.sku);
-        if (p) p.onHand = Math.max(0, Number(p.onHand) - Number(l.qtyShipped || 0));
-        const ord = working.orders.find((o) => o.orderNo === l.orderNo);
-        if (ord && ord.status === "Open") ord.status = "Shipped";
-        l.shipComplete = true;
-      }
-    })) return;
-    toast(`Shipment ${ship.shipmentId} posted — stock issued · orders updated.`);
+    if (ship.status === "Posted") return toast("Shipment already posted.");
+    if (isStaged("post-shipment", "shipmentId", ship.shipmentId)) {
+      return toast(`Shipment ${ship.shipmentId} already staged — toolbar Post to commit.`);
+    }
+    if (ship.status === "Draft") {
+      if (!mutate(`Stage shipment ${ship.shipmentId}`, () => { ship.status = "Open"; })) return;
+    }
+    stageAction({
+      type: "post-shipment",
+      shipmentId: ship.shipmentId,
+      customerId: ship.customerId || "",
+      orderNo: (ship.lines.find((l) => l.orderNo) || {}).orderNo || "",
+      detail: `Stage ship ${ship.shipmentId} · ${ship.lines.filter((l) => l.marked).length || ship.lines.length} lines`,
+    });
+    toast(`Shipment ${ship.shipmentId} staged — toolbar Post issues stock.`);
     render();
+  }
+
+  function finalizeShipment(shipmentId) {
+    const ship = working.shipments.find((s) => s.shipmentId === shipmentId);
+    if (!ship) throw new Error(`Shipment ${shipmentId} not found`);
+    if (ship.status === "Posted") return { shipmentId, orderNos: [] };
+    const reqs = shipmentRequirements(ship);
+    if (reqs.length) throw new Error(reqs[0].text);
+    if (!ship.lines.length) throw new Error("Shipment has no lines");
+    const orderNos = [];
+    ship.status = "Posted";
+    for (const l of ship.lines) {
+      if (l.marked === false) continue;
+      const p = working.products.find((x) => x.sku === l.sku);
+      if (p) p.onHand = Math.max(0, Number(p.onHand) - Number(l.qtyShipped || 0));
+      const ord = working.orders.find((o) => o.orderNo === l.orderNo);
+      if (ord && ord.status === "Open") ord.status = "Shipped";
+      if (l.orderNo) orderNos.push(l.orderNo);
+      l.shipComplete = true;
+    }
+    return { shipmentId, orderNos: [...new Set(orderNos)], customerId: ship.customerId || "" };
   }
 
   function renderShipment() {
@@ -1563,7 +1646,7 @@
             <button type="button" class="btn" data-action="ship-add-from-job" ${!editMode ? "disabled" : ""}>Add From Job</button>
             <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
             <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
-            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode ? "disabled" : ""}>Post</button>
+            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>${isStaged("post-shipment", "shipmentId", ship.shipmentId) ? "Staged" : "Post"}</button>
           </div>
         </div>
       </div>`;
@@ -1678,37 +1761,73 @@
 
   function acceptQuote(quoteNo) {
     if (!canAdd("orders")) return toast("Role cannot create sales orders.");
+    if (!editMode) return toast("Turn on Edit first.");
     const q = working.quotes.find((x) => x.quoteNo === quoteNo);
     if (!q) return toast("Quote not found.");
     if (!q.lines?.length) return toast("Quote has no lines.");
     if (orderForQuote(quoteNo)) return toast(`Quote already linked to ${orderForQuote(quoteNo).orderNo}`);
+    if (isStaged("accept-quote", "quoteNo", quoteNo)) {
+      return toast(`${quoteNo} already staged — toolbar Post to create Sales Order.`);
+    }
+    stageAction({
+      type: "accept-quote",
+      quoteNo,
+      customerId: q.customerId || "",
+      detail: `Stage accept ${quoteNo} → Sales Order on Post`,
+    });
+    toast(`${quoteNo} staged — toolbar Post creates Sales Order.`);
+    render();
+  }
+
+  function finalizeAcceptQuote(quoteNo) {
+    const q = working.quotes.find((x) => x.quoteNo === quoteNo);
+    if (!q) throw new Error(`Quote ${quoteNo} not found`);
+    if (!q.lines?.length) throw new Error("Quote has no lines");
+    const existing = orderForQuote(quoteNo);
+    if (existing) return { soNo: existing.orderNo, customerId: q.customerId || "" };
     const soNo = nextSalesOrderNo();
-    if (!mutate(`Accept quote ${quoteNo} → ${soNo}`, () => {
-      const value = sumLines(q.lines, "price");
-      working.orders.push({
-        orderNo: soNo,
-        quoteNo,
-        customerId: q.customerId,
-        status: "Open",
-        lines: q.lines.map((l) => ({ line: l.line, sku: l.sku, qty: l.qty, price: l.price })),
-      });
-      q.status = "Won";
-      working.invoices.push({
-        invoiceNo: `INV-${trailingNum(soNo)}`,
-        orderNo: soNo,
-        status: "Draft",
-        amount: value,
-      });
-    })) return;
-    toast(`Sales Order ${soNo} generated from ${quoteNo}.`);
-    go("orders");
+    const value = sumLines(q.lines, "price");
+    working.orders.push({
+      orderNo: soNo,
+      quoteNo,
+      customerId: q.customerId,
+      status: "Open",
+      lines: q.lines.map((l) => ({ line: l.line, sku: l.sku, qty: l.qty, price: l.price })),
+    });
+    q.status = "Won";
+    working.invoices.push({
+      invoiceNo: `INV-${trailingNum(soNo)}`,
+      orderNo: soNo,
+      status: "Draft",
+      amount: value,
+    });
+    return { soNo, customerId: q.customerId || "" };
   }
 
   function receivePo(poNo) {
     if (!canAdd("goodsReceipts")) return toast("Role cannot post GRNs.");
+    if (!editMode) return toast("Turn on Edit first.");
     const po = working.purchaseOrders.find((p) => p.poNo === poNo);
     if (!po) return toast("PO not found.");
     if (!po.lines?.length) return toast("PO has no lines.");
+    const remainAny = po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(poNo, pl.line) > 0);
+    if (!remainAny) return toast(`PO ${poNo} already fully received.`);
+    if (isStaged("receive-po", "poNo", poNo)) {
+      return toast(`PO ${poNo} already staged — toolbar Post to create GRN.`);
+    }
+    stageAction({
+      type: "receive-po",
+      poNo,
+      detail: `Stage receive PO ${poNo} → GRN on Post`,
+    });
+    toast(`PO ${poNo} staged — toolbar Post creates GRN.`);
+    render();
+  }
+
+  function finalizeReceivePo(poNo) {
+    const po = working.purchaseOrders.find((p) => p.poNo === poNo);
+    if (!po) throw new Error(`PO ${poNo} not found`);
+    if (!po.lines?.length) throw new Error("PO has no lines");
     const lines = [];
     for (const pl of po.lines) {
       const remain = Number(pl.qty) - qtyReceivedOnPoLine(poNo, pl.line);
@@ -1721,36 +1840,104 @@
         });
       }
     }
-    if (!lines.length) return toast(`PO ${poNo} already fully received.`);
+    if (!lines.length) throw new Error(`PO ${poNo} already fully received`);
     const grnNo = nextGrnNo();
-    if (!mutate(`Receive PO ${poNo} → ${grnNo}`, () => {
-      working.goodsReceipts.push({
-        grnNo,
+    working.goodsReceipts.push({
+      grnNo,
+      poNo,
+      supplierId: po.supplierId,
+      receivedDate: new Date().toLocaleDateString("en-GB"),
+      receivedBy: role,
+      status: "Posted",
+      notes: `Goods received against PO ${poNo}`,
+      lines: lines.map((l, i) => ({
+        line: i + 1,
         poNo,
-        supplierId: po.supplierId,
-        receivedDate: new Date().toLocaleDateString("en-GB"),
-        receivedBy: role,
-        status: "Posted",
-        notes: `Goods received against PO ${poNo}`,
-        lines: lines.map((l, i) => ({
-          line: i + 1,
-          poNo,
-          poLine: l.poLine,
-          sku: l.sku,
-          qtyOrdered: l.qtyOrdered,
-          qtyReceived: l.qtyReceived,
-        })),
-      });
-      for (const l of lines) {
-        const p = working.products.find((x) => x.sku === l.sku);
-        if (p) p.onHand = Number(p.onHand) + Number(l.qtyReceived);
+        poLine: l.poLine,
+        sku: l.sku,
+        qtyOrdered: l.qtyOrdered,
+        qtyReceived: l.qtyReceived,
+      })),
+    });
+    for (const l of lines) {
+      const p = working.products.find((x) => x.sku === l.sku);
+      if (p) p.onHand = Number(p.onHand) + Number(l.qtyReceived);
+    }
+    const fully = po.lines.every((pl) => qtyReceivedOnPoLine(poNo, pl.line) + 1e-9 >= Number(pl.qty));
+    po.status = fully ? "Closed" : "Approved";
+    return { grnNo, poNo };
+  }
+
+  function commitPost() {
+    const staged = clone(pending);
+    const day = businessDay();
+    const postedAt = isoNow();
+    const summaries = [];
+    const committed = [];
+
+    const run = () => {
+      for (const entry of staged) {
+        const out = { ...entry, actor: role, day, postedAt, status: "posted" };
+        if (entry.type === "accept-quote") {
+          const r = finalizeAcceptQuote(entry.quoteNo);
+          out.orderNo = r.soNo;
+          out.customerId = r.customerId;
+          out.detail = `Accept ${entry.quoteNo} → ${r.soNo}`;
+          summaries.push(out.detail);
+        } else if (entry.type === "receive-po") {
+          const r = finalizeReceivePo(entry.poNo);
+          out.grnNo = r.grnNo;
+          out.poNo = r.poNo;
+          out.detail = `Receive ${r.poNo} → ${r.grnNo}`;
+          summaries.push(out.detail);
+        } else if (entry.type === "post-shipment") {
+          const r = finalizeShipment(entry.shipmentId);
+          out.shipmentId = r.shipmentId;
+          out.customerId = r.customerId || "";
+          out.orderNo = (r.orderNos || [])[0] || "";
+          out.detail = `Ship ${r.shipmentId} posted · OH issued`;
+          summaries.push(out.detail);
+        } else {
+          summaries.push(entry.detail || entry.type);
+        }
+        committed.push(out);
       }
-      const fully = po.lines.every((pl) => qtyReceivedOnPoLine(poNo, pl.line) + 1e-9 >= Number(pl.qty));
-      // qtyReceivedOnPoLine already includes the GRN we just pushed
-      po.status = fully ? "Closed" : "Approved";
-    })) return;
-    toast(`GRN ${grnNo} posted for PO ${poNo} — stock updated.`);
-    go("receipt");
+      if (!staged.length && isDirty()) {
+        committed.push({
+          id: `ACT-${Date.now()}-edits`,
+          day,
+          actor: role,
+          type: "working-copy-edits",
+          status: "posted",
+          stagedAt: postedAt,
+          postedAt,
+          quoteNo: "",
+          orderNo: "",
+          poNo: "",
+          grnNo: "",
+          shipmentId: "",
+          customerId: "",
+          detail: `Working-copy field edits · ${countChanges()} Δ`,
+        });
+        summaries.push("Working-copy edits");
+      }
+    };
+
+    if (!mutate(`Post ${staged.length || "edits"}`, run, { force: true })) return;
+
+    actionRepo = committed.concat(actionRepo).slice(0, 500);
+    persistActionRepo();
+    pending = [];
+    persistPending();
+    posted = { at: Date.now(), data: clone(working), actions: committed };
+    localStorage.setItem(POSTED_KEY, JSON.stringify(posted));
+    log(`Posted ${committed.length} action(s)`, "post");
+    toast(
+      summaries.length
+        ? `Posted ${committed.length}: ${summaries.slice(0, 3).join(" · ")}${summaries.length > 3 ? "…" : ""}`
+        : "Posted journal (master remains sealed)."
+    );
+    render();
   }
 
   /* —— other views —— */
@@ -1759,14 +1946,15 @@
     root.innerHTML = working.quotes
       .map((q, qi) => {
         const linked = orderForQuote(q.quoteNo);
-        const canAccept = !linked && q.status !== "Lost" && canAdd("orders");
+        const staged = isStaged("accept-quote", "quoteNo", q.quoteNo);
+        const canAccept = !linked && !staged && q.status !== "Lost" && canAdd("orders");
         const statusDisabled = !editMode || !canEdit("quotes.status");
         const custDisabled = !editMode || !canEdit("quotes.customerId");
         return `
         <article class="card">
           <div class="card-head">
             <h2 class="mono">${q.quoteNo}</h2>
-            <span class="meta">${customerName(q.customerId)} · ${money(sumLines(q.lines, "price"))}${linked ? ` · SO ${linked.orderNo}` : ""}</span>
+            <span class="meta">${customerName(q.customerId)} · ${money(sumLines(q.lines, "price"))}${linked ? ` · SO ${linked.orderNo}` : ""}${staged ? " · staged" : ""}</span>
           </div>
           <div class="form-grid compact">
             <label>Status
@@ -1795,7 +1983,7 @@
           }).join("")}</tbody></table>
           <div class="card-actions">
             <button type="button" class="btn btn-primary" data-action="accept-quote" data-quote="${q.quoteNo}" ${canAccept && editMode ? "" : "disabled"}>
-              ${linked ? `Linked → ${linked.orderNo}` : "Accept quote → Sales Order"}
+              ${linked ? `Linked → ${linked.orderNo}` : staged ? "Staged — Post to create SO" : "Accept quote → Sales Order"}
             </button>
           </div>
         </article>`;
@@ -1920,12 +2108,13 @@
         const remain = Math.max(0, Number(pl.qty) - recv);
         return `<tr><td>${pl.line}</td><td class="mono">${pl.sku}</td><td>${pl.qty}</td><td>${recv}</td><td>${remain}</td></tr>`;
       }).join("");
-      const canRecv = canAdd("goodsReceipts") && editMode && po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(po.poNo, pl.line) > 0);
+      const stagedRecv = isStaged("receive-po", "poNo", po.poNo);
+      const canRecv = !stagedRecv && canAdd("goodsReceipts") && editMode && po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(po.poNo, pl.line) > 0);
       return `<article class="card">
-        <div class="card-head"><h2 class="mono">PO ${po.poNo}</h2><span class="meta">${supplierName(po.supplierId)} · ${po.status}</span></div>
+        <div class="card-head"><h2 class="mono">PO ${po.poNo}</h2><span class="meta">${supplierName(po.supplierId)} · ${po.status}${stagedRecv ? " · staged" : ""}</span></div>
         <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Ordered</th><th>Received</th><th>Remain</th></tr></thead><tbody>${rows}</tbody></table>
         <div class="card-actions">
-          <button type="button" class="btn btn-primary" data-action="receive-po" data-po="${po.poNo}" ${canRecv ? "" : "disabled"}>Receive remaining → GRN</button>
+          <button type="button" class="btn btn-primary" data-action="receive-po" data-po="${po.poNo}" ${canRecv ? "" : "disabled"}>${stagedRecv ? "Staged — Post to create GRN" : "Receive remaining → GRN"}</button>
           <button type="button" class="btn" data-open-po="${po.poNo}">Open PO</button>
         </div>
       </article>`;
@@ -1943,7 +2132,7 @@
 
     root.innerHTML = `
       <article class="card"><div class="card-head"><h2>Receive goods</h2></div>
-        <p class="note">Generates a <strong>GRN number</strong>, posts lines against the PO, and updates product on-hand on the working copy.</p>
+        <p class="note">Stages a GRN receive. Toolbar <strong>Post</strong> creates the GRN number, updates lines / on-hand, and writes the daily action repository.</p>
       </article>
       ${poCards}
       <article class="card"><div class="card-head"><h2>Posted GRNs</h2></div></article>
@@ -1978,8 +2167,8 @@
         <div class="card-head"><h2>Sales intake</h2></div>
         <ol class="intake-steps">
           <li><strong>Customer quote received</strong> — edit Quote / QuoteLines (Sales role).</li>
-          <li><strong>Accept quote</strong> — generates <span class="mono">Sales Order number (orderNo / SO-…)</span>.</li>
-          <li><strong>Linked updates</strong> — Quote.status → Won · Order + OrderLines created · draft Invoice via <span class="mono">Invoice.orderNo</span>.</li>
+          <li><strong>Accept quote</strong> — stages until toolbar <strong>Post</strong> (then <span class="mono">SO-…</span>).</li>
+          <li><strong>On Post</strong> — Quote.status → Won · Order + OrderLines · draft Invoice · action repo row for Role/day.</li>
         </ol>
         <div class="table-wrap"><table class="data">
           <thead><tr><th>Quote</th><th>Sales Order #</th><th>Customer</th><th>Invoice</th><th>Status</th></tr></thead>
@@ -1990,8 +2179,8 @@
         <div class="card-head"><h2>Purchase intake</h2></div>
         <ol class="intake-steps">
           <li><strong>Raise / approve PO</strong> — Purchasing edits PurchaseOrder + PoLines.</li>
-          <li><strong>Goods received</strong> — Receipt Entry generates <span class="mono">GRN number (GRN-…)</span>.</li>
-          <li><strong>Linked updates</strong> — GoodsReceipt + GrnLine · Product.onHand += qty · PO closes when fully received.</li>
+          <li><strong>Goods received</strong> — Receipt Entry stages receive until toolbar <strong>Post</strong>.</li>
+          <li><strong>On Post</strong> — GRN + GrnLine · Product.onHand += qty · PO closes when fully received · action repo.</li>
         </ol>
         <div class="table-wrap"><table class="data">
           <thead><tr><th>PO</th><th>GRN #</th><th>Supplier</th><th>SKUs</th><th>Status</th></tr></thead>
@@ -2005,7 +2194,7 @@
         <p class="note"><span class="mono">Order.orderNo</span> = Sales Order number ← Invoice.orderNo · OrderLine.orderNo</p>
         <p class="note"><span class="mono">PurchaseOrder.poNo</span> ← GoodsReceipt.poNo · PoLine.poNo · GrnLine.poNo</p>
         <p class="note"><span class="mono">GoodsReceipt.grnNo</span> = GRN number ← GrnLine.grnNo → Product.sku (OH)</p>
-        <p class="note"><span class="mono">Shipment.shipmentId</span> · <span class="mono">ShipmentLine.orderNo</span> → Sales Order · post issues OH</p>
+        <p class="note"><span class="mono">Shipment.shipmentId</span> · ship Post stages · toolbar Post issues OH · action repo (no Activity UI)</p>
         <div class="card-actions">
           <button type="button" class="btn" data-view="quotes">Quotes</button>
           <button type="button" class="btn" data-view="orders">Sales Orders</button>
@@ -2086,13 +2275,7 @@
       toast(editMode ? "Edit mode on — working copy only." : "Edit mode off.");
       render();
     };
-    document.getElementById("btnPost").onclick = () => {
-      posted = { at: Date.now(), data: clone(working) };
-      localStorage.setItem(POSTED_KEY, JSON.stringify(posted));
-      log("Posted journal", "post");
-      toast("Posted journal (master remains sealed).");
-      render();
-    };
+    document.getElementById("btnPost").onclick = () => commitPost();
     document.getElementById("btnUndo").onclick = () => {
       if (!undoStack.length) return;
       const prev = undoStack.pop();
@@ -2117,9 +2300,11 @@
       working = normalize(clone(MASTER));
       undoStack = [];
       redoStack = [];
+      pending = [];
+      persistPending();
       persist();
       log("Discarded working copy", "discard");
-      toast("Discarded — reloaded master.");
+      toast("Discarded — reloaded master · cleared staged actions.");
       render();
     };
 

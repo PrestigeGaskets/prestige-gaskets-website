@@ -83,6 +83,8 @@ public:
     std::string receiveGoodsAgainstPo(const std::string& poNo,
                                       const std::vector<std::pair<int, double>>& qtys,
                                       const std::string& receivedBy);
+    /// Post shipment → issue on-hand for lines, mark orders Shipped, status Posted.
+    void postShipment(const std::string& shipmentId);
 
     struct Snapshot {
         std::vector<Customer> customers;
