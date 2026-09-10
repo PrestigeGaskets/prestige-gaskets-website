@@ -619,23 +619,26 @@ body {
   body {
     padding: 0;
     display: block;
+    overflow-x: hidden;
   }
 
   .app-shell {
     width: 100%;
-    height: 100dvh;
+    height: auto;
+    min-height: 100dvh;
     border-radius: 0;
     border: 0;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
+    overflow: visible;
   }
 
   .titlebar {
     flex-direction: column;
     align-items: stretch;
     gap: 0.55rem;
-    padding: 0.7rem 0.85rem;
-    padding-top: max(0.7rem, var(--safe-t));
+    padding: 0.65rem 0.75rem;
+    padding-top: max(0.65rem, var(--safe-t));
   }
 
   .brand-inline {
@@ -644,59 +647,115 @@ body {
 
   .session-bar {
     width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem;
     align-items: center;
   }
 
   .role-picker {
-    flex: 1 1 100%;
+    grid-column: 1;
     min-width: 0;
+    width: 100%;
+  }
+
+  .role-picker span {
+    display: none; /* label is in aria; saves a line on phones */
   }
 
   .role-picker select {
     flex: 1;
     max-width: none;
     width: 100%;
+    min-width: 0;
+    min-height: 2.4rem;
   }
 
   .copy-pill {
-    flex: 1 1 auto;
+    grid-column: 2;
     text-align: center;
+    white-space: normal;
+    line-height: 1.2;
+    max-width: 9.5rem;
+    font-size: 0.62rem;
+    padding: 0.35rem 0.45rem;
   }
 
   .ghost-btn {
     flex: 0 0 auto;
   }
 
+  /* Full-width command grid — every label visible, no sideways clip */
+  .session-bar .cmd-bar,
+  #global-cmd-bar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.3rem;
+  }
+
+  .session-bar .cmd-btn,
+  #global-cmd-bar .cmd-btn {
+    min-width: 0;
+    width: 100%;
+    min-height: 2.35rem;
+    padding: 0.3rem 0.15rem;
+    font-size: 0.68rem;
+    white-space: normal;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  /* Dashboard duplicates global toolbar — hide on phone */
+  .dash-cmd-bar {
+    display: none !important;
+  }
+
   .rail {
     border-right: 0;
     border-bottom: 1px solid var(--line);
     padding: 0.45rem 0.55rem 0.55rem;
+    background: var(--rail);
   }
 
+  /* Wrap ALL nav labels — no horizontal scroll / off-screen tabs */
   .nav {
-    flex-direction: row;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.2rem;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
-
-  .nav::-webkit-scrollbar { display: none; }
 
   .nav-item {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 0.55rem 0.85rem;
-    font-size: 0.9rem;
+    flex: initial;
+    white-space: normal;
+    text-align: center;
+    padding: 0.35rem 0.15rem;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    min-height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    word-break: break-word;
   }
 
   .rail-meta { display: none; }
 
   .stage {
-    padding: 1rem 0.9rem calc(1rem + var(--safe-b));
+    padding: 0.85rem 0.75rem calc(1rem + var(--safe-b));
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .view-head h1 {
+    font-size: clamp(1.35rem, 7vw, 1.85rem);
+    overflow-wrap: anywhere;
+  }
+
+  .view-head p {
+    overflow-wrap: anywhere;
   }
 
   .metric-strip {
@@ -708,6 +767,7 @@ body {
     grid-column: 1 / -1;
   }
 
+  .metric .label,
   .metric .value {
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -754,10 +814,95 @@ body {
     flex-wrap: wrap;
     gap: 0.35rem;
   }
+
+  .status-strip {
+    flex-wrap: wrap;
+  }
+
+  .status-chip {
+    white-space: normal;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .watch-list li {
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 0.55rem;
+  }
+
+  .watch-list .flag {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+  }
+
+  .quick-actions .ghost-btn,
+  .quick-actions .cmd-btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .relation-block {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    min-width: 18rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 420px) {
   .brand-sub { display: none; }
+
+  .session-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .role-picker,
+  .copy-pill {
+    grid-column: 1;
+    max-width: none;
+    width: 100%;
+  }
+
+  .copy-pill {
+    justify-self: stretch;
+  }
+
+  .nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .nav-item {
+    font-size: 0.68rem;
+    padding: 0.4rem 0.12rem;
+    min-height: 2.5rem;
+  }
+
+  .session-bar .cmd-bar,
+  #global-cmd-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .session-bar .cmd-btn,
+  #global-cmd-bar .cmd-btn {
+    font-size: 0.72rem;
+    min-height: 2.5rem;
+    padding: 0.35rem 0.2rem;
+  }
 
   .field-grid,
   .line-row .field-grid {
@@ -772,9 +917,13 @@ body {
     grid-column: auto;
   }
 
-  .copy-pill {
-    font-size: 0.65rem;
-    padding: 0.4rem 0.55rem;
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .status-chip {
+    font-size: 0.62rem;
+    padding: 0.3rem 0.45rem;
   }
 }
 
@@ -987,13 +1136,27 @@ body {
 }
 
 @media (max-width: 860px) {
+  .action-bar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0.35rem 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.85));
+  }
+
+  .action-btn {
+    flex: 1 1 auto;
+    min-width: min(100%, 140px);
+    justify-content: center;
+  }
+
   .cmd-bar {
     width: 100%;
   }
 
   .cmd-btn {
     flex: 1 1 auto;
-    min-width: calc(33.33% - 0.4rem);
+    min-width: 0;
     justify-content: center;
   }
 
@@ -1003,10 +1166,6 @@ body {
 
   .dash-panel-wide {
     grid-column: auto;
-  }
-
-  .session-bar {
-    width: 100%;
   }
 
   .view-head-row {
