@@ -2,6 +2,10 @@
  * Rushmore Business OS — HTML twin of the C++ scaffold.
  * MASTER is immutable. All edits land in a working copy (localStorage).
  * Field writes + creates are gated by hierarchical role permissions.
+ *
+ * OOP note: strict encapsulation/polymorphism lives in the C++ layer
+ * (include/I*.h → concrete classes). This JS file mirrors behaviour for
+ * browser preview; it is intentionally procedural, not a second hierarchy.
  */
 
 const STORAGE_KEY = "rushmore-bos-working-v3";

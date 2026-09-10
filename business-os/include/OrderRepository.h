@@ -5,17 +5,18 @@
 #include <vector>
 
 #include "IDataStore.h"
+#include "IRepositories.h"
 #include "Order.h"
 
 namespace bos {
 
-class OrderRepository {
+class OrderRepository : public IOrderRepository {
 public:
     explicit OrderRepository(IDataStore& store);
 
-    void reload();
-    const std::vector<Order>& all() const;
-    std::optional<Order> findByNo(const std::string& orderNo) const;
+    void reload() override;
+    const std::vector<Order>& all() const override;
+    std::optional<Order> findByNo(const std::string& orderNo) const override;
 
 private:
     IDataStore& store_;

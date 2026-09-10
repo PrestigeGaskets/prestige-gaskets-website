@@ -5,17 +5,18 @@
 #include <vector>
 
 #include "IDataStore.h"
+#include "IRepositories.h"
 #include "Quote.h"
 
 namespace bos {
 
-class QuoteRepository {
+class QuoteRepository : public IQuoteRepository {
 public:
     explicit QuoteRepository(IDataStore& store);
 
-    void reload();
-    const std::vector<Quote>& all() const;
-    std::optional<Quote> findByNo(const std::string& quoteNo) const;
+    void reload() override;
+    const std::vector<Quote>& all() const override;
+    std::optional<Quote> findByNo(const std::string& quoteNo) const override;
 
 private:
     IDataStore& store_;

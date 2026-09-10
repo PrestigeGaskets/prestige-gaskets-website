@@ -6,16 +6,17 @@
 
 #include "Customer.h"
 #include "IDataStore.h"
+#include "IRepositories.h"
 
 namespace bos {
 
-class CustomerRepository {
+class CustomerRepository : public ICustomerRepository {
 public:
     explicit CustomerRepository(IDataStore& store);
 
-    void reload();
-    const std::vector<Customer>& all() const;
-    std::optional<Customer> findById(const std::string& id) const;
+    void reload() override;
+    const std::vector<Customer>& all() const override;
+    std::optional<Customer> findById(const std::string& id) const override;
 
 private:
     IDataStore& store_;

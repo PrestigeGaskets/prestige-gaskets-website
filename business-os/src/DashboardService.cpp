@@ -5,14 +5,11 @@
 
 namespace bos {
 
-DashboardService::DashboardService(CustomerRepository& customers,
-                                   ProductCatalog& products,
-                                   QuoteService& quotes,
-                                   OrderRepository& orders)
-    : customers_(customers),
-      products_(products),
-      quotes_(quotes),
-      orders_(orders) {}
+DashboardService::DashboardService(ICustomerRepository& customers,
+                                   IProductCatalog& products,
+                                   IQuoteService& quotes,
+                                   IOrderRepository& orders)
+    : customers_(customers), products_(products), quotes_(quotes), orders_(orders) {}
 
 DashboardSnapshot DashboardService::build() const {
     DashboardSnapshot snap;

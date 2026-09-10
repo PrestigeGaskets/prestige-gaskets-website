@@ -1,21 +1,21 @@
 #pragma once
 
+#include "IRepositories.h"
+#include "IServices.h"
 #include "Product.h"
-#include "ProductCatalog.h"
 
 namespace bos {
 
-class InventoryService {
+class InventoryService : public IInventoryService {
 public:
-    explicit InventoryService(ProductCatalog& catalog);
+    explicit InventoryService(IProductCatalog& catalog);
 
-    // Mirrors Products!Z reorder flag formula (OH vs ROP).
-    void refreshReorderFlags();
-    void printInventory() const;
+    void refreshReorderFlags() override;
+    void printInventory() const override;
+    bool needsReorder(const Product& product) const override;
 
 private:
-    ProductCatalog& catalog_;
-    static bool needsReorder(const Product& p);
+    IProductCatalog& catalog_;
 };
 
 }  // namespace bos

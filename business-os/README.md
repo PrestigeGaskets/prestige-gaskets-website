@@ -39,3 +39,8 @@ printf 'quit\n' | ./build/BusinessOS
 ## Class plan
 
 See [docs/CLASS_INTERACTION_PLAN.md](docs/CLASS_INTERACTION_PLAN.md).
+
+Abstract ports (`IDataStore`, `I*Repository`, `I*Service`, `IRolePolicy`,
+`IWorkspaceSession`, `ICommand`, `IUserInterface`) sit behind concrete
+implementations. `Application` is the composition root — swap `ConsoleUi` or
+the store without rewriting services.

@@ -73,12 +73,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\include\Application.h" />
+    <ClInclude Include="..\include\CommandInvoker.h" />
+    <ClInclude Include="..\include\ConsoleUi.h" />
     <ClInclude Include="..\include\Customer.h" />
     <ClInclude Include="..\include\CustomerRepository.h" />
     <ClInclude Include="..\include\Dashboard.h" />
     <ClInclude Include="..\include\DashboardService.h" />
     <ClInclude Include="..\include\ExcelStore.h" />
+    <ClInclude Include="..\include\ICommand.h" />
     <ClInclude Include="..\include\IDataStore.h" />
+    <ClInclude Include="..\include\IRepositories.h" />
+    <ClInclude Include="..\include\IRolePolicy.h" />
+    <ClInclude Include="..\include\IServices.h" />
+    <ClInclude Include="..\include\IUserInterface.h" />
+    <ClInclude Include="..\include\IWorkspaceSession.h" />
     <ClInclude Include="..\include\InMemoryStore.h" />
     <ClInclude Include="..\include\InventoryService.h" />
     <ClInclude Include="..\include\ListCatalog.h" />
@@ -89,10 +97,16 @@
     <ClInclude Include="..\include\Quote.h" />
     <ClInclude Include="..\include\QuoteRepository.h" />
     <ClInclude Include="..\include\QuoteService.h" />
+    <ClInclude Include="..\include\RoleHierarchy.h" />
+    <ClInclude Include="..\include\SnapshotCommand.h" />
+    <ClInclude Include="..\include\WorkingCopyStore.h" />
+    <ClInclude Include="..\include\WorkspaceSession.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="..\src\Application.cpp" />
+    <ClCompile Include="..\src\CommandInvoker.cpp" />
+    <ClCompile Include="..\src\ConsoleUi.cpp" />
     <ClCompile Include="..\src\CustomerRepository.cpp" />
     <ClCompile Include="..\src\DashboardService.cpp" />
     <ClCompile Include="..\src\ExcelStore.cpp" />
@@ -103,6 +117,10 @@
     <ClCompile Include="..\src\ProductCatalog.cpp" />
     <ClCompile Include="..\src\QuoteRepository.cpp" />
     <ClCompile Include="..\src\QuoteService.cpp" />
+    <ClCompile Include="..\src\RoleHierarchy.cpp" />
+    <ClCompile Include="..\src\SnapshotCommand.cpp" />
+    <ClCompile Include="..\src\WorkingCopyStore.cpp" />
+    <ClCompile Include="..\src\WorkspaceSession.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

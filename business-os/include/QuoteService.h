@@ -3,21 +3,21 @@
 #include <map>
 #include <string>
 
-#include "QuoteRepository.h"
+#include "IRepositories.h"
+#include "IServices.h"
 
 namespace bos {
 
-class QuoteService {
+class QuoteService : public IQuoteService {
 public:
-    explicit QuoteService(QuoteRepository& quotes);
+    explicit QuoteService(IQuoteRepository& quotes);
 
-    // Same aggregation as _verify_aec5.py QUOTE TOTALS.
-    std::map<std::string, double> totalsByQuote() const;
-    double grandTotal() const;
-    void printTotals() const;
+    std::map<std::string, double> totalsByQuote() const override;
+    double grandTotal() const override;
+    void printTotals() const override;
 
 private:
-    QuoteRepository& quotes_;
+    IQuoteRepository& quotes_;
 };
 
 }  // namespace bos

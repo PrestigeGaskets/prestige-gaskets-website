@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "IRolePolicy.h"
+
 namespace bos {
 
 // Hierarchical roles: child inherits parent permissions.
@@ -16,13 +18,16 @@ struct RoleDefinition {
     std::vector<std::string> canAdd;   // customers | products | quotes | quoteLines | orders | customFields
 };
 
-class RoleHierarchy {
+class RoleHierarchy : public IRolePolicy {
 public:
     RoleHierarchy();
 
-    const std::vector<RoleDefinition>& all() const { return roles_; }
-    bool canEdit(const std::string& roleName, const std::string& fieldKey) const;
-    bool canAdd(const std::string& roleName, const std::string& entity) const;
+    const std::vector<RoleDefinition>& definitions() const { return roles_; }
+
+    bool canEdit(const std::string& roleName, const std::string& fieldKey) const override;
+    bool canAdd(const std::string& roleName, const std::string& entity) const override;
+    std::vector<std::string> roleNames() const override;
+    std::string blurb(const std::string& roleName) const override;
 
 private:
     std::vector<RoleDefinition> roles_;

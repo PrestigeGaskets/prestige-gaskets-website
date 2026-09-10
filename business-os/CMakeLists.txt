@@ -9,6 +9,12 @@ add_executable(BusinessOS
     src/Application.cpp
     src/InMemoryStore.cpp
     src/ExcelStore.cpp
+    src/WorkingCopyStore.cpp
+    src/WorkspaceSession.cpp
+    src/CommandInvoker.cpp
+    src/SnapshotCommand.cpp
+    src/RoleHierarchy.cpp
+    src/ConsoleUi.cpp
     src/CustomerRepository.cpp
     src/ProductCatalog.cpp
     src/QuoteRepository.cpp
