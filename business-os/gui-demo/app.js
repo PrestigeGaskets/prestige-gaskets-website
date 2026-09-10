@@ -129,6 +129,215 @@ const CUSTOM_ENTITIES = ["customers", "products", "quotes", "orders"];
 
 let working = loadWorking();
 let activeRole = localStorage.getItem(ROLE_KEY) || "Sales";
+let editMode = sessionStorage.getItem("rushmore-edit-mode") === "1";
+let undoStack = [];
+let redoStack = [];
+const MAX_UNDO = 40;
+const ACTIVITY_KEY = "rushmore-bos-activity-v1";
+const POSTED_KEY = "rushmore-bos-posted-v1";
+let activityLog = loadActivity();
+let postedSnapshot = loadPosted();
+
+function loadActivity() {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {
+    /* ignore */
+  }
+  return [];
+}
+
+function saveActivity() {
+  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activityLog.slice(0, 40)));
+}
+
+function loadPosted() {
+  try {
+    const raw = localStorage.getItem(POSTED_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {
+    /* ignore */
+  }
+  return null;
+}
+
+function logActivity(message, kind = "info") {
+  activityLog.unshift({
+    at: new Date().toISOString(),
+    role: activeRole,
+    kind,
+    message,
+  });
+  activityLog = activityLog.slice(0, 40);
+  saveActivity();
+}
+
+function snapshotWorking() {
+  return clone(working);
+}
+
+function pushUndo(label) {
+  undoStack.push({ label, data: snapshotWorking() });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack = [];
+}
+
+function mutate(label, fn) {
+  if (!editMode) {
+    toast("Turn on Edit to make changes.");
+    return false;
+  }
+  pushUndo(label);
+  fn();
+  persistWorking();
+  logActivity(label, "edit");
+  renderAll();
+  return true;
+}
+
+function setEditMode(on) {
+  editMode = Boolean(on);
+  sessionStorage.setItem("rushmore-edit-mode", editMode ? "1" : "0");
+  logActivity(editMode ? "Edit mode on" : "Edit mode off", "mode");
+  renderAll();
+  toast(editMode ? "Edit mode on — fields unlocked by role." : "Edit mode off — fields locked.");
+}
+
+function toggleEditMode() {
+  setEditMode(!editMode);
+}
+
+function undoChange() {
+  if (!undoStack.length) {
+    toast("Nothing to undo.");
+    return;
+  }
+  const prev = undoStack.pop();
+  redoStack.push({ label: prev.label, data: snapshotWorking() });
+  working = normalizeWorking(prev.data);
+  persistWorking();
+  logActivity(`Undo · ${prev.label}`, "undo");
+  renderAll();
+  toast(`Undid: ${prev.label}`);
+}
+
+function redoChange() {
+  if (!redoStack.length) {
+    toast("Nothing to redo.");
+    return;
+  }
+  const next = redoStack.pop();
+  undoStack.push({ label: next.label, data: snapshotWorking() });
+  working = normalizeWorking(next.data);
+  persistWorking();
+  logActivity(`Redo · ${next.label}`, "redo");
+  renderAll();
+  toast(`Redid: ${next.label}`);
+}
+
+function postWorking() {
+  if (!differsFromPosted() && !workingDiffersFromMaster()) {
+    toast("Nothing new to post.");
+    return;
+  }
+  postedSnapshot = {
+    at: new Date().toISOString(),
+    role: activeRole,
+    data: snapshotWorking(),
+  };
+  localStorage.setItem(POSTED_KEY, JSON.stringify(postedSnapshot));
+  logActivity(`Posted journal · ${new Date().toLocaleString(LOCALE)}`, "post");
+  renderAll();
+  toast("Posted to journal (master still sealed).");
+}
+
+function discardWorking() {
+  if (!workingDiffersFromMaster() && !undoStack.length) {
+    toast("Working copy already matches master.");
+    return;
+  }
+  if (!confirm("Discard working-copy changes and reload master values? Master itself is never modified.")) {
+    return;
+  }
+  pushUndo("Discard (before)");
+  working = normalizeWorking(clone(MASTER));
+  localStorage.removeItem(STORAGE_KEY);
+  persistWorking();
+  undoStack = [];
+  redoStack = [];
+  logActivity("Discarded working copy → master reload", "discard");
+  renderAll();
+  toast("Working copy discarded — master untouched.");
+}
+
+function clearActivity() {
+  activityLog = [];
+  saveActivity();
+  renderAll();
+  toast("Activity cleared.");
+}
+
+function countPendingChanges() {
+  return summarizeChanges().length;
+}
+
+function summarizeChanges() {
+  const changes = [];
+  const masterNorm = normalizeWorking(clone(MASTER));
+
+  for (const c of working.customers) {
+    const m = masterNorm.customers.find((x) => x.id === c.id);
+    if (!m) {
+      changes.push({ entity: "customers", id: c.id, detail: "New customer" });
+      continue;
+    }
+    for (const key of ["name", "email", "postcode", "status"]) {
+      if (isDirty(m[key], c[key])) changes.push({ entity: "customers", id: c.id, detail: `${key}: ${m[key]} → ${c[key]}` });
+    }
+  }
+  for (const p of working.products) {
+    const m = masterNorm.products.find((x) => x.sku === p.sku);
+    if (!m) {
+      changes.push({ entity: "products", id: p.sku, detail: "New product" });
+      continue;
+    }
+    for (const key of ["description", "onHand", "reorderPoint", "leadDays", "cost", "sell"]) {
+      if (isDirty(m[key], p[key])) changes.push({ entity: "products", id: p.sku, detail: `${key}: ${m[key]} → ${p[key]}` });
+    }
+  }
+  for (const q of working.quotes) {
+    const m = masterNorm.quotes.find((x) => x.quoteNo === q.quoteNo);
+    if (!m) {
+      changes.push({ entity: "quotes", id: q.quoteNo, detail: "New quote" });
+      continue;
+    }
+    if (isDirty(m.status, q.status)) changes.push({ entity: "quotes", id: q.quoteNo, detail: `status: ${m.status} → ${q.status}` });
+    if (isDirty(m.customerId, q.customerId)) changes.push({ entity: "quotes", id: q.quoteNo, detail: `customer: ${m.customerId} → ${q.customerId}` });
+    if (JSON.stringify(m.lines) !== JSON.stringify(q.lines)) {
+      changes.push({ entity: "quotes", id: q.quoteNo, detail: "Line items changed" });
+    }
+  }
+  for (const o of working.orders) {
+    const m = masterNorm.orders.find((x) => x.orderNo === o.orderNo);
+    if (!m) {
+      changes.push({ entity: "orders", id: o.orderNo, detail: "New order" });
+      continue;
+    }
+    for (const key of ["status", "value", "quoteNo", "customerId"]) {
+      if (isDirty(m[key], o[key])) changes.push({ entity: "orders", id: o.orderNo, detail: `${key}: ${m[key]} → ${o[key]}` });
+    }
+  }
+  if (JSON.stringify(working.customFields) !== JSON.stringify(masterNorm.customFields)) {
+    changes.push({ entity: "fields", id: "custom", detail: `${working.customFields.length} custom field(s)` });
+  }
+  return changes;
+}
+
+function differsFromPosted() {
+  if (!postedSnapshot) return workingDiffersFromMaster();
+  return JSON.stringify(working) !== JSON.stringify(postedSnapshot.data);
+}
 
 function deepFreeze(value) {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
@@ -188,6 +397,7 @@ function roleBag(fieldName) {
 }
 
 function roleCanEdit(fieldKey) {
+  if (!editMode) return false;
   const allowed = roleBag("canEdit");
   if (allowed.has(fieldKey)) return true;
   if (fieldKey.startsWith("custom.") && allowed.has("custom.*")) return true;
@@ -195,6 +405,7 @@ function roleCanEdit(fieldKey) {
 }
 
 function roleCanAdd(entity) {
+  if (!editMode) return false;
   return roleBag("canAdd").has(entity);
 }
 
@@ -252,11 +463,44 @@ function workingDiffersFromMaster() {
 
 function updateCopyPill() {
   const pill = document.getElementById("copy-pill");
-  const resetBtn = document.getElementById("reset-working");
+  if (!pill) return;
   const dirty = workingDiffersFromMaster();
-  pill.textContent = dirty ? "Working copy · unsaved vs master" : "Working copy · matches master";
-  pill.classList.toggle("is-clean", !dirty);
-  resetBtn.disabled = !dirty;
+  const unposted = differsFromPosted();
+  if (!dirty) {
+    pill.textContent = postedSnapshot ? "Working · matches master · posted" : "Working · matches master";
+    pill.classList.add("is-clean");
+  } else if (unposted) {
+    pill.textContent = `Working · ${countPendingChanges()} change(s) · unposted`;
+    pill.classList.remove("is-clean");
+  } else {
+    pill.textContent = `Working · ${countPendingChanges()} change(s) · posted`;
+    pill.classList.remove("is-clean");
+  }
+  syncCommandButtons();
+}
+
+function syncCommandButtons() {
+  const dirty = workingDiffersFromMaster();
+  const canUndo = undoStack.length > 0;
+  const canRedo = redoStack.length > 0;
+  const canPost = dirty || differsFromPosted();
+
+  document.querySelectorAll("#btn-edit, [data-cmd='edit']").forEach((btn) => {
+    btn.classList.toggle("is-active", editMode);
+    btn.textContent = editMode ? "Editing" : "Edit";
+  });
+  document.querySelectorAll("#btn-undo, [data-cmd='undo']").forEach((btn) => {
+    btn.disabled = !canUndo;
+  });
+  document.querySelectorAll("#btn-redo, [data-cmd='redo']").forEach((btn) => {
+    btn.disabled = !canRedo;
+  });
+  document.querySelectorAll("#btn-post, [data-cmd='post']").forEach((btn) => {
+    btn.disabled = !canPost;
+  });
+  document.querySelectorAll("#btn-discard, [data-cmd='discard']").forEach((btn) => {
+    btn.disabled = !dirty && !canUndo;
+  });
 }
 
 function toast(msg) {
@@ -299,10 +543,10 @@ function commitPath(path, raw, asNumber) {
   if (key === "postcode" && typeof next === "string") {
     next = next.trim().toUpperCase();
   }
-  cursor[key] = next;
-  persistWorking();
-  renderAll();
-  toast("Saved to working copy (master unchanged).");
+  mutate(`Edit ${path}`, () => {
+    cursor[key] = next;
+  });
+  if (editMode) toast("Saved to working copy (master unchanged).");
 }
 
 function nextCustomerId() {
@@ -326,101 +570,97 @@ function nextOrderNo() {
 }
 
 function addCustomer() {
-  if (!roleCanAdd("customers")) {
+  if (!editMode) {
+    toast("Turn on Edit to add customers.");
+    return;
+  }
+  if (!roleBag("canAdd").has("customers")) {
     toast("Your role cannot add customers.");
     return;
   }
   const id = nextCustomerId();
-  working.customers.push({
-    id,
-    name: "New customer",
-    email: "",
-    postcode: "",
-    status: "Active",
-    extras: {},
-  });
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add customer ${id}`, () => {
+    working.customers.push({
+      id,
+      name: "New customer",
+      email: "",
+      postcode: "",
+      status: "Active",
+      extras: {},
+    });
+  })) return;
   showView("customers");
   toast(`Customer ${id} added to working copy.`);
 }
 
 function addProduct() {
-  if (!roleCanAdd("products")) {
-    toast("Your role cannot add products.");
-    return;
-  }
+  if (!editMode) { toast("Turn on Edit to add products."); return; }
+  if (!roleBag("canAdd").has("products")) { toast("Your role cannot add products."); return; }
   const sku = nextSku();
-  working.products.push({
-    sku,
-    description: "New product",
-    onHand: 0,
-    reorderPoint: 0,
-    leadDays: 0,
-    cost: 0,
-    sell: 0,
-    extras: {},
-  });
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add product ${sku}`, () => {
+    working.products.push({
+      sku,
+      description: "New product",
+      onHand: 0,
+      reorderPoint: 0,
+      leadDays: 0,
+      cost: 0,
+      sell: 0,
+      extras: {},
+    });
+  })) return;
   showView("products");
   toast(`Product ${sku} added to working copy.`);
 }
 
 function addQuote() {
-  if (!roleCanAdd("quotes")) {
-    toast("Your role cannot add quotes.");
-    return;
-  }
+  if (!editMode) { toast("Turn on Edit to add quotes."); return; }
+  if (!roleBag("canAdd").has("quotes")) { toast("Your role cannot add quotes."); return; }
   const quoteNo = nextQuoteNo();
   const customerId = working.customers[0]?.id || "";
   const sku = working.products[0]?.sku || "P1001";
   const price = working.products[0]?.sell || 0;
-  working.quotes.push({
-    quoteNo,
-    customerId,
-    status: "Open",
-    extras: {},
-    lines: [{ line: 1, sku, qty: 1, price }],
-  });
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add quote ${quoteNo}`, () => {
+    working.quotes.push({
+      quoteNo,
+      customerId,
+      status: "Open",
+      extras: {},
+      lines: [{ line: 1, sku, qty: 1, price }],
+    });
+  })) return;
   showView("quotes");
   toast(`Quote ${quoteNo} added to working copy.`);
 }
 
 function addQuoteLine(quoteIndex) {
-  if (!roleCanAdd("quoteLines")) {
-    toast("Your role cannot add quote lines.");
-    return;
-  }
+  if (!editMode) { toast("Turn on Edit to add quote lines."); return; }
+  if (!roleBag("canAdd").has("quoteLines")) { toast("Your role cannot add quote lines."); return; }
   const quote = working.quotes[quoteIndex];
   if (!quote) return;
   const sku = working.products[0]?.sku || "P1001";
   const price = working.products.find((p) => p.sku === sku)?.sell || 0;
   const line = (quote.lines[quote.lines.length - 1]?.line || 0) + 1;
-  quote.lines.push({ line, sku, qty: 1, price });
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add line L${line} on ${quote.quoteNo}`, () => {
+    quote.lines.push({ line, sku, qty: 1, price });
+  })) return;
   toast(`Line L${line} added on ${quote.quoteNo}.`);
 }
 
 function addOrder() {
-  if (!roleCanAdd("orders")) {
-    toast("Your role cannot add orders.");
-    return;
-  }
+  if (!editMode) { toast("Turn on Edit to add orders."); return; }
+  if (!roleBag("canAdd").has("orders")) { toast("Your role cannot add orders."); return; }
   const orderNo = nextOrderNo();
-  working.orders.push({
-    orderNo,
-    quoteNo: "",
-    customerId: working.customers[0]?.id || "",
-    status: "Open",
-    value: 0,
-    extras: {},
-  });
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add order ${orderNo}`, () => {
+    working.orders.push({
+      orderNo,
+      quoteNo: "",
+      customerId: working.customers[0]?.id || "",
+      status: "Open",
+      value: 0,
+      extras: {},
+    });
+  })) return;
   showView("orders");
   toast(`Order ${orderNo} added to working copy.`);
 }
@@ -435,43 +675,32 @@ function slugifyFieldKey(label) {
 }
 
 function addCustomField(entity, label, type) {
-  if (!roleCanAdd("customFields")) {
+  if (!editMode) { toast("Turn on Edit to add fields."); return; }
+  if (!roleBag("canAdd").has("customFields")) {
     toast("Your role cannot add custom fields.");
     return;
   }
   const cleanLabel = String(label || "").trim();
-  if (!cleanLabel) {
-    toast("Enter a field label.");
-    return;
-  }
-  if (!CUSTOM_ENTITIES.includes(entity)) {
-    toast("Pick a valid entity.");
-    return;
-  }
+  if (!cleanLabel) { toast("Enter a field label."); return; }
+  if (!CUSTOM_ENTITIES.includes(entity)) { toast("Pick a valid entity."); return; }
   const key = slugifyFieldKey(cleanLabel);
-  if (!key) {
-    toast("Invalid field label.");
-    return;
-  }
+  if (!key) { toast("Invalid field label."); return; }
   if (working.customFields.some((f) => f.entity === entity && f.key === key)) {
     toast("That custom field already exists.");
     return;
   }
-  working.customFields.push({ entity, key, label: cleanLabel, type: type === "number" ? "number" : "text" });
-  const collection =
-    entity === "customers"
-      ? working.customers
-      : entity === "products"
-        ? working.products
-        : entity === "quotes"
-          ? working.quotes
-          : working.orders;
-  for (const row of collection) {
-    if (!row.extras) row.extras = {};
-    if (row.extras[key] === undefined) row.extras[key] = type === "number" ? 0 : "";
-  }
-  persistWorking();
-  renderAll();
+  if (!mutate(`Add custom field ${entity}.${key}`, () => {
+    working.customFields.push({ entity, key, label: cleanLabel, type: type === "number" ? "number" : "text" });
+    const collection =
+      entity === "customers" ? working.customers
+      : entity === "products" ? working.products
+      : entity === "quotes" ? working.quotes
+      : working.orders;
+    for (const row of collection) {
+      if (!row.extras) row.extras = {};
+      if (row.extras[key] === undefined) row.extras[key] = type === "number" ? 0 : "";
+    }
+  })) return;
   toast(`Custom field “${cleanLabel}” added on ${entity} (working copy).`);
 }
 
@@ -534,13 +763,34 @@ function renderRoleSelect() {
 }
 
 function renderDashboard() {
+  const pending = summarizeChanges();
   const reorderCount = working.products.filter(needsReorder).length;
+  const status = document.getElementById("dash-status");
+  if (status) {
+    status.textContent = editMode
+      ? `Editing as ${activeRole} · ${pending.length} pending change(s) vs master.`
+      : `Viewing as ${activeRole} · turn on Edit to change fields.`;
+  }
+
+  const strip = document.getElementById("status-strip");
+  if (strip) {
+    const postedLabel = postedSnapshot
+      ? `Last post ${new Date(postedSnapshot.at).toLocaleString(LOCALE)}`
+      : "Never posted";
+    strip.innerHTML = `
+      <span class="status-chip ${editMode ? "is-live" : ""}">${editMode ? "EDIT MODE" : "READ ONLY"}</span>
+      <span class="status-chip">${activeRole}</span>
+      <span class="status-chip ${pending.length ? "is-warn" : "is-ok"}">${pending.length} pending</span>
+      <span class="status-chip">${undoStack.length} undo · ${redoStack.length} redo</span>
+      <span class="status-chip">${postedLabel}</span>`;
+  }
+
   const metrics = [
     { label: "Customers", value: String(working.customers.length) },
     { label: "Products", value: String(working.products.length) },
     { label: "Open quote value", value: money(grandTotal()) },
     { label: "Orders", value: String(working.orders.length) },
-    { label: "Custom fields", value: String(working.customFields.length) },
+    { label: "Pending edits", value: String(pending.length) },
   ];
   document.getElementById("metric-strip").innerHTML = metrics
     .map((m) => `<div class="metric"><span class="label">${m.label}</span><span class="value">${m.value}</span></div>`)
@@ -555,6 +805,73 @@ function renderDashboard() {
       )
       .join("") ||
     `<li><span class="sku">—</span><span>None below ROP</span><span class="flag" style="color:var(--ok)">OK</span></li>`;
+
+  const quick = document.getElementById("quick-actions");
+  if (quick) {
+    const actions = [
+      { id: "qa-edit", label: editMode ? "Stop editing" : "Start editing", run: "edit" },
+      { id: "qa-post", label: "Post journal", run: "post" },
+      { id: "qa-undo", label: "Undo", run: "undo" },
+      { id: "qa-customer", label: "Add customer", run: "add-customer", need: "customers" },
+      { id: "qa-quote", label: "Add quote", run: "add-quote", need: "quotes" },
+      { id: "qa-product", label: "Add product", run: "add-product", need: "products" },
+      { id: "qa-order", label: "Add order", run: "add-order", need: "orders" },
+      { id: "qa-fields", label: "Field network", run: "fields" },
+    ];
+    quick.innerHTML = actions
+      .map((a) => {
+        const locked = a.need && !roleBag("canAdd").has(a.need);
+        return `<button type="button" class="ghost-btn action-btn" data-quick="${a.run}" ${locked ? "disabled title=\"Role cannot do this\"" : ""}>${a.label}</button>`;
+      })
+      .join("");
+    quick.querySelectorAll("[data-quick]").forEach((btn) => {
+      btn.addEventListener("click", () => runQuick(btn.dataset.quick));
+    });
+  }
+
+  const changeList = document.getElementById("change-list");
+  if (changeList) {
+    changeList.innerHTML = pending.length
+      ? pending
+          .slice(0, 12)
+          .map((c) => `<li><span class="mono">${c.entity}/${c.id}</span><span>${c.detail}</span></li>`)
+          .join("")
+      : `<li><span class="mono">—</span><span>No pending differences vs master</span></li>`;
+  }
+
+  const activity = document.getElementById("activity-list");
+  if (activity) {
+    activity.innerHTML = activityLog.length
+      ? activityLog
+          .slice(0, 14)
+          .map((a) => {
+            const when = new Date(a.at).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            return `<li class="activity-item kind-${a.kind}"><span class="mono">${when}</span><span>${a.message}</span><span class="activity-role">${a.role}</span></li>`;
+          })
+          .join("")
+      : `<li><span class="mono">—</span><span>No activity yet — Edit, Post, or Undo to begin</span></li>`;
+  }
+
+  syncCommandButtons();
+}
+
+function runQuick(action) {
+  if (action === "edit") return toggleEditMode();
+  if (action === "post") return postWorking();
+  if (action === "undo") return undoChange();
+  if (action === "add-customer") return addCustomer();
+  if (action === "add-quote") return addQuote();
+  if (action === "add-product") return addProduct();
+  if (action === "add-order") return addOrder();
+  if (action === "fields") return showView("fields");
+}
+
+function runCommand(cmd) {
+  if (cmd === "edit") return toggleEditMode();
+  if (cmd === "post") return postWorking();
+  if (cmd === "undo") return undoChange();
+  if (cmd === "redo") return redoChange();
+  if (cmd === "discard") return discardWorking();
 }
 
 function renderQuotes() {
@@ -874,6 +1191,8 @@ function showView(name) {
 }
 
 function renderAll() {
+  const shell = document.querySelector(".app-shell");
+  if (shell) shell.classList.toggle("is-editing", editMode);
   updateCopyPill();
   renderDashboard();
   renderQuotes();
@@ -895,15 +1214,30 @@ function boot() {
     activeRole = e.target.value;
     localStorage.setItem(ROLE_KEY, activeRole);
     document.getElementById("role-blurb").textContent = ROLE_TREE[activeRole].blurb;
+    logActivity(`Role switched to ${activeRole}`, "mode");
     renderAll();
     toast(`Role → ${activeRole}. Field network updated.`);
   });
 
-  document.getElementById("reset-working").addEventListener("click", () => {
-    if (confirm("Discard working-copy changes and reload master values? Master itself is never modified.")) {
-      resetWorking();
-    }
+  document.querySelectorAll("#btn-edit, #btn-post, #btn-undo, #btn-redo, #btn-discard").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const map = {
+        "btn-edit": "edit",
+        "btn-post": "post",
+        "btn-undo": "undo",
+        "btn-redo": "redo",
+        "btn-discard": "discard",
+      };
+      runCommand(map[btn.id]);
+    });
   });
+
+  document.querySelectorAll("[data-cmd]").forEach((btn) => {
+    btn.addEventListener("click", () => runCommand(btn.dataset.cmd));
+  });
+
+  const clearAct = document.getElementById("btn-clear-activity");
+  if (clearAct) clearAct.addEventListener("click", () => clearActivity());
 }
 
 boot();

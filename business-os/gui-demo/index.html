@@ -24,7 +24,13 @@
           <select id="role-select" aria-label="Active role"></select>
         </label>
         <p class="copy-pill" id="copy-pill" title="Edits save to your working copy only">Working copy</p>
-        <button type="button" class="ghost-btn" id="reset-working" title="Discard working-copy changes">Reset</button>
+        <div class="cmd-bar" id="global-cmd-bar" role="toolbar" aria-label="Workspace commands">
+          <button type="button" class="cmd-btn" id="btn-edit" title="Toggle edit mode">Edit</button>
+          <button type="button" class="cmd-btn cmd-primary" id="btn-post" title="Post working copy to journal">Post</button>
+          <button type="button" class="cmd-btn" id="btn-undo" title="Undo last change">Undo</button>
+          <button type="button" class="cmd-btn" id="btn-redo" title="Redo">Redo</button>
+          <button type="button" class="cmd-btn cmd-danger" id="btn-discard" title="Discard working-copy changes">Discard</button>
+        </div>
       </div>
     </header>
 
@@ -47,11 +53,23 @@
       <p class="toast" id="toast" hidden></p>
 
       <section id="view-dashboard" class="view is-active" data-view-panel="dashboard">
-        <header class="view-head">
-          <h1>Dashboard</h1>
-          <p>Live from your working copy — master stays sealed.</p>
+        <header class="view-head view-head-row">
+          <div>
+            <h1>Dashboard</h1>
+            <p id="dash-status">Command centre for the working copy.</p>
+          </div>
+          <div class="cmd-bar dash-cmd-bar" role="toolbar" aria-label="Dashboard commands">
+            <button type="button" class="cmd-btn" data-cmd="edit">Edit</button>
+            <button type="button" class="cmd-btn cmd-primary" data-cmd="post">Post</button>
+            <button type="button" class="cmd-btn" data-cmd="undo">Undo</button>
+            <button type="button" class="cmd-btn" data-cmd="redo">Redo</button>
+            <button type="button" class="cmd-btn cmd-danger" data-cmd="discard">Discard</button>
+          </div>
         </header>
+
+        <div class="status-strip" id="status-strip"></div>
         <div class="metric-strip" id="metric-strip"></div>
+
         <div class="split">
           <div class="panel">
             <h2>Open quote value</h2>
@@ -62,6 +80,24 @@
             <h2>Reorder watch</h2>
             <ul class="watch-list" id="reorder-watch"></ul>
           </div>
+        </div>
+
+        <div class="dash-grid">
+          <article class="panel dash-panel">
+            <h2>Quick actions</h2>
+            <div class="quick-actions" id="quick-actions"></div>
+          </article>
+          <article class="panel dash-panel">
+            <h2>Pending vs master</h2>
+            <ul class="change-list" id="change-list"></ul>
+          </article>
+          <article class="panel dash-panel dash-panel-wide">
+            <div class="panel-head-row">
+              <h2>Activity</h2>
+              <button type="button" class="ghost-btn" id="btn-clear-activity">Clear</button>
+            </div>
+            <ul class="activity-list" id="activity-list"></ul>
+          </article>
         </div>
       </section>
 
