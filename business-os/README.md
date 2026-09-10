@@ -16,6 +16,10 @@ python3 -m http.server 8765 --directory gui-demo
 Or open `gui-demo/index.html` directly. Nav views match the C++ commands:
 Dashboard, Quotes, Products, Customers, Orders — same seed data and totals.
 
+Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
+Edits are role-gated and write to a working copy only (master stays sealed).
+Mobile layouts wrap field grids / entity cards / session chrome at ≤860px / ≤420px.
+
 ## Build the `.exe` (Visual Studio)
 
 1. Open `BusinessOS.sln`

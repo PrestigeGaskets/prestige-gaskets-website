@@ -6,10 +6,10 @@ InMemoryStore::InMemoryStore() { seedDemoData(); }
 
 void InMemoryStore::seedDemoData() {
     customers_ = {
-        {"C001", "Acme Fab", "buyer@acme.example", "555-0101", "Active", ""},
-        {"C002", "Northline", "ops@northline.example", "555-0102", "Active", ""},
-        {"C003", "Summit Seal", "purchasing@summit.example", "555-0103", "Inactive", ""},
-        {"C004", "Prestige Pilot", "pilot@prestige.example", "555-0104", "Active", "Sample from verify script"},
+        {"C001", "Acme Fab", "buyer@acme.example", "B1 1AA", "Active", ""},
+        {"C002", "Northline", "ops@northline.example", "M1 2AB", "Active", ""},
+        {"C003", "Summit Seal", "purchasing@summit.example", "EH1 3EG", "Inactive", ""},
+        {"C004", "Prestige Pilot", "pilot@prestige.example", "SW1A 1AA", "Active", "Sample from verify script"},
     };
 
     products_ = {
