@@ -1660,7 +1660,31 @@
       const hubBtn = e.target.closest("[data-hub]");
       if (hubBtn) return setHub(hubBtn.dataset.hub);
 
-      const viewBtn = e.target.closest("[data-view]");
+      // Actions before data-view: sections also carry data-view and would steal clicks.
+      const actionEl = e.target.closest("[data-action]");
+      const action = actionEl?.dataset.action;
+      if (action === "new-po") return addPo();
+      if (action === "accept-quote") return acceptQuote(actionEl.dataset.quote);
+      if (action === "receive-po") return receivePo(actionEl.dataset.po);
+      if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
+      if (action === "print-po") return toast("Print preview scaffold.");
+      if (action === "request-approval") {
+        const po = currentPo();
+        if (!po) return;
+        if (!canEdit("purchaseOrders.status")) return toast("Role cannot change PO status.");
+        if (!mutate(`Request approval ${po.poNo}`, () => { po.status = "Pending Approval"; })) return;
+        toast(`PO ${po.poNo} → Pending Approval`);
+        return render();
+      }
+      if (action === "prev-po" || action === "next-po") {
+        const list = working.purchaseOrders;
+        const i = list.findIndex((p) => p.poNo === poNo);
+        const n = action === "next-po" ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
+        poNo = list[n].poNo;
+        return render();
+      }
+
+      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
       if (viewBtn) return go(viewBtn.dataset.view);
 
       const toastBtn = e.target.closest("[data-toast]");
@@ -1678,29 +1702,6 @@
       const tab = e.target.closest("[data-po-tab]");
       if (tab) {
         poTab = tab.dataset.poTab;
-        return render();
-      }
-
-      const action = e.target.closest("[data-action]")?.dataset.action;
-      if (!action) return;
-      if (action === "new-po") return addPo();
-      if (action === "accept-quote") return acceptQuote(e.target.closest("[data-action]").dataset.quote);
-      if (action === "receive-po") return receivePo(e.target.closest("[data-action]").dataset.po);
-      if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
-      if (action === "print-po") return toast("Print preview scaffold.");
-      if (action === "request-approval") {
-        const po = currentPo();
-        if (!po) return;
-        if (!canEdit("purchaseOrders.status")) return toast("Role cannot change PO status.");
-        if (!mutate(`Request approval ${po.poNo}`, () => { po.status = "Pending Approval"; })) return;
-        toast(`PO ${po.poNo} → Pending Approval`);
-        return render();
-      }
-      if (action === "prev-po" || action === "next-po") {
-        const list = working.purchaseOrders;
-        const i = list.findIndex((p) => p.poNo === poNo);
-        const n = action === "next-po" ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
-        poNo = list[n].poNo;
         return render();
       }
     });
