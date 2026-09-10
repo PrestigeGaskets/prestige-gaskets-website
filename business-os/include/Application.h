@@ -14,7 +14,8 @@
 
 namespace bos {
 
-// Process entry / CLI shell. Owns composition root for BusinessOS.exe.
+// Process entry / composition root for BusinessOS.exe.
+// CLI is temporary; GUI target look is previewed in gui-demo/index.html.
 class Application {
 public:
     Application();

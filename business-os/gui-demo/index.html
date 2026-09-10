@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rushmore Business OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <div class="app-shell" role="application" aria-label="Rushmore Business OS">
+    <header class="titlebar">
+      <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="titlebar-brand">RUSHMORE · Business OS</p>
+      <p class="titlebar-meta"><span id="clock"></span></p>
+    </header>
+
+    <aside class="rail">
+      <div class="brand-block">
+        <p class="brand-mark">RUSHMORE</p>
+        <p class="brand-sub">Business OS</p>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <button type="button" class="nav-item is-active" data-view="dashboard">Dashboard</button>
+        <button type="button" class="nav-item" data-view="quotes">Quotes</button>
+        <button type="button" class="nav-item" data-view="products">Products</button>
+        <button type="button" class="nav-item" data-view="customers">Customers</button>
+        <button type="button" class="nav-item" data-view="orders">Orders</button>
+      </nav>
+      <p class="rail-foot">Mirrors <code>Application::run()</code></p>
+    </aside>
+
+    <main class="stage">
+      <section id="view-dashboard" class="view is-active" data-view-panel="dashboard">
+        <header class="view-head">
+          <h1>Dashboard</h1>
+          <p>KPI roll-up — same job as <code>DashboardService::build()</code></p>
+        </header>
+        <div class="metric-strip" id="metric-strip"></div>
+        <div class="split">
+          <div class="panel">
+            <h2>Open quote value</h2>
+            <p class="hero-figure" id="grand-total">$0.00</p>
+            <p class="panel-note">Grand total from QuoteLines qty × price</p>
+          </div>
+          <div class="panel">
+            <h2>Reorder watch</h2>
+            <ul class="watch-list" id="reorder-watch"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-quotes" class="view" data-view-panel="quotes" hidden>
+        <header class="view-head">
+          <h1>Quotes</h1>
+          <p>Line math from <code>QuoteService::totalsByQuote()</code></p>
+        </header>
+        <div id="quotes-root"></div>
+      </section>
+
+      <section id="view-products" class="view" data-view-panel="products" hidden>
+        <header class="view-head">
+          <h1>Products</h1>
+          <p>Inventory OH / ROP / lead — <code>InventoryService</code></p>
+        </header>
+        <div class="table-wrap">
+          <table class="data-table" id="products-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Description</th>
+                <th>OH</th>
+                <th>ROP</th>
+                <th>Lead</th>
+                <th>Cost</th>
+                <th>Sell</th>
+                <th>Flag</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-customers" class="view" data-view-panel="customers" hidden>
+        <header class="view-head">
+          <h1>Customers</h1>
+          <p>Master data from <code>CustomerRepository</code></p>
+        </header>
+        <div class="table-wrap">
+          <table class="data-table" id="customers-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Email</th>
+                <th>Phone</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-orders" class="view" data-view-panel="orders" hidden>
+        <header class="view-head">
+          <h1>Orders</h1>
+          <p>tblOrders via <code>OrderRepository</code></p>
+        </header>
+        <div class="table-wrap">
+          <table class="data-table" id="orders-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Quote</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

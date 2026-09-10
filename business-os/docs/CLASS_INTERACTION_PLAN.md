@@ -1,7 +1,12 @@
 # SMB Business OS — C++ `.h` / `.cpp` Solution Plan
 
-Target: **Windows console `.exe`** (`BusinessOS.exe`) that mirrors the
+Target: **standalone Windows GUI `.exe`** (`BusinessOS.exe`) that mirrors the
 `SMB-Operating-System.xlsx` workbook verified by `_verify_aec5.py`.
+
+**GUI look-and-feel preview (for now):** `gui-demo/index.html` — same seed data,
+same views (`dashboard` / `quotes` / `products` / `customers` / `orders`), same
+service math as the C++ scaffold. The native app should track this visual
+language (Rushmore brand, teal ink, blueprint atmosphere, Syne/Outfit).
 
 ## Workbook → class map
 
@@ -23,14 +28,17 @@ main()
   └─ Application::run()
        ├─ InMemoryStore::seedDemoData()     // mirrors verify script samples
        ├─ wire repositories + services
-       └─ command loop
+       └─ GUI shell (HTML demo now; native window later)
             ├─ DashboardService::build()
-            ├─ QuoteService::printQuoteTotals()
-            ├─ ProductCatalog::printInventory()
+            ├─ QuoteService::totalsByQuote()
+            ├─ InventoryService::refreshReorderFlags()
             └─ CustomerRepository / OrderRepository queries
 ```
 
 `BusinessOS.sln` → `BusinessOS.vcxproj` → **Release|x64** → `BusinessOS.exe`.
+
+HTML stand-in: open `gui-demo/index.html` (or serve the folder) to demo the
+associated UI that the `.exe` should eventually present.
 
 ## Class interactions
 
@@ -76,18 +84,19 @@ main()
 3. **InventoryService** owns reorder flags (`OH` vs `ROP`, lead time) —
    equivalent of Products column `Z` flag formulas.
 4. **DashboardService** only aggregates; it never mutates master data.
-5. **Application** is the only UI / process entry; services stay UI-free
-   so a Win32 / ImGui front-end can replace the console later.
+5. **Application** is the only UI / process entry; services stay UI-free.
+   Today: console CLI + `gui-demo` HTML twin. Next: native GUI (WinUI / Qt)
+   matching the HTML chrome, rail nav, and view panels.
 6. **IDataStore** isolates persistence. Scaffold uses `InMemoryStore`
    seeded with workbook-shaped demo rows (`C004`, `P1002`, sample quotes).
 
 ## Suggested build / next increments
 
-1. **Now (this PR):** headers + stub `.cpp`, `main` prints dashboard /
-   quote totals / product OH-ROP from seed data → proves exe path.
-2. **Next:** real Excel loader (`ExcelStore` via libxlsx / COM / export CSV).
-3. **Then:** mutate quotes/orders, write-back, replace hidden `Lists` DV.
-4. **UI:** keep services; swap `Application` console for GUI.
+1. **Now:** C++ class scaffold + console smoke path + **HTML GUI demo**
+   (`gui-demo/`) that mimics Application views.
+2. **Next:** native GUI shell in the `.exe` tracking the HTML look.
+3. **Then:** real Excel loader (`ExcelStore`).
+4. **Then:** mutate quotes/orders, write-back, Lists DV.
 
 ## Solution layout
 
