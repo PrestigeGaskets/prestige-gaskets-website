@@ -80,6 +80,7 @@
     <ClInclude Include="..\include\CustomerRepository.h" />
     <ClInclude Include="..\include\Dashboard.h" />
     <ClInclude Include="..\include\DashboardService.h" />
+    <ClInclude Include="..\include\DailyActionRepository.h" />
     <ClInclude Include="..\include\DemoSeed.h" />
     <ClInclude Include="..\include\ExcelStore.h" />
     <ClInclude Include="..\include\GoodsReceipt.h" />
@@ -117,6 +118,7 @@
     <ClCompile Include="..\src\CommandInvoker.cpp" />
     <ClCompile Include="..\src\ConsoleUi.cpp" />
     <ClCompile Include="..\src\CustomerRepository.cpp" />
+    <ClCompile Include="..\src\DailyActionRepository.cpp" />
     <ClCompile Include="..\src\DashboardService.cpp" />
     <ClCompile Include="..\src\DemoSeed.cpp" />
     <ClCompile Include="..\src\ExcelStore.cpp" />

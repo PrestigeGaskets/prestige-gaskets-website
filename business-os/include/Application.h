@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "DailyActionRepository.h"
 #include "IRolePolicy.h"
 #include "IServices.h"
 #include "IUserInterface.h"
@@ -23,6 +24,9 @@ public:
 private:
     void wire();
     bool handleCommand(const std::string& cmd);
+    std::string nowIso() const;
+    std::string todayLocal() const;
+    std::string nextActionId();
 
     std::unique_ptr<IWorkspaceSession> session_;
     std::unique_ptr<IRolePolicy> roles_;
@@ -36,11 +40,13 @@ private:
     std::unique_ptr<IRelationService> relations_;
     std::unique_ptr<IIntakeService> intake_;
     std::unique_ptr<IUserInterface> ui_;
+    DailyActionRepository actions_;
 
     // Non-owning: lifetime owned by session_ concrete. Used only at composition root.
     WorkingCopyStore* workingCopy_ = nullptr;
 
     std::string activeRole_ = "Manager";
+    int actionSeq_ = 0;
 };
 
 }  // namespace bos

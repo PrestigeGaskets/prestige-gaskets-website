@@ -431,4 +431,48 @@ std::string WorkingCopyStore::receiveGoodsAgainstPo(
     return grnNo;
 }
 
+void WorkingCopyStore::postShipment(const std::string& shipmentId) {
+    auto it = std::find_if(shipments_.begin(), shipments_.end(),
+                           [&](const Shipment& s) { return s.shipmentId == shipmentId; });
+    if (it == shipments_.end()) {
+        throw std::runtime_error("Unknown shipment: " + shipmentId);
+    }
+    if (it->status == "Posted") {
+        throw std::runtime_error("Shipment already posted: " + shipmentId);
+    }
+    if (it->customerId.empty()) {
+        throw std::runtime_error("Customer ID is required");
+    }
+    if (it->shipOrganisation.empty()) {
+        throw std::runtime_error("Ship Organisation is required");
+    }
+    if (it->lines.empty()) {
+        throw std::runtime_error("Shipment has no lines: " + shipmentId);
+    }
+
+    for (auto& line : it->lines) {
+        if (line.qtyShipped <= 0) {
+            continue;
+        }
+        auto pit = std::find_if(products_.begin(), products_.end(),
+                                [&](const Product& p) { return p.sku == line.sku; });
+        if (pit == products_.end()) {
+            throw std::runtime_error("Unknown product on shipment line: " + line.sku);
+        }
+        pit->onHand = std::max(0.0, pit->onHand - line.qtyShipped);
+        line.shipComplete = true;
+
+        if (!line.orderNo.empty()) {
+            auto oit = std::find_if(orders_.begin(), orders_.end(),
+                                    [&](const Order& o) { return o.orderNo == line.orderNo; });
+            if (oit != orders_.end() && oit->status == "Open") {
+                oit->status = "Shipped";
+            }
+        }
+    }
+
+    it->status = "Posted";
+    dirty_ = true;
+}
+
 }  // namespace bos

@@ -24,6 +24,10 @@ public:
         return working_.receiveGoodsAgainstPo(poNo, qtys, receivedBy);
     }
 
+    void postShipment(const std::string& shipmentId) override {
+        working_.postShipment(shipmentId);
+    }
+
 private:
     WorkingCopyStore& working_;
 };
