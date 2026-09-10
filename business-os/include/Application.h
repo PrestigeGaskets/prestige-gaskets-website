@@ -3,16 +3,14 @@
 #include <memory>
 #include <string>
 
-#include "DailyActionRepository.h"
 #include "IRolePolicy.h"
 #include "IServices.h"
 #include "IUserInterface.h"
 #include "IWorkspaceSession.h"
 #include "IRepositories.h"
+#include "IWorkingCopyMutations.h"
 
 namespace bos {
-
-class WorkingCopyStore;  // composition-root mutation target (not an abstract port)
 
 // Process entry / composition root for BusinessOS.exe.
 // Owns concrete objects; collaborators see only abstract interfaces (DIP).
@@ -24,9 +22,6 @@ public:
 private:
     void wire();
     bool handleCommand(const std::string& cmd);
-    std::string nowIso() const;
-    std::string todayLocal() const;
-    std::string nextActionId();
 
     std::unique_ptr<IWorkspaceSession> session_;
     std::unique_ptr<IRolePolicy> roles_;
@@ -39,14 +34,14 @@ private:
     std::unique_ptr<IDashboardService> dashboard_;
     std::unique_ptr<IRelationService> relations_;
     std::unique_ptr<IIntakeService> intake_;
+    std::unique_ptr<IDailyActionRepository> actions_;
+    std::unique_ptr<IPostCommitService> postCommit_;
     std::unique_ptr<IUserInterface> ui_;
-    DailyActionRepository actions_;
 
-    // Non-owning: lifetime owned by session_ concrete. Used only at composition root.
-    WorkingCopyStore* workingCopy_ = nullptr;
+    // Non-owning: lifetime owned by session_ concrete. Exposed only as IWorkingCopyMutations.
+    IWorkingCopyMutations* mutations_ = nullptr;
 
     std::string activeRole_ = "Manager";
-    int actionSeq_ = 0;
 };
 
 }  // namespace bos

@@ -22,22 +22,7 @@ void DailyActionRepository::stage(ActionEntry entry) {
     pending_.push_back(std::move(entry));
 }
 
-std::vector<ActionEntry> DailyActionRepository::commitPending(const std::string& actor,
-                                                              const std::string& day,
-                                                              const std::string& postedAt) {
-    std::vector<ActionEntry> out;
-    out.reserve(pending_.size());
-    for (auto& e : pending_) {
-        e.actor = actor;
-        e.day = day;
-        e.postedAt = postedAt;
-        e.status = "posted";
-        posted_.push_back(e);
-        out.push_back(e);
-    }
-    pending_.clear();
-    return out;
-}
+std::vector<ActionEntry> DailyActionRepository::pending() const { return pending_; }
 
 void DailyActionRepository::appendPosted(ActionEntry entry) {
     entry.status = "posted";
@@ -60,6 +45,8 @@ std::vector<ActionEntry> DailyActionRepository::forActorDay(const std::string& a
     }
     return out;
 }
+
+std::vector<ActionEntry> DailyActionRepository::allPosted() const { return posted_; }
 
 std::vector<ActionEntry> DailyActionRepository::lookupByOrderNo(
     const std::string& orderNo) const {
