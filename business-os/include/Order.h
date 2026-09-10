@@ -7,13 +7,15 @@
 
 namespace bos {
 
+/// Sales Order — orderNo is the Sales Order number that links Quote (via quoteNo),
+/// OrderLines, and Invoice across the sales intake chain.
 struct Order {
-    std::string orderNo;     // PK
-    std::string quoteNo;     // optional FK → Quote.quoteNo (at most one Order per Quote → 1:1 conversion)
+    std::string orderNo;     // PK / Sales Order number e.g. SO-502 (legacy seed O-500)
+    std::string quoteNo;     // optional FK → Quote.quoteNo (1:1 when set — quote received → SO)
     std::string customerId;  // FK → Customer.id (N:1)
-    std::string status;
+    std::string status;      // Open | Picked | Shipped | Closed
     double value = 0.0;
-    std::vector<OrderLine> lines;  // 1:N Order → OrderLine; association for Order↔Product M:N
+    std::vector<OrderLine> lines;  // 1:N Order → OrderLine; M:N Order↔Product
 };
 
 }  // namespace bos

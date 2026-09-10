@@ -18,7 +18,14 @@ Or open `gui-demo/index.html` directly. The home hub follows an M1-style
 M1 Business Analysis / Custom Reports / Close).
 Open **PO Entry** for order `70286` / supplier `CITY0002`.
 
-Other views: Quotes, Products, Customers, Sales Orders, Relations, Fields.
+**End-to-end intake** (see [docs/INTAKE_FLOW.md](docs/INTAKE_FLOW.md)):
+
+- **Accept quote → Sales Order number** (`SO-…`) links Quote → Order → Invoice.
+- **Receive PO → GRN number** (`GRN-…`) links PurchaseOrder → GoodsReceipt → Product OH.
+- Turn **Edit** on; role-gated fields update the working copy (master stays sealed).
+
+Other views: Quotes, Products, Customers, Sales Orders, Receipt Entry, Intake Map,
+Relations, Fields.
 
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
 Edits are role-gated and write to a working copy only (master stays sealed).
@@ -29,7 +36,7 @@ Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
 plus a bottom dock (Hub / Orders / PO / Quotes / More). Desktop layout unchanged.
-Sales can **add customers**; Finance can **add products/orders** and **define custom fields**.
+Sales can **accept quotes into sales orders**; Purchasing/Inventory can **post GRNs**.
 See the Fields view for the full permission network.
 
 ## Build the `.exe` (Visual Studio)

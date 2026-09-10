@@ -5,6 +5,7 @@
 
 #include "Customer.h"
 #include "CustomerAccount.h"
+#include "GoodsReceipt.h"
 #include "Order.h"
 #include "Product.h"
 #include "PurchaseOrder.h"
@@ -22,6 +23,7 @@ public:
     virtual std::vector<Quote> loadQuotes() = 0;
     virtual std::vector<Order> loadOrders() = 0;
     virtual std::vector<PurchaseOrder> loadPurchaseOrders() = 0;
+    virtual std::vector<GoodsReceipt> loadGoodsReceipts() = 0;
     virtual std::vector<std::string> loadList(const std::string& listName) = 0;
 
     virtual std::vector<CustomerAccount> loadCustomerAccounts() = 0;

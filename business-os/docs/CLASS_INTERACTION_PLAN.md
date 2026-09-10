@@ -117,25 +117,32 @@ main()
 |---|---|---|
 | **1:1** | Customer ↔ CustomerAccount | `CustomerAccount.customerId` (unique) |
 | **1:1** | Order ↔ Invoice | `Invoice.orderNo` (unique) |
-| **1:1** | Quote ↔ Order (optional) | `Order.quoteNo` unique when set |
+| **1:1** | Quote ↔ Order (when accepted) | `Order.quoteNo` unique when set — generates Sales Order number |
 | **1:N** | Customer → Quote / Order | `customerId` |
 | **1:N** | Quote → QuoteLine | `Quote.lines` |
 | **1:N** | Order → OrderLine | `Order.lines` |
 | **1:N** | Supplier → PurchaseOrder | `PurchaseOrder.supplierId` |
 | **1:N** | PurchaseOrder → PoLine / Memo / Attachment | nested children |
+| **1:N** | PurchaseOrder → GoodsReceipt (GRN) | `GoodsReceipt.poNo` |
+| **1:N** | GoodsReceipt → GrnLine | `GoodsReceipt.lines` |
 | **M:N** | Product ↔ Tag | `ProductTag` junction |
 | **M:N** | Product ↔ Supplier | `ProductSupplier` junction |
 | **M:N** | Quote ↔ Product | `QuoteLine` association |
 | **M:N** | Order ↔ Product | `OrderLine` association |
 | **M:N** | PurchaseOrder ↔ Product | `PoLine` association |
+| **M:N** | GoodsReceipt ↔ Product | `GrnLine` association (updates `Product.onHand`) |
+
+**Intake:** Sales Order number (`Order.orderNo`) is generated when a customer quote is
+accepted; GRN number (`GoodsReceipt.grnNo`) is generated when goods are received against
+a PO. See [INTAKE_FLOW.md](INTAKE_FLOW.md).
 
 GUI: M1-style **Purchasing Management** hub (Entry / Reports / Maintenance /
-Business Analysis) plus **PO Entry** form mapped to the ERP template panels.
+Business Analysis) plus **PO Entry**, **Receipt Entry (GRN)**, and the intake map.
 
 
 ## Suggested build / next increments
 
-1. **Now:** polymorphic C++ scaffold + console smoke + HTML GUI demo.
+1. **Now:** polymorphic C++ scaffold + console smoke + HTML GUI demo + SO/GRN intake.
 2. **Next:** native GUI shell implementing `IUserInterface`.
 3. **Then:** real Excel loader (`ExcelStore`).
 4. **Then:** fuller mutation command set + Lists DV.

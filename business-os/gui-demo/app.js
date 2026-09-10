@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const STORAGE = "rushmore-bos-v6";
+  const STORAGE = "rushmore-bos-v7";
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
   const EDIT_KEY = "rushmore-edit-v2";
@@ -120,6 +120,7 @@
       { invoiceNo: "INV-500", orderNo: "O-500", status: "Paid", amount: 77 },
       { invoiceNo: "INV-501", orderNo: "O-501", status: "Draft", amount: 108.5 },
     ],
+    goodsReceipts: [],
     purchaseOrders: [
       {
         poNo: "70286",
@@ -213,15 +214,15 @@
     Viewer: { inherits: [], blurb: "Read-only.", canEdit: [], canAdd: [] },
     Sales: {
       inherits: ["Viewer"],
-      blurb: "Customers, quotes, quote lines.",
-      canEdit: ["customers.name", "customers.email", "customers.postcode", "customers.status", "quotes.status", "quotes.customerId", "quotes.lines.qty", "quotes.lines.price", "quotes.lines.sku"],
-      canAdd: ["customers", "quotes", "quoteLines"],
+      blurb: "Customers & quotes; accept quote → Sales Order number.",
+      canEdit: ["customers.name", "customers.email", "customers.postcode", "customers.status", "quotes.status", "quotes.customerId", "quotes.lines.qty", "quotes.lines.price", "quotes.lines.sku", "orders.status"],
+      canAdd: ["customers", "quotes", "quoteLines", "orders"],
     },
     Inventory: {
       inherits: ["Viewer"],
-      blurb: "Product stock and descriptions.",
+      blurb: "Stock edits; post GRNs that bump on-hand.",
       canEdit: ["products.description", "products.onHand", "products.reorderPoint", "products.leadDays"],
-      canAdd: ["products"],
+      canAdd: ["products", "goodsReceipts"],
     },
     Finance: {
       inherits: ["Viewer"],
@@ -231,14 +232,14 @@
     },
     Purchasing: {
       inherits: ["Viewer"],
-      blurb: "Purchase orders, lines, supplier terms.",
+      blurb: "POs + GRN goods receipt against supplier orders.",
       canEdit: [
         "purchaseOrders.status", "purchaseOrders.buyer", "purchaseOrders.paymentTerms",
         "purchaseOrders.dueDate", "purchaseOrders.shipMethod", "purchaseOrders.comments",
         "purchaseOrders.currency", "purchaseOrders.readyToPrint", "purchaseOrders.supplierId",
         "purchaseOrders.lines.qty", "purchaseOrders.lines.unitCost", "purchaseOrders.lines.sku",
       ],
-      canAdd: ["purchaseOrders", "poLines"],
+      canAdd: ["purchaseOrders", "poLines", "goodsReceipts"],
     },
     Manager: {
       inherits: ["Sales", "Inventory", "Finance", "Purchasing"],
@@ -269,7 +270,7 @@
     { id: "job", label: "Job Entry", ico: "🔧", toast: "Job Entry scaffold" },
     { id: "po-entry", label: "PO Entry", ico: "🛒" },
     { id: "shipment", label: "Shipment Entry", ico: "🚚", toast: "Shipment Entry scaffold" },
-    { id: "receipt", label: "Receipt Entry", ico: "📥", toast: "Receipt Entry scaffold" },
+    { id: "receipt", label: "Receipt Entry", ico: "📥" },
     { id: "ar", label: "AR Invoice Entry", ico: "💵", toast: "AR Invoice Entry scaffold" },
     { id: "ap", label: "AP Invoice Entry", ico: "📄", toast: "AP Invoice Entry scaffold" },
     { id: "so-explorer", label: "Sales Order Explorer", ico: "🔍", hub: "sales" },
@@ -316,7 +317,8 @@
         { label: "Change Request Management", toast: "Change Request Management scaffold" },
         { label: "Warehouse Management", toast: "Warehouse Management scaffold" },
         { label: "Purchasing Management", hub: "purchasing" },
-        { label: "Receipt Management", toast: "Receipt Management scaffold" },
+        { label: "Receipt Management", view: "receipt" },
+        { label: "End-to-end Intake Map", view: "intake" },
         { label: "Shipping Management", toast: "Shipping Management scaffold" },
       ],
     },
@@ -339,6 +341,7 @@
       filter: "All",
       open: false,
       items: [
+        { label: "End-to-end Intake Map", view: "intake" },
         { label: "Relations", view: "relations" },
         { label: "Field Network", view: "fields" },
       ],
@@ -403,6 +406,8 @@
     for (const key of Object.keys(MASTER)) {
       if (!Array.isArray(next[key])) next[key] = clone(MASTER[key]);
     }
+    if (!Array.isArray(next.goodsReceipts)) next.goodsReceipts = [];
+    if (!Array.isArray(next.invoices)) next.invoices = clone(MASTER.invoices);
     for (const po of next.purchaseOrders) {
       if (!po.invAddress) po.invAddress = emptyAddr();
       if (!po.purAddress) po.purAddress = emptyAddr();
@@ -413,6 +418,7 @@
     }
     for (const q of next.quotes) if (!Array.isArray(q.lines)) q.lines = [];
     for (const o of next.orders) if (!Array.isArray(o.lines)) o.lines = [];
+    for (const g of next.goodsReceipts) if (!Array.isArray(g.lines)) g.lines = [];
     return next;
   }
 
@@ -519,6 +525,8 @@
     if (JSON.stringify(working.orders) !== JSON.stringify(m.orders)) n += 1;
     if (JSON.stringify(working.products) !== JSON.stringify(m.products)) n += 1;
     if (JSON.stringify(working.customers) !== JSON.stringify(m.customers)) n += 1;
+    if (JSON.stringify(working.goodsReceipts) !== JSON.stringify(m.goodsReceipts)) n += 1;
+    if (JSON.stringify(working.invoices) !== JSON.stringify(m.invoices)) n += 1;
     return n;
   }
 
@@ -597,6 +605,8 @@
       orders: "Sales Orders",
       products: "Inventory",
       customers: "Customers",
+      receipt: "Receipt Entry · GRN",
+      intake: "End-to-end Intake",
       relations: "Relations",
       fields: "Field network",
     };
@@ -626,7 +636,8 @@
         (i.id === "so-explorer" && view === "hub" && hub === "sales") ||
         (i.id === "orders" && view === "orders") ||
         (i.id === "quotes" && view === "quotes") ||
-        (i.id === "po-entry" && view === "po-entry");
+        (i.id === "po-entry" && view === "po-entry") ||
+        (i.id === "receipt" && view === "receipt");
       let attrs = `data-go="${i.id}"`;
       if (i.toast) attrs = `data-toast="${i.toast}"`;
       else if (i.hub) attrs = `data-hub="${i.hub}"`;
@@ -708,7 +719,7 @@
       hub = "purchasing";
       localStorage.setItem(HUB_KEY, hub);
     }
-    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "relations", "fields", "hub"];
+    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "receipt", "intake", "relations", "fields", "hub"];
     if (!known.includes(target)) {
       closeMobileNav();
       return toast(`${target} scaffold`);
@@ -726,6 +737,8 @@
         explorer: "Sales Order Explorer",
         entry: [
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
+          { label: "Accept Quote → Sales Order", view: "quotes", ico: "⚡", live: true },
+          { label: "End-to-end Intake Map", view: "intake", ico: "⚡", live: true },
           { label: "Sales Order Wizard", toast: "Sales Order Wizard scaffold", ico: "🪄" },
           { label: "Create Order from RMA Claim", toast: "RMA → Order scaffold", ico: "⚡" },
           { label: "Create Deposits from Order", toast: "Deposits scaffold", ico: "⚡" },
@@ -772,6 +785,7 @@
         explorer: "Quote Explorer",
         entry: [
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
+          { label: "Accept Quote → Sales Order", view: "quotes", ico: "⚡", live: true },
           { label: "Customer Maintenance", view: "customers", ico: "⚡", live: true },
         ],
         reports: [
@@ -796,6 +810,7 @@
         explorer: "Inventory Explorer",
         entry: [
           { label: "Inventory / Products", view: "products", ico: "⚡", live: true },
+          { label: "Receipt Entry (GRN)", view: "receipt", ico: "⚡", live: true },
           { label: "Product–Supplier Links", view: "relations", ico: "⚡", live: true },
         ],
         reports: [
@@ -822,6 +837,8 @@
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
           { label: "PO Entry", view: "po-entry", ico: "⚡", live: true },
+          { label: "Receipt Entry (GRN)", view: "receipt", ico: "⚡", live: true },
+          { label: "End-to-end Intake Map", view: "intake", ico: "⚡", live: true },
         ],
         reports: [
           { label: "Open Sales Orders", view: "orders", ico: "🖨", live: true },
@@ -846,6 +863,8 @@
       explorer: "Purchase Order Explorer",
       entry: [
         { label: "Purchase Order Entry", view: "po-entry", ico: "⚡", live: true },
+        { label: "Receipt Entry (GRN)", view: "receipt", ico: "⚡", live: true },
+        { label: "End-to-end Intake Map", view: "intake", ico: "⚡", live: true },
         { label: "Open Purchase Orders", view: "purchasing", ico: "⚡", live: true },
         { label: "Inventory / Products", view: "products", ico: "⚡", live: true },
         { label: "Vendor (Supplier) Links", view: "relations", ico: "⚡", live: true },
@@ -1140,51 +1159,360 @@
     toast(`PO ${next} added.`);
   }
 
+  /* —— intake helpers —— */
+  function trailingNum(id) {
+    const m = String(id).match(/(\d+)\s*$/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  function nextSalesOrderNo() {
+    let max = 501;
+    for (const o of working.orders) max = Math.max(max, trailingNum(o.orderNo));
+    return `SO-${max + 1}`;
+  }
+
+  function nextGrnNo() {
+    let max = 1000;
+    for (const g of working.goodsReceipts) max = Math.max(max, trailingNum(g.grnNo));
+    return `GRN-${max + 1}`;
+  }
+
+  function orderForQuote(quoteNo) {
+    return working.orders.find((o) => o.quoteNo === quoteNo);
+  }
+
+  function qtyReceivedOnPoLine(poNo, poLine) {
+    let n = 0;
+    for (const g of working.goodsReceipts) {
+      if (g.poNo !== poNo || g.status !== "Posted") continue;
+      for (const l of g.lines) if (l.poLine === poLine) n += Number(l.qtyReceived) || 0;
+    }
+    return n;
+  }
+
+  function acceptQuote(quoteNo) {
+    if (!canAdd("orders")) return toast("Role cannot create sales orders.");
+    const q = working.quotes.find((x) => x.quoteNo === quoteNo);
+    if (!q) return toast("Quote not found.");
+    if (!q.lines?.length) return toast("Quote has no lines.");
+    if (orderForQuote(quoteNo)) return toast(`Quote already linked to ${orderForQuote(quoteNo).orderNo}`);
+    const soNo = nextSalesOrderNo();
+    if (!mutate(`Accept quote ${quoteNo} → ${soNo}`, () => {
+      const value = sumLines(q.lines, "price");
+      working.orders.push({
+        orderNo: soNo,
+        quoteNo,
+        customerId: q.customerId,
+        status: "Open",
+        lines: q.lines.map((l) => ({ line: l.line, sku: l.sku, qty: l.qty, price: l.price })),
+      });
+      q.status = "Won";
+      working.invoices.push({
+        invoiceNo: `INV-${trailingNum(soNo)}`,
+        orderNo: soNo,
+        status: "Draft",
+        amount: value,
+      });
+    })) return;
+    toast(`Sales Order ${soNo} generated from ${quoteNo}.`);
+    go("orders");
+  }
+
+  function receivePo(poNo) {
+    if (!canAdd("goodsReceipts")) return toast("Role cannot post GRNs.");
+    const po = working.purchaseOrders.find((p) => p.poNo === poNo);
+    if (!po) return toast("PO not found.");
+    if (!po.lines?.length) return toast("PO has no lines.");
+    const lines = [];
+    for (const pl of po.lines) {
+      const remain = Number(pl.qty) - qtyReceivedOnPoLine(poNo, pl.line);
+      if (remain > 0) {
+        lines.push({
+          poLine: pl.line,
+          sku: pl.sku,
+          qtyOrdered: Number(pl.qty),
+          qtyReceived: remain,
+        });
+      }
+    }
+    if (!lines.length) return toast(`PO ${poNo} already fully received.`);
+    const grnNo = nextGrnNo();
+    if (!mutate(`Receive PO ${poNo} → ${grnNo}`, () => {
+      working.goodsReceipts.push({
+        grnNo,
+        poNo,
+        supplierId: po.supplierId,
+        receivedDate: new Date().toLocaleDateString("en-GB"),
+        receivedBy: role,
+        status: "Posted",
+        notes: `Goods received against PO ${poNo}`,
+        lines: lines.map((l, i) => ({
+          line: i + 1,
+          poNo,
+          poLine: l.poLine,
+          sku: l.sku,
+          qtyOrdered: l.qtyOrdered,
+          qtyReceived: l.qtyReceived,
+        })),
+      });
+      for (const l of lines) {
+        const p = working.products.find((x) => x.sku === l.sku);
+        if (p) p.onHand = Number(p.onHand) + Number(l.qtyReceived);
+      }
+      const fully = po.lines.every((pl) => qtyReceivedOnPoLine(poNo, pl.line) + 1e-9 >= Number(pl.qty));
+      // qtyReceivedOnPoLine already includes the GRN we just pushed
+      po.status = fully ? "Closed" : "Approved";
+    })) return;
+    toast(`GRN ${grnNo} posted for PO ${poNo} — stock updated.`);
+    go("receipt");
+  }
+
   /* —— other views —— */
   function renderQuotes() {
-    document.getElementById("quotesRoot").innerHTML = working.quotes
-      .map((q) => `
+    const root = document.getElementById("quotesRoot");
+    root.innerHTML = working.quotes
+      .map((q, qi) => {
+        const linked = orderForQuote(q.quoteNo);
+        const canAccept = !linked && q.status !== "Lost" && canAdd("orders");
+        const statusDisabled = !editMode || !canEdit("quotes.status");
+        const custDisabled = !editMode || !canEdit("quotes.customerId");
+        return `
         <article class="card">
-          <div class="card-head"><h2 class="mono">${q.quoteNo}</h2><span class="meta">${customerName(q.customerId)} · ${q.status} · ${money(sumLines(q.lines, "price"))}</span></div>
+          <div class="card-head">
+            <h2 class="mono">${q.quoteNo}</h2>
+            <span class="meta">${customerName(q.customerId)} · ${money(sumLines(q.lines, "price"))}${linked ? ` · SO ${linked.orderNo}` : ""}</span>
+          </div>
+          <div class="form-grid compact">
+            <label>Status
+              <select data-path="quotes.${qi}.status" ${statusDisabled ? "disabled" : ""}>
+                ${QUOTE_STATUSES.map((s) => `<option value="${s}" ${q.status === s ? "selected" : ""}>${s}</option>`).join("")}
+              </select>
+            </label>
+            <label>Customer
+              <select data-path="quotes.${qi}.customerId" ${custDisabled ? "disabled" : ""}>
+                ${working.customers.map((c) => `<option value="${c.id}" ${q.customerId === c.id ? "selected" : ""}>${c.name}</option>`).join("")}
+              </select>
+            </label>
+          </div>
           <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-          <tbody>${q.lines.map((l) => `<tr><td>${l.line}</td><td class="mono">${l.sku}</td><td>${l.qty}</td><td>${money(l.price)}</td><td>${money(l.qty * l.price)}</td></tr>`).join("")}</tbody></table>
-        </article>`)
+          <tbody>${q.lines.map((l, li) => {
+            const qtyDis = !editMode || !canEdit("quotes.lines.qty");
+            const priceDis = !editMode || !canEdit("quotes.lines.price");
+            return `<tr>
+              <td>${l.line}</td>
+              <td class="mono">${l.sku}</td>
+              <td><input type="number" min="0" step="1" value="${l.qty}" data-path="quotes.${qi}.lines.${li}.qty" ${qtyDis ? "disabled" : ""} /></td>
+              <td><input type="number" min="0" step="0.01" value="${l.price}" data-path="quotes.${qi}.lines.${li}.price" ${priceDis ? "disabled" : ""} /></td>
+              <td>${money(l.qty * l.price)}</td>
+            </tr>`;
+          }).join("")}</tbody></table>
+          <div class="card-actions">
+            <button type="button" class="btn btn-primary" data-action="accept-quote" data-quote="${q.quoteNo}" ${canAccept && editMode ? "" : "disabled"}>
+              ${linked ? `Linked → ${linked.orderNo}` : "Accept quote → Sales Order"}
+            </button>
+          </div>
+        </article>`;
+      })
       .join("");
+    bindPaths(root);
   }
 
   function renderOrders() {
-    document.getElementById("ordersRoot").innerHTML = working.orders
-      .map((o) => `
+    const root = document.getElementById("ordersRoot");
+    root.innerHTML = working.orders
+      .map((o, oi) => {
+        const inv = working.invoices.find((i) => i.orderNo === o.orderNo);
+        const statusDis = !editMode || !canEdit("orders.status");
+        return `
         <article class="card">
-          <div class="card-head"><h2 class="mono">${o.orderNo}</h2><span class="meta">${customerName(o.customerId)} · quote ${o.quoteNo || "—"} · ${o.status} · ${money(sumLines(o.lines, "price"))}</span></div>
+          <div class="card-head">
+            <h2 class="mono">${o.orderNo}</h2>
+            <span class="meta">Sales Order · ${customerName(o.customerId)} · quote ${o.quoteNo || "—"} · ${money(sumLines(o.lines, "price"))}</span>
+          </div>
+          <div class="form-grid compact">
+            <label>Status
+              <select data-path="orders.${oi}.status" ${statusDis ? "disabled" : ""}>
+                ${ORDER_STATUSES.map((s) => `<option value="${s}" ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}
+              </select>
+            </label>
+            <label>Invoice <span class="meta mono">${inv ? `${inv.invoiceNo} · ${inv.status}` : "—"}</span></label>
+          </div>
           <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th></tr></thead>
           <tbody>${o.lines.map((l) => `<tr><td>${l.line}</td><td class="mono">${l.sku}</td><td>${l.qty}</td><td>${money(l.price)}</td></tr>`).join("")}</tbody></table>
-        </article>`)
+          <p class="note">Linking keys: <span class="mono">orderNo=${o.orderNo}</span>${o.quoteNo ? ` · <span class="mono">quoteNo=${o.quoteNo}</span>` : ""} · <span class="mono">customerId=${o.customerId}</span></p>
+        </article>`;
+      })
       .join("");
+    bindPaths(root);
   }
 
   function renderProducts() {
-    document.getElementById("productsRoot").innerHTML = `
+    const root = document.getElementById("productsRoot");
+    root.innerHTML = `
       <article class="card"><div class="table-wrap"><table class="data">
-        <thead><tr><th>SKU</th><th>Description</th><th>OH</th><th>ROP</th><th>Cost</th><th>Sell</th><th>Flag</th></tr></thead>
+        <thead><tr><th>SKU</th><th>Description</th><th>OH</th><th>ROP</th><th>Lead</th><th>Cost</th><th>Sell</th><th>Flag</th></tr></thead>
         <tbody>${working.products
-          .map((p) => `<tr><td class="mono">${p.sku}</td><td>${p.description}</td><td>${p.onHand}</td><td>${p.reorderPoint}</td><td>${money(p.cost)}</td><td>${money(p.sell)}</td><td>${p.onHand <= p.reorderPoint ? "REORDER" : "ok"}</td></tr>`)
+          .map((p, pi) => {
+            const ohDis = !editMode || !canEdit("products.onHand");
+            const ropDis = !editMode || !canEdit("products.reorderPoint");
+            const leadDis = !editMode || !canEdit("products.leadDays");
+            const costDis = !editMode || !canEdit("products.cost");
+            const sellDis = !editMode || !canEdit("products.sell");
+            const descDis = !editMode || !canEdit("products.description");
+            return `<tr>
+              <td class="mono">${p.sku}</td>
+              <td><input type="text" value="${p.description}" data-path="products.${pi}.description" ${descDis ? "disabled" : ""} /></td>
+              <td><input type="number" value="${p.onHand}" data-path="products.${pi}.onHand" ${ohDis ? "disabled" : ""} /></td>
+              <td><input type="number" value="${p.reorderPoint}" data-path="products.${pi}.reorderPoint" ${ropDis ? "disabled" : ""} /></td>
+              <td><input type="number" value="${p.leadDays}" data-path="products.${pi}.leadDays" ${leadDis ? "disabled" : ""} /></td>
+              <td><input type="number" step="0.01" value="${p.cost}" data-path="products.${pi}.cost" ${costDis ? "disabled" : ""} /></td>
+              <td><input type="number" step="0.01" value="${p.sell}" data-path="products.${pi}.sell" ${sellDis ? "disabled" : ""} /></td>
+              <td>${p.onHand <= p.reorderPoint ? "REORDER" : "ok"}</td>
+            </tr>`;
+          })
           .join("")}</tbody>
-      </table></div></article>`;
+      </table></div>
+      <p class="note">OH also rises when a GRN is posted against a PO (Receipt Entry).</p>
+      </article>`;
+    bindPaths(root);
   }
 
   function renderCustomers() {
-    document.getElementById("customersRoot").innerHTML = working.customers
-      .map((c) => `<article class="card"><div class="card-head"><h2>${c.name}</h2><span class="meta mono">${c.id} · ${c.postcode} · ${c.status}</span></div><p class="note">${c.email}</p></article>`)
+    const root = document.getElementById("customersRoot");
+    root.innerHTML = working.customers
+      .map((c, ci) => {
+        const nameDis = !editMode || !canEdit("customers.name");
+        const emailDis = !editMode || !canEdit("customers.email");
+        const pcDis = !editMode || !canEdit("customers.postcode");
+        const stDis = !editMode || !canEdit("customers.status");
+        return `<article class="card">
+          <div class="card-head"><h2 class="mono">${c.id}</h2><span class="meta">${c.status}</span></div>
+          <div class="form-grid compact">
+            <label>Name <input type="text" value="${c.name}" data-path="customers.${ci}.name" ${nameDis ? "disabled" : ""} /></label>
+            <label>Email <input type="email" value="${c.email}" data-path="customers.${ci}.email" ${emailDis ? "disabled" : ""} /></label>
+            <label>Postcode <input type="text" value="${c.postcode}" data-path="customers.${ci}.postcode" ${pcDis ? "disabled" : ""} /></label>
+            <label>Status
+              <select data-path="customers.${ci}.status" ${stDis ? "disabled" : ""}>
+                ${CUSTOMER_STATUSES.map((s) => `<option value="${s}" ${c.status === s ? "selected" : ""}>${s}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+        </article>`;
+      })
       .join("");
+    bindPaths(root);
+  }
+
+  function renderReceipt() {
+    const root = document.getElementById("receiptRoot");
+    const openPos = working.purchaseOrders.filter((po) => po.status !== "Closed" && po.lines?.length);
+    const poCards = (openPos.length ? openPos : working.purchaseOrders).map((po) => {
+      const rows = po.lines.map((pl) => {
+        const recv = qtyReceivedOnPoLine(po.poNo, pl.line);
+        const remain = Math.max(0, Number(pl.qty) - recv);
+        return `<tr><td>${pl.line}</td><td class="mono">${pl.sku}</td><td>${pl.qty}</td><td>${recv}</td><td>${remain}</td></tr>`;
+      }).join("");
+      const canRecv = canAdd("goodsReceipts") && editMode && po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(po.poNo, pl.line) > 0);
+      return `<article class="card">
+        <div class="card-head"><h2 class="mono">PO ${po.poNo}</h2><span class="meta">${supplierName(po.supplierId)} · ${po.status}</span></div>
+        <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Ordered</th><th>Received</th><th>Remain</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="card-actions">
+          <button type="button" class="btn btn-primary" data-action="receive-po" data-po="${po.poNo}" ${canRecv ? "" : "disabled"}>Receive remaining → GRN</button>
+          <button type="button" class="btn" data-open-po="${po.poNo}">Open PO</button>
+        </div>
+      </article>`;
+    }).join("");
+
+    const grns = working.goodsReceipts.length
+      ? working.goodsReceipts.map((g) => `
+        <article class="card">
+          <div class="card-head"><h2 class="mono">${g.grnNo}</h2><span class="meta">PO ${g.poNo} · ${g.status} · ${g.receivedDate} · ${g.receivedBy || ""}</span></div>
+          <table class="data"><thead><tr><th>Line</th><th>PO line</th><th>SKU</th><th>Ordered</th><th>Received</th></tr></thead>
+          <tbody>${g.lines.map((l) => `<tr><td>${l.line}</td><td>${l.poLine}</td><td class="mono">${l.sku}</td><td>${l.qtyOrdered}</td><td>${l.qtyReceived}</td></tr>`).join("")}</tbody></table>
+          <p class="note">Linking keys: <span class="mono">grnNo=${g.grnNo}</span> · <span class="mono">poNo=${g.poNo}</span> · lines → Product.onHand</p>
+        </article>`).join("")
+      : `<article class="card"><p class="note">No GRNs yet. Turn on Edit (Purchasing/Inventory/Manager) and receive against an open PO.</p></article>`;
+
+    root.innerHTML = `
+      <article class="card"><div class="card-head"><h2>Receive goods</h2></div>
+        <p class="note">Generates a <strong>GRN number</strong>, posts lines against the PO, and updates product on-hand on the working copy.</p>
+      </article>
+      ${poCards}
+      <article class="card"><div class="card-head"><h2>Posted GRNs</h2></div></article>
+      ${grns}`;
+  }
+
+  function renderIntake() {
+    const soLinks = working.orders
+      .map((o) => {
+        const inv = working.invoices.find((i) => i.orderNo === o.orderNo);
+        return `<tr>
+          <td class="mono">${o.quoteNo || "—"}</td>
+          <td class="mono">${o.orderNo}</td>
+          <td class="mono">${o.customerId}</td>
+          <td class="mono">${inv ? inv.invoiceNo : "—"}</td>
+          <td>${o.status}</td>
+        </tr>`;
+      })
+      .join("");
+    const grnLinks = working.goodsReceipts
+      .map((g) => `<tr>
+        <td class="mono">${g.poNo}</td>
+        <td class="mono">${g.grnNo}</td>
+        <td class="mono">${g.supplierId}</td>
+        <td>${g.lines.map((l) => l.sku).join(", ")}</td>
+        <td>${g.status}</td>
+      </tr>`)
+      .join("") || `<tr><td colspan="5">No GRNs posted yet</td></tr>`;
+
+    document.getElementById("intakeRoot").innerHTML = `
+      <article class="card">
+        <div class="card-head"><h2>Sales intake</h2></div>
+        <ol class="intake-steps">
+          <li><strong>Customer quote received</strong> — edit Quote / QuoteLines (Sales role).</li>
+          <li><strong>Accept quote</strong> — generates <span class="mono">Sales Order number (orderNo / SO-…)</span>.</li>
+          <li><strong>Linked updates</strong> — Quote.status → Won · Order + OrderLines created · draft Invoice via <span class="mono">Invoice.orderNo</span>.</li>
+        </ol>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Quote</th><th>Sales Order #</th><th>Customer</th><th>Invoice</th><th>Status</th></tr></thead>
+          <tbody>${soLinks}</tbody>
+        </table></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Purchase intake</h2></div>
+        <ol class="intake-steps">
+          <li><strong>Raise / approve PO</strong> — Purchasing edits PurchaseOrder + PoLines.</li>
+          <li><strong>Goods received</strong> — Receipt Entry generates <span class="mono">GRN number (GRN-…)</span>.</li>
+          <li><strong>Linked updates</strong> — GoodsReceipt + GrnLine · Product.onHand += qty · PO closes when fully received.</li>
+        </ol>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>PO</th><th>GRN #</th><th>Supplier</th><th>SKUs</th><th>Status</th></tr></thead>
+          <tbody>${grnLinks}</tbody>
+        </table></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Linking keys (end-to-end)</h2></div>
+        <p class="note"><span class="mono">Customer.id</span> ← Quote/Order.customerId</p>
+        <p class="note"><span class="mono">Quote.quoteNo</span> ←→ <span class="mono">Order.quoteNo</span> (1:1 when set)</p>
+        <p class="note"><span class="mono">Order.orderNo</span> = Sales Order number ← Invoice.orderNo · OrderLine.orderNo</p>
+        <p class="note"><span class="mono">PurchaseOrder.poNo</span> ← GoodsReceipt.poNo · PoLine.poNo · GrnLine.poNo</p>
+        <p class="note"><span class="mono">GoodsReceipt.grnNo</span> = GRN number ← GrnLine.grnNo → Product.sku (OH)</p>
+        <div class="card-actions">
+          <button type="button" class="btn" data-view="quotes">Quotes</button>
+          <button type="button" class="btn" data-view="orders">Sales Orders</button>
+          <button type="button" class="btn" data-view="receipt">Receipt / GRN</button>
+          <button type="button" class="btn" data-view="relations">Relations</button>
+        </div>
+      </article>`;
   }
 
   function renderRelations() {
     document.getElementById("relationsRoot").innerHTML = `
       <article class="card"><div class="card-head"><h2>Cardinalities</h2></div>
-        <p class="note"><strong>1:1</strong> Customer↔Account · Order↔Invoice</p>
-        <p class="note"><strong>1:N</strong> Supplier→PO→Lines · Customer→Quotes/Orders</p>
-        <p class="note"><strong>M:N</strong> Product↔Supplier · Product↔Tag · PO↔Product via lines</p>
+        <p class="note"><strong>1:1</strong> Customer↔Account · Order↔Invoice · Quote↔Order (when accepted)</p>
+        <p class="note"><strong>1:N</strong> Supplier→PO→Lines · PO→GRN · Customer→Quotes/Orders</p>
+        <p class="note"><strong>M:N</strong> Product↔Supplier · Product↔Tag · PO/SO/GRN↔Product via lines</p>
+        <p class="note"><button type="button" class="btn" data-view="intake">Open intake map</button></p>
       </article>
       <article class="card"><div class="card-head"><h2>Suppliers</h2></div>
         <table class="data"><thead><tr><th>ID</th><th>Name</th><th>City</th><th>Postcode</th><th>Phone</th></tr></thead>
@@ -1234,6 +1562,8 @@
     if (view === "orders") renderOrders();
     if (view === "products") renderProducts();
     if (view === "customers") renderCustomers();
+    if (view === "receipt") renderReceipt();
+    if (view === "intake") renderIntake();
     if (view === "relations") renderRelations();
     if (view === "fields") renderFields();
   }
@@ -1330,7 +1660,31 @@
       const hubBtn = e.target.closest("[data-hub]");
       if (hubBtn) return setHub(hubBtn.dataset.hub);
 
-      const viewBtn = e.target.closest("[data-view]");
+      // Actions before data-view: sections also carry data-view and would steal clicks.
+      const actionEl = e.target.closest("[data-action]");
+      const action = actionEl?.dataset.action;
+      if (action === "new-po") return addPo();
+      if (action === "accept-quote") return acceptQuote(actionEl.dataset.quote);
+      if (action === "receive-po") return receivePo(actionEl.dataset.po);
+      if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
+      if (action === "print-po") return toast("Print preview scaffold.");
+      if (action === "request-approval") {
+        const po = currentPo();
+        if (!po) return;
+        if (!canEdit("purchaseOrders.status")) return toast("Role cannot change PO status.");
+        if (!mutate(`Request approval ${po.poNo}`, () => { po.status = "Pending Approval"; })) return;
+        toast(`PO ${po.poNo} → Pending Approval`);
+        return render();
+      }
+      if (action === "prev-po" || action === "next-po") {
+        const list = working.purchaseOrders;
+        const i = list.findIndex((p) => p.poNo === poNo);
+        const n = action === "next-po" ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
+        poNo = list[n].poNo;
+        return render();
+      }
+
+      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
       if (viewBtn) return go(viewBtn.dataset.view);
 
       const toastBtn = e.target.closest("[data-toast]");
@@ -1348,27 +1702,6 @@
       const tab = e.target.closest("[data-po-tab]");
       if (tab) {
         poTab = tab.dataset.poTab;
-        return render();
-      }
-
-      const action = e.target.closest("[data-action]")?.dataset.action;
-      if (!action) return;
-      if (action === "new-po") return addPo();
-      if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
-      if (action === "print-po") return toast("Print preview scaffold.");
-      if (action === "request-approval") {
-        const po = currentPo();
-        if (!po) return;
-        if (!canEdit("purchaseOrders.status")) return toast("Role cannot change PO status.");
-        if (!mutate(`Request approval ${po.poNo}`, () => { po.status = "Pending Approval"; })) return;
-        toast(`PO ${po.poNo} → Pending Approval`);
-        return render();
-      }
-      if (action === "prev-po" || action === "next-po") {
-        const list = working.purchaseOrders;
-        const i = list.findIndex((p) => p.poNo === poNo);
-        const n = action === "next-po" ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
-        poNo = list[n].poNo;
         return render();
       }
     });
