@@ -35,6 +35,7 @@
         <button type="button" class="nav-item" data-view="products">Products</button>
         <button type="button" class="nav-item" data-view="customers">Customers</button>
         <button type="button" class="nav-item" data-view="orders">Orders</button>
+        <button type="button" class="nav-item" data-view="fields">Fields</button>
       </nav>
       <div class="rail-meta">
         <p id="role-blurb"></p>
@@ -83,7 +84,7 @@
       <section id="view-customers" class="view" data-view-panel="customers" hidden>
         <header class="view-head">
           <h1>Customers</h1>
-          <p>UK postcode + contact fields by role · GBP elsewhere</p>
+          <p>Sales can add customers · UK postcode · GBP elsewhere</p>
         </header>
         <div id="customers-root" class="card-stack"></div>
       </section>
@@ -91,9 +92,17 @@
       <section id="view-orders" class="view" data-view-panel="orders" hidden>
         <header class="view-head">
           <h1>Orders</h1>
-          <p>Status / value edits in working copy only</p>
+          <p>Finance can add orders & edit value/status · working copy only</p>
         </header>
         <div id="orders-root" class="card-stack"></div>
+      </section>
+
+      <section id="view-fields" class="view" data-view-panel="fields" hidden>
+        <header class="view-head">
+          <h1>Field network</h1>
+          <p>Role permissions + Finance custom fields (never written to master)</p>
+        </header>
+        <div id="fields-root" class="card-stack"></div>
       </section>
     </main>
   </div>
