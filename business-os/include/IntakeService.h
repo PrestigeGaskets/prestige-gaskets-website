@@ -5,14 +5,14 @@
 #include <vector>
 
 #include "IServices.h"
-#include "WorkingCopyStore.h"
+#include "IWorkingCopyMutations.h"
 
 namespace bos {
 
-/// Orchestrates quote→Sales Order and PO→GRN intake on the working copy.
+/// Orchestrates quote→Sales Order and PO→GRN intake via IWorkingCopyMutations (DIP).
 class IntakeService : public IIntakeService {
 public:
-    explicit IntakeService(WorkingCopyStore& working) : working_(working) {}
+    explicit IntakeService(IWorkingCopyMutations& working) : working_(working) {}
 
     std::string acceptQuoteToSalesOrder(const std::string& quoteNo) override {
         return working_.convertQuoteToSalesOrder(quoteNo);
@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    WorkingCopyStore& working_;
+    IWorkingCopyMutations& working_;
 };
 
 }  // namespace bos

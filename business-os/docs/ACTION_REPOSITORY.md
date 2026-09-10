@@ -52,5 +52,11 @@ post
 actions          # pending + today's posted for active role (debug; not a GUI)
 ```
 
-C++: `DailyActionRepository` in `Application` — `lookupByOrderNo` /
-`lookupByQuoteNo` / `lookupByPoNo` / `lookupByGrnNo` / `forActorDay`.
+C++: `IDailyActionRepository` / `DailyActionRepository` owned by Application
+behind `unique_ptr<I…>`; staging + commit via polymorphic `IPostCommitService`
+(`PostCommitService`) depending only on `IDailyActionRepository`, `IIntakeService`,
+and `IWorkspaceSession`. Lookups: `lookupByOrderNo` / `lookupByQuoteNo` /
+`lookupByPoNo` / `lookupByGrnNo` / `forActorDay`.
+
+Intake mutators go through `IWorkingCopyMutations` (implemented by
+`WorkingCopyStore`) so `IntakeService` never depends on a concrete store type.

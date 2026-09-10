@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "IDataStore.h"
+#include "IWorkingCopyMutations.h"
 
 namespace bos {
 
@@ -48,7 +49,7 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> lists_;
 };
 
-class WorkingCopyStore : public IDataStore {
+class WorkingCopyStore : public IDataStore, public IWorkingCopyMutations {
 public:
     explicit WorkingCopyStore(IDataStore& master);
 
@@ -71,20 +72,21 @@ public:
     std::vector<Supplier> loadSuppliers() override;
     std::vector<ProductSupplier> loadProductSuppliers() override;
 
-    void updateProductField(const std::string& sku, const std::string& field, double value);
+    void updateProductField(const std::string& sku, const std::string& field,
+                            double value) override;
     void updateCustomerField(const std::string& id, const std::string& field, const std::string& value);
     void updateQuoteLine(const std::string& quoteNo, int line, const std::string& field, double value);
     void updateOrderField(const std::string& orderNo, const std::string& field, const std::string& value);
     void updatePoField(const std::string& poNo, const std::string& field, const std::string& value);
 
     /// Quote received → generate Sales Order number (SO-…), copy lines, Won + draft invoice.
-    std::string convertQuoteToSalesOrder(const std::string& quoteNo);
+    std::string convertQuoteToSalesOrder(const std::string& quoteNo) override;
     /// Goods received against PO → generate GRN, bump Product.onHand. Empty qtys = full remaining.
     std::string receiveGoodsAgainstPo(const std::string& poNo,
                                       const std::vector<std::pair<int, double>>& qtys,
-                                      const std::string& receivedBy);
+                                      const std::string& receivedBy) override;
     /// Post shipment → issue on-hand for lines, mark orders Shipped, status Posted.
-    void postShipment(const std::string& shipmentId);
+    void postShipment(const std::string& shipmentId) override;
 
     struct Snapshot {
         std::vector<Customer> customers;
