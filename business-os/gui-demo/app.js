@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const STORAGE = "rushmore-bos-v8";
+  const STORAGE = "rushmore-bos-v9";
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
   const EDIT_KEY = "rushmore-edit-v2";
@@ -285,8 +285,8 @@
         ],
         memos: [{ id: 1, text: "Confirm carrier booking." }],
         attachments: [],
-        followups: [],
-        calls: [],
+        followups: [{ id: 1, text: "Confirm Prestige Pilot delivery window", subject: "Delivery window" }],
+        calls: [{ id: 1, text: "Called pilot@prestige.example — OK to ship", subject: "Pre-ship call" }],
       },
     ],
   });
@@ -395,16 +395,15 @@
   const ICONS = [
     { id: "quotes", label: "Quote Entry", ico: "📝" },
     { id: "orders", label: "Sales Order Entry", ico: "📦" },
-    { id: "job", label: "Job Entry", ico: "🔧", toast: "Job Entry scaffold" },
+    { id: "customers", label: "Contact Management", ico: "👤" },
     { id: "po-entry", label: "PO Entry", ico: "🛒" },
     { id: "shipment", label: "Shipment Entry", ico: "🚚" },
     { id: "receipt", label: "Receipt Entry", ico: "📥" },
-    { id: "ar", label: "AR Invoice Entry", ico: "💵", toast: "AR Invoice Entry scaffold" },
-    { id: "ap", label: "AP Invoice Entry", ico: "📄", toast: "AP Invoice Entry scaffold" },
+    { id: "invoices", label: "AR Invoices", ico: "💵" },
     { id: "so-explorer", label: "Sales Order Explorer", ico: "🔍", hub: "sales" },
   ];
 
-  const TREE_FILTERS = ["All", "Sales", "Production", "Financial", "My Folders"];
+  const TREE_FILTERS = ["All", "Sales", "Production", "Financial"];
 
   const TREE = [
     {
@@ -422,9 +421,9 @@
       filter: "Sales",
       open: true,
       items: [
-        { label: "Contact Management", toast: "Contact Management scaffold" },
-        { label: "Follow-up Management", toast: "Follow-up Management scaffold" },
-        { label: "Call Management", toast: "Call Management scaffold" },
+        { label: "Contact Management", view: "customers" },
+        { label: "Follow-up Management", view: "shipment", shipTab: "followups" },
+        { label: "Call Management", view: "shipment", shipTab: "calls" },
         { label: "Estimating/Quoting Management", hub: "quoting" },
         { label: "Sales Order Management", hub: "sales" },
       ],
@@ -436,14 +435,7 @@
       filter: "Production",
       open: true,
       items: [
-        { label: "HR Management", toast: "HR Management scaffold" },
-        { label: "Job Management", toast: "Job Management scaffold" },
-        { label: "Scheduling Management", toast: "Scheduling Management scaffold" },
-        { label: "Timecard Management", toast: "Timecard Management scaffold" },
         { label: "Inventory Management", hub: "inventory" },
-        { label: "Quality Management", toast: "Quality Management scaffold" },
-        { label: "Change Request Management", toast: "Change Request Management scaffold" },
-        { label: "Warehouse Management", toast: "Warehouse Management scaffold" },
         { label: "Purchasing Management", hub: "purchasing" },
         { label: "Receipt Management", view: "receipt" },
         { label: "End-to-end Intake Map", view: "intake" },
@@ -457,9 +449,7 @@
       filter: "Financial",
       open: false,
       items: [
-        { label: "Accounts Receivable Management", toast: "AR Management scaffold" },
-        { label: "Accounts Payable Management", toast: "AP Management scaffold" },
-        { label: "General Ledger Management", toast: "GL Management scaffold" },
+        { label: "Accounts Receivable", view: "invoices" },
       ],
     },
     {
@@ -470,25 +460,10 @@
       open: false,
       items: [
         { label: "End-to-end Intake Map", view: "intake" },
+        { label: "Planned v Actual", view: "intake" },
         { label: "Relations", view: "relations" },
         { label: "Field Network", view: "fields" },
       ],
-    },
-    {
-      id: "custom-reports",
-      title: "Custom Reports",
-      ico: "📊",
-      filter: "My Folders",
-      open: false,
-      items: [{ label: "Planned v Actual", toast: "Custom report scaffold" }],
-    },
-    {
-      id: "custom-forms",
-      title: "Custom Forms",
-      ico: "📋",
-      filter: "My Folders",
-      open: false,
-      items: [{ label: "Form Designer", toast: "Custom forms scaffold" }],
     },
   ];
 
@@ -496,6 +471,10 @@
   let role = localStorage.getItem(ROLE_KEY) || "Purchasing";
   let hub = localStorage.getItem(HUB_KEY) || "sales";
   let treeFilter = localStorage.getItem("rushmore-tree-filter-v1") || "All";
+  if (!TREE_FILTERS.includes(treeFilter)) {
+    treeFilter = "All";
+    localStorage.setItem("rushmore-tree-filter-v1", treeFilter);
+  }
   let view = "hub";
   let editMode = sessionStorage.getItem(EDIT_KEY) === "1";
   let poNo = "70286";
@@ -548,6 +527,8 @@
       if (!Array.isArray(po.lines)) po.lines = [];
       if (!Array.isArray(po.memos)) po.memos = [];
       if (!Array.isArray(po.attachments)) po.attachments = [];
+      if (!Array.isArray(po.followups)) po.followups = [];
+      if (!Array.isArray(po.calls)) po.calls = [];
     }
     for (const q of next.quotes) if (!Array.isArray(q.lines)) q.lines = [];
     for (const o of next.orders) if (!Array.isArray(o.lines)) o.lines = [];
@@ -737,12 +718,29 @@
     document.getElementById("btnDiscard").disabled = !dirty && !undoStack.length && staged === 0;
   }
 
+  function applyCustomerToShipment(ship, customerId) {
+    const cust = working.customers.find((c) => c.id === customerId);
+    if (!ship || !cust) return;
+    if (!ship.arContact) ship.arContact = cust.email || "";
+    if (!ship.shippingContact) ship.shippingContact = cust.email || "";
+    const addr = ship.customerAddress || emptyAddr();
+    if (!addr.name) addr.name = cust.name;
+    if (!addr.postcode) addr.postcode = cust.postcode || "";
+    ship.customerAddress = addr;
+    if (!ship.shipOrganisation) ship.shipOrganisation = cust.id;
+  }
+
   function setPath(path, value) {
     const parts = path.split(".");
     let cur = working;
     for (let i = 0; i < parts.length - 1; i += 1) cur = cur[parts[i]];
     const key = parts[parts.length - 1];
-    mutate(`Edit ${path}`, () => { cur[key] = value; });
+    mutate(`Edit ${path}`, () => {
+      cur[key] = value;
+      if (parts[0] === "shipments" && key === "customerId") {
+        applyCustomerToShipment(working.shipments[Number(parts[1])], value);
+      }
+    });
     render();
   }
 
@@ -802,7 +800,8 @@
       quotes: "Quotes",
       orders: "Sales Orders",
       products: "Inventory",
-      customers: "Customers",
+      customers: "Contact Management",
+      invoices: "Accounts Receivable",
       shipment: `Shipment Entry · ${shipId}`,
       receipt: "Receipt Entry · GRN",
       intake: "End-to-end Intake",
@@ -837,10 +836,11 @@
         (i.id === "quotes" && view === "quotes") ||
         (i.id === "po-entry" && view === "po-entry") ||
         (i.id === "receipt" && view === "receipt") ||
-        (i.id === "shipment" && view === "shipment");
+        (i.id === "shipment" && view === "shipment") ||
+        (i.id === "customers" && view === "customers") ||
+        (i.id === "invoices" && view === "invoices");
       let attrs = `data-go="${i.id}"`;
-      if (i.toast) attrs = `data-toast="${i.toast}"`;
-      else if (i.hub) attrs = `data-hub="${i.hub}"`;
+      if (i.hub) attrs = `data-hub="${i.hub}"`;
       return `<button type="button" class="icon-btn ${active ? "is-active" : ""}" ${attrs} title="${i.label}"><span class="ico">${i.ico}</span><span>${i.label}</span></button>`;
     }).join("");
 
@@ -871,12 +871,14 @@
           .map((it) => {
             const selected =
               (it.hub && view === "hub" && hub === it.hub) ||
-              (it.view && view === it.view);
-            const attrs = it.hub
-              ? `data-hub="${it.hub}"`
-              : it.view
-                ? `data-view="${it.view}"`
-                : `data-toast="${it.toast || "Scaffold"}"`;
+              (it.view && view === it.view && (!it.shipTab || shipTab === it.shipTab));
+            let attrs = "";
+            if (it.hub) attrs = `data-hub="${it.hub}"`;
+            else if (it.view) {
+              attrs = `data-view="${it.view}"`;
+              if (it.shipTab) attrs += ` data-open-ship-tab="${it.shipTab}"`;
+              if (it.poTab) attrs += ` data-open-po-tab="${it.poTab}"`;
+            }
             return `<button type="button" class="tree-leaf ${selected ? "is-selected" : ""}" ${attrs}>${it.label}</button>`;
           })
           .join("")}
@@ -910,10 +912,6 @@
 
   function go(target) {
     const icon = ICONS.find((i) => i.id === target);
-    if (icon?.toast) {
-      closeMobileNav();
-      return toast(icon.toast);
-    }
     if (icon?.hub) return setHub(icon.hub);
     if (target === "po-entry") {
       hub = "purchasing";
@@ -923,17 +921,25 @@
       hub = "shipping";
       localStorage.setItem(HUB_KEY, hub);
     }
-    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "shipment", "receipt", "intake", "relations", "fields", "hub"];
+    if (target === "customers") {
+      hub = "quoting";
+      localStorage.setItem(HUB_KEY, hub);
+    }
+    if (target === "invoices") {
+      hub = "sales";
+      localStorage.setItem(HUB_KEY, hub);
+    }
+    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "invoices", "shipment", "receipt", "intake", "relations", "fields", "hub"];
     if (!known.includes(target)) {
       closeMobileNav();
-      return toast(`${target} scaffold`);
+      return toast(`Unknown view: ${target}`);
     }
     showView(target);
     closeMobileNav();
     render();
   }
 
-  /* —— hub packs (M1: Entry / Reports / Maintenance | Business Analysis / Custom Reports / Close) —— */
+  /* —— hub packs (live links only) —— */
   function hubPack() {
     if (hub === "sales") {
       return {
@@ -942,45 +948,27 @@
         entry: [
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
           { label: "Accept Quote → Sales Order", view: "quotes", ico: "⚡", live: true },
+          { label: "Contact Management", view: "customers", ico: "⚡", live: true },
           { label: "End-to-end Intake Map", view: "intake", ico: "⚡", live: true },
-          { label: "Sales Order Wizard", toast: "Sales Order Wizard scaffold", ico: "🪄" },
-          { label: "Create Order from RMA Claim", toast: "RMA → Order scaffold", ico: "⚡" },
-          { label: "Create Deposits from Order", toast: "Deposits scaffold", ico: "⚡" },
-          { label: "Pick List Session", toast: "Pick List Session scaffold", ico: "⚡" },
-          { label: "Manufacturing Order Wizard", toast: "MO Wizard scaffold", ico: "🪄" },
         ],
         reports: [
-          { label: "Order Acknowledgment", toast: "Order Acknowledgment report", ico: "🖨" },
-          { label: "Order Acknowledgment (Alt)", toast: "Order Acknowledgment alt", ico: "🖨" },
-          { label: "Picking Slip", toast: "Picking Slip report", ico: "🖨" },
-          { label: "Picking Slip (Alt)", toast: "Picking Slip alt", ico: "🖨" },
           { label: "Sales Order Analysis Report", view: "orders", ico: "🖨", live: true },
-          { label: "New Orders By Employee", toast: "New Orders By Employee", ico: "🖨" },
-          { label: "Booked Orders Report", toast: "Booked Orders Report", ico: "🖨" },
-          { label: "Order Backlog Report", toast: "Order Backlog Report", ico: "🖨" },
+          { label: "Accounts Receivable", view: "invoices", ico: "🖨", live: true },
         ],
         maintenance: [
-          { label: "Shipping Method Maintenance", toast: "Shipping Method Maintenance", ico: "⚙" },
-          { label: "Shipping Payment Type Maintenance", toast: "Shipping Payment Type Maintenance", ico: "⚙" },
-          { label: "Part Group Maintenance", toast: "Part Group Maintenance", ico: "⚙" },
-          { label: "Payment Terms Maintenance", toast: "Payment Terms Maintenance", ico: "⚙" },
-          { label: "Reason Maintenance", toast: "Reason Maintenance", ico: "⚙" },
-          { label: "Standard Message Maintenance", toast: "Standard Message Maintenance", ico: "⚙" },
+          { label: "Customer / Contact Maintenance", view: "customers", ico: "⚙", live: true },
+          { label: "Field Network", view: "fields", ico: "⚙", live: true },
         ],
         analysis: [
           { label: "Sales Orders Requiring Approval", view: "orders", ico: "🔎", live: true },
           { label: `Open Sales Orders · ${working.orders.length}`, view: "orders", ico: "🔎", live: true },
           { label: "Unprocessed Sales Orders", view: "orders", ico: "🔎", live: true },
           { label: "Sales Order Backlog", view: "orders", ico: "🔎", live: true },
-          { label: "Sales Orders Made Today", toast: "Sales Orders Made Today", ico: "🔎" },
           { label: `Open quote value · ${money(quoteTotal())}`, view: "quotes", ico: "📊", live: true },
-          { label: "Sales Order Analysis Trend Graph", toast: "Trend Graph scaffold", ico: "📈" },
-          { label: "Sales Order Analysis Pie Graph", toast: "Pie Graph scaffold", ico: "🕸" },
-          { label: "Sales Order Analysis Calendar", toast: "Calendar scaffold", ico: "📅" },
-          { label: "Sales Order Analysis Google Map", toast: "Map scaffold", ico: "🗺" },
+          { label: `AR invoices · ${working.invoices.length}`, view: "invoices", ico: "📊", live: true },
         ],
-        customReports: [{ label: "Planned v Actual", toast: "Planned v Actual report", ico: "📊" }],
-        close: [{ label: "Close Sales Orders", toast: "Close Sales Orders scaffold", ico: "🔨" }],
+        customReports: [{ label: "Planned v Actual (Intake)", view: "intake", ico: "📊", live: true }],
+        close: [],
       };
     }
     if (hub === "quoting") {
@@ -990,22 +978,21 @@
         entry: [
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
           { label: "Accept Quote → Sales Order", view: "quotes", ico: "⚡", live: true },
-          { label: "Customer Maintenance", view: "customers", ico: "⚡", live: true },
+          { label: "Contact Management", view: "customers", ico: "⚡", live: true },
         ],
         reports: [
           { label: "Open Quotes Report", view: "quotes", ico: "🖨", live: true },
-          { label: "Quote Acknowledgment", toast: "Quote Acknowledgment", ico: "🖨" },
         ],
         maintenance: [
-          { label: "Standard Message Maintenance", toast: "Standard Message Maintenance", ico: "⚙" },
+          { label: "Customer / Contact Maintenance", view: "customers", ico: "⚙", live: true },
           { label: "Field Network", view: "fields", ico: "⚙", live: true },
         ],
         analysis: [
           { label: `Open quote value · ${money(quoteTotal())}`, view: "quotes", ico: "🔎", live: true },
           { label: "Quotes by customer", view: "customers", ico: "🔎", live: true },
         ],
-        customReports: [{ label: "Quote Win Rate", toast: "Quote Win Rate scaffold", ico: "📊" }],
-        close: [{ label: "Close Quotes", toast: "Close Quotes scaffold", ico: "🔨" }],
+        customReports: [{ label: "Planned v Actual (Intake)", view: "intake", ico: "📊", live: true }],
+        close: [],
       };
     }
     if (hub === "inventory") {
@@ -1022,15 +1009,14 @@
           { label: "Stock Status", view: "products", ico: "🖨", live: true },
         ],
         maintenance: [
-          { label: "Part Group Maintenance", toast: "Part Group Maintenance", ico: "⚙" },
           { label: "Field Network", view: "fields", ico: "⚙", live: true },
         ],
         analysis: [
           { label: `SKUs ≤ ROP · ${working.products.filter((p) => p.onHand <= p.reorderPoint).length}`, view: "products", ico: "🔎", live: true },
           { label: "Product tags", view: "relations", ico: "🔎", live: true },
         ],
-        customReports: [{ label: "ABC Analysis", toast: "ABC Analysis scaffold", ico: "📊" }],
-        close: [{ label: "Cycle Count Close", toast: "Cycle Count scaffold", ico: "🔨" }],
+        customReports: [],
+        close: [],
       };
     }
     if (hub === "home") {
@@ -1040,6 +1026,7 @@
         entry: [
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
+          { label: "Contact Management", view: "customers", ico: "⚡", live: true },
           { label: "PO Entry", view: "po-entry", ico: "⚡", live: true },
           { label: "Shipment Entry", view: "shipment", ico: "⚡", live: true },
           { label: "Receipt Entry (GRN)", view: "receipt", ico: "⚡", live: true },
@@ -1048,6 +1035,7 @@
         reports: [
           { label: "Open Sales Orders", view: "orders", ico: "🖨", live: true },
           { label: "Open Purchase Orders", view: "purchasing", ico: "🖨", live: true },
+          { label: "Accounts Receivable", view: "invoices", ico: "🖨", live: true },
         ],
         maintenance: [
           { label: "Relations", view: "relations", ico: "⚙", live: true },
@@ -1057,9 +1045,10 @@
           { label: "Sales Order Management", hub: "sales", ico: "🔎", live: true },
           { label: "Purchasing Management", hub: "purchasing", ico: "🔎", live: true },
           { label: "Inventory Management", hub: "inventory", ico: "🔎", live: true },
+          { label: "Shipping Management", hub: "shipping", ico: "🔎", live: true },
         ],
-        customReports: [{ label: "Planned v Actual", toast: "Planned v Actual", ico: "📊" }],
-        close: [{ label: "Close Period", toast: "Close Period scaffold", ico: "🔨" }],
+        customReports: [{ label: "Planned v Actual (Intake)", view: "intake", ico: "📊", live: true }],
+        close: [],
       };
     }
     if (hub === "shipping") {
@@ -1069,6 +1058,8 @@
         entry: [
           { label: "Shipment Entry", view: "shipment", ico: "⚡", live: true },
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
+          { label: "Follow-ups", view: "shipment", shipTab: "followups", ico: "⚡", live: true },
+          { label: "Calls", view: "shipment", shipTab: "calls", ico: "⚡", live: true },
           { label: "Add From Order (on Shipment)", view: "shipment", ico: "⚡", live: true },
         ],
         reports: [
@@ -1076,15 +1067,15 @@
           { label: "Open Shipments", view: "shipment", ico: "🖨", live: true },
         ],
         maintenance: [
-          { label: "Ship Method Maintenance", toast: "Ship Method Maintenance", ico: "⚙" },
-          { label: "Ship Payment Type Maintenance", toast: "Ship Payment Type Maintenance", ico: "⚙" },
+          { label: "Contact Management", view: "customers", ico: "⚙", live: true },
+          { label: "Field Network", view: "fields", ico: "⚙", live: true },
         ],
         analysis: [
           { label: `Open shipments · ${working.shipments.filter((s) => s.status !== "Posted" && s.status !== "Closed").length}`, view: "shipment", ico: "🔎", live: true },
           { label: "Shipments linked to Sales Orders", view: "intake", ico: "📊", live: true },
         ],
-        customReports: [{ label: "Carrier Spend", toast: "Carrier Spend scaffold", ico: "📊" }],
-        close: [{ label: "Close Shipments", toast: "Close Shipments scaffold", ico: "🔨" }],
+        customReports: [],
+        close: [],
       };
     }
     /* purchasing (default Production hub) */
@@ -1102,33 +1093,32 @@
       reports: [
         { label: "Purchase Order Print", view: "po-entry", ico: "🖨", live: true },
         { label: "Open PO Report", view: "purchasing", ico: "🖨", live: true },
-        { label: "Vendor Performance", toast: "Vendor Performance report", ico: "🖨" },
-        { label: "Expected Receipts", toast: "Expected Receipts report", ico: "🖨" },
       ],
       maintenance: [
         { label: "Vendor Maintenance", view: "relations", ico: "⚙", live: true },
         { label: "Buyer / Terms Lists", view: "fields", ico: "⚙", live: true },
-        { label: "Payment Terms Maintenance", toast: "Payment Terms Maintenance", ico: "⚙" },
-        { label: "Ship Method Maintenance", toast: "Ship Method Maintenance", ico: "⚙" },
       ],
       analysis: [
         { label: "POs requiring approval", view: "purchasing", ico: "🔎", live: true },
         { label: `Open PO value · ${money(poTotal())}`, view: "purchasing", ico: "📊", live: true },
         { label: "Price vs ProductSupplier", view: "relations", ico: "📊", live: true },
         { label: "PO 70286 · CITY0002", view: "po-entry", ico: "📅", live: true },
-        { label: "Spend by supplier", toast: "Spend by supplier analysis", ico: "📈" },
       ],
-      customReports: [{ label: "Buyer Spend Summary", toast: "Buyer Spend Summary", ico: "📊" }],
-      close: [{ label: "Close Purchase Orders", toast: "Close Purchase Orders scaffold", ico: "🔨" }],
+      customReports: [{ label: "Planned v Actual (Intake)", view: "intake", ico: "📊", live: true }],
+      close: [],
     };
   }
 
   function linkHtml(item) {
-    const attrs = item.view
-      ? `data-view="${item.view}"`
-      : item.hub
-        ? `data-hub="${item.hub}"`
-        : `data-toast="${item.toast || "Scaffold"}"`;
+    let attrs = "";
+    if (item.view) {
+      attrs = `data-view="${item.view}"`;
+      if (item.shipTab) attrs += ` data-open-ship-tab="${item.shipTab}"`;
+    } else if (item.hub) {
+      attrs = `data-hub="${item.hub}"`;
+    } else {
+      return "";
+    }
     return `<li><button type="button" class="hub-link ${item.live ? "is-live" : ""}" ${attrs}><span class="hub-ico">${item.ico}</span><span>${item.label}</span></button></li>`;
   }
 
@@ -1138,6 +1128,8 @@
 
   function renderHub() {
     const pack = hubPack();
+    const custom = (pack.customReports || []).filter(Boolean);
+    const close = (pack.close || []).filter(Boolean);
     document.getElementById("hubGrid").innerHTML = `
       <div class="hub-col">
         ${panel("Entry Screens", `<ul class="hub-list">${pack.entry.map(linkHtml).join("")}</ul>`)}
@@ -1150,8 +1142,8 @@
           `<div class="hub-explorer"><label>${pack.explorer}</label><input type="search" placeholder="Start Search" data-explorer /></div>
            <ul class="hub-list">${pack.analysis.map(linkHtml).join("")}</ul>`
         )}
-        ${panel("Custom Reports", `<ul class="hub-list">${(pack.customReports || []).map(linkHtml).join("")}</ul>`)}
-        ${panel("Close", `<ul class="hub-list">${(pack.close || []).map(linkHtml).join("")}</ul>`)}
+        ${custom.length ? panel("Custom Reports", `<ul class="hub-list">${custom.map(linkHtml).join("")}</ul>`) : ""}
+        ${close.length ? panel("Close", `<ul class="hub-list">${close.map(linkHtml).join("")}</ul>`) : ""}
       </div>`;
   }
 
@@ -1221,7 +1213,10 @@
             memos: "Purchase Order Memos",
             attachments: "Attachments",
           };
-          return `<button type="button" class="po-tree-node ${poTab === t ? "is-active" : ""}" data-po-tab="${t}">${labels[t]}</button>`;
+          const extra = (t === "followups" || t === "calls")
+            ? `<button type="button" class="po-tree-node" data-action="po-new-${t}">&lt;New&gt;</button>`
+            : "";
+          return `<button type="button" class="po-tree-node ${poTab === t ? "is-active" : ""}" data-po-tab="${t}">${labels[t]}</button>${extra}`;
         })
         .join("")}
       <div class="po-msg">
@@ -1259,8 +1254,13 @@
     } else if (poTab === "attachments") {
       child = `<div class="po-section"><div class="po-section-head">Attachments</div>
         <ul style="margin:0.5rem 1.1rem">${po.attachments.map((a) => `<li class="mono">${a.fileName}</li>`).join("") || "<li>No attachments</li>"}</ul></div>`;
+    } else if (poTab === "followups" || poTab === "calls") {
+      const rows = (po[poTab] || []).map((x) => `<li>${x.text || x.subject || JSON.stringify(x)}</li>`).join("") || "<li>None yet — use &lt;New&gt;</li>";
+      child = `<div class="po-section"><div class="po-section-head">${poTab === "calls" ? "Calls" : "Follow-ups"}</div>
+        <p class="note" style="padding:0.55rem">Purchasing contact trail for PO ${po.poNo} · supplier ${supplierName(po.supplierId)}.</p>
+        <ul style="margin:0.5rem 1.1rem">${rows}</ul></div>`;
     } else {
-      child = `<div class="po-section"><div class="po-section-head">${poTab}</div><p class="note" style="padding:0.55rem">Scaffold for later increment.</p></div>`;
+      child = `<div class="po-section"><div class="po-section-head">${poTab}</div><p class="note" style="padding:0.55rem">No detail for this tab.</p></div>`;
     }
 
     const form = document.getElementById("poForm");
@@ -1312,7 +1312,7 @@
       </div>
       <div class="po-section"><div class="po-section-head">Related Documents</div>
         <div class="toolbar" style="padding:0.45rem"><button type="button" class="btn" disabled>Add</button><button type="button" class="btn" disabled>Delete</button><button type="button" class="btn" disabled>Open</button><button type="button" class="btn" disabled>Print</button></div>
-        <p class="note" style="padding:0 0.55rem 0.55rem">Document library scaffold — file metadata lives under Attachments.</p>
+        <p class="note" style="padding:0 0.55rem 0.55rem">Document library — file metadata lives under Attachments.</p>
       </div>
       <div class="po-section"><div class="po-section-head">Status Info</div>
         <div class="field-grid">
@@ -1382,6 +1382,8 @@
         lines: [],
         memos: [],
         attachments: [],
+        followups: [],
+        calls: [],
       });
     })) return;
     poNo = next;
@@ -1464,18 +1466,7 @@
     if (!mutate(`Add from order ${pick.orderNo} → ${ship.shipmentId}`, () => {
       if (!ship.customerId) ship.customerId = pick.customerId;
       if (!ship.shipOrganisation) ship.shipOrganisation = pick.customerId;
-      const cust = working.customers.find((c) => c.id === pick.customerId);
-      if (cust && !ship.customerAddress.name) {
-        ship.customerAddress = {
-          name: cust.name,
-          line1: "",
-          line2: "",
-          city: "",
-          postcode: cust.postcode || "",
-          phone: "",
-          fax: "",
-        };
-      }
+      applyCustomerToShipment(ship, pick.customerId);
       let lineNo = ship.lines.reduce((m, l) => Math.max(m, l.line), 0);
       for (const ol of pick.lines) {
         lineNo += 1;
@@ -1643,7 +1634,6 @@
             <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add</button>
             <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete</button>
             <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
-            <button type="button" class="btn" data-action="ship-add-from-job" ${!editMode ? "disabled" : ""}>Add From Job</button>
             <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
             <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
             <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>${isStaged("post-shipment", "shipmentId", ship.shipmentId) ? "Staged" : "Post"}</button>
@@ -1654,9 +1644,11 @@
       detail = `<div class="po-section"><div class="po-section-head">Attachments</div>
         <ul style="margin:0.5rem 1.1rem">${(ship.attachments||[]).map((a)=>`<li class="mono">${a.fileName}</li>`).join("") || "<li>No attachments</li>"}</ul></div>`;
     } else {
-      detail = `<div class="po-section"><div class="po-section-head">${shipTab}</div>
-        <p class="note" style="padding:0.55rem">Use &lt;New&gt; in the tree to add ${shipTab} (scaffold list).</p>
-        <ul style="margin:0.5rem 1.1rem">${(ship[shipTab]||[]).map((x)=>`<li>${x.text || x.subject || JSON.stringify(x)}</li>`).join("") || `<li>None</li>`}</ul></div>`;
+      const title = shipTab === "calls" ? "Calls" : "Follow-ups";
+      const cust = customerName(ship.customerId);
+      detail = `<div class="po-section"><div class="po-section-head">${title}</div>
+        <p class="note" style="padding:0.55rem">${title} for shipment ${ship.shipmentId}${ship.customerId ? ` · ${cust}` : ""}. Use &lt;New&gt; to add.</p>
+        <ul style="margin:0.5rem 1.1rem">${(ship[shipTab]||[]).map((x)=>`<li><strong>${x.subject || ""}</strong>${x.subject ? " — " : ""}${x.text || JSON.stringify(x)}</li>`).join("") || `<li>None yet</li>`}</ul></div>`;
     }
 
     const a = ship.customerAddress || emptyAddr();
@@ -2073,16 +2065,61 @@
     bindPaths(root);
   }
 
+  function nextCustomerId() {
+    let max = 0;
+    for (const c of working.customers) {
+      const n = Number(String(c.id).replace(/^C/i, ""));
+      if (!Number.isNaN(n)) max = Math.max(max, n);
+    }
+    return `C${String(max + 1).padStart(3, "0")}`;
+  }
+
+  function addCustomer() {
+    if (!canAdd("customers")) return toast("Role cannot add customers.");
+    const id = nextCustomerId();
+    if (!mutate(`Add customer ${id}`, () => {
+      working.customers.push({ id, name: "New customer", email: "", postcode: "", status: "Active" });
+      if (!working.accounts.some((a) => a.customerId === id)) {
+        working.accounts.push({ customerId: id, accountCode: `ACC-${id}`, creditLimit: 0, paymentTerms: "Net-30" });
+      }
+    })) return;
+    toast(`Customer ${id} added.`);
+    render();
+  }
+
   function renderCustomers() {
     const root = document.getElementById("customersRoot");
-    root.innerHTML = working.customers
+    const head = `<article class="card">
+      <div class="card-head"><h2>Contact Management</h2>
+        <span class="meta">Sales-owned · links quotes, orders, shipments, AR</span></div>
+      <p class="note">Edit contact fields here. Follow-ups and calls live on <button type="button" class="linkish" data-view="shipment" data-open-ship-tab="followups">Shipment Entry</button>.</p>
+      <div class="card-actions">
+        <button type="button" class="btn btn-primary" data-action="add-customer" ${editMode && canAdd("customers") ? "" : "disabled"}>Add customer</button>
+        <button type="button" class="btn" data-view="quotes">Quotes</button>
+        <button type="button" class="btn" data-view="orders">Sales Orders</button>
+        <button type="button" class="btn" data-view="invoices">AR Invoices</button>
+      </div>
+    </article>`;
+    const cards = working.customers
       .map((c, ci) => {
         const nameDis = !editMode || !canEdit("customers.name");
         const emailDis = !editMode || !canEdit("customers.email");
         const pcDis = !editMode || !canEdit("customers.postcode");
         const stDis = !editMode || !canEdit("customers.status");
+        const acct = working.accounts.find((a) => a.customerId === c.id);
+        const quotes = working.quotes.filter((q) => q.customerId === c.id);
+        const orders = working.orders.filter((o) => o.customerId === c.id);
+        const ships = working.shipments.filter((s) => s.customerId === c.id);
+        const invs = working.invoices.filter((inv) => orders.some((o) => o.orderNo === inv.orderNo));
+        const linkRow = (label, items, openView, idKey) => {
+          if (!items.length) return `<p class="note">${label}: none</p>`;
+          return `<p class="note">${label}: ${items.map((it) => {
+            const id = it[idKey];
+            return `<button type="button" class="linkish" data-view="${openView}">${id}</button>`;
+          }).join(" · ")}</p>`;
+        };
         return `<article class="card">
-          <div class="card-head"><h2 class="mono">${c.id}</h2><span class="meta">${c.status}</span></div>
+          <div class="card-head"><h2 class="mono">${c.id}</h2><span class="meta">${c.status}${acct ? ` · ${acct.accountCode}` : ""}</span></div>
           <div class="form-grid compact">
             <label>Name <input type="text" value="${c.name}" data-path="customers.${ci}.name" ${nameDis ? "disabled" : ""} /></label>
             <label>Email <input type="email" value="${c.email}" data-path="customers.${ci}.email" ${emailDis ? "disabled" : ""} /></label>
@@ -2093,10 +2130,47 @@
               </select>
             </label>
           </div>
+          ${acct ? `<p class="note">Account ${acct.accountCode} · credit ${money(acct.creditLimit)} · ${acct.paymentTerms}</p>` : `<p class="note">No AR account row yet.</p>`}
+          ${linkRow("Quotes", quotes, "quotes", "quoteNo")}
+          ${linkRow("Orders", orders, "orders", "orderNo")}
+          ${linkRow("Shipments", ships, "shipment", "shipmentId")}
+          ${linkRow("Invoices", invs, "invoices", "invoiceNo")}
         </article>`;
       })
       .join("");
+    root.innerHTML = head + cards;
     bindPaths(root);
+  }
+
+  function renderInvoices() {
+    const root = document.getElementById("invoicesRoot");
+    if (!root) return;
+    const rows = working.invoices.map((inv) => {
+      const order = working.orders.find((o) => o.orderNo === inv.orderNo);
+      const custId = order?.customerId || "";
+      return `<tr>
+        <td class="mono">${inv.invoiceNo}</td>
+        <td class="mono"><button type="button" class="linkish" data-view="orders">${inv.orderNo}</button></td>
+        <td class="mono"><button type="button" class="linkish" data-view="customers">${custId || "—"}</button></td>
+        <td>${customerName(custId)}</td>
+        <td>${inv.status}</td>
+        <td>${money(inv.amount)}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="6">No invoices — accept a quote and Post to create a draft AR invoice.</td></tr>`;
+    root.innerHTML = `
+      <article class="card">
+        <div class="card-head"><h2>Accounts Receivable</h2><span class="meta">${working.invoices.length} invoices</span></div>
+        <p class="note">Invoices are created when a quote is accepted and posted. Contact fields live under Contact Management.</p>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Invoice</th><th>Order</th><th>Customer</th><th>Name</th><th>Status</th><th>Amount</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        <div class="card-actions">
+          <button type="button" class="btn" data-view="customers">Contact Management</button>
+          <button type="button" class="btn" data-view="orders">Sales Orders</button>
+          <button type="button" class="btn" data-view="quotes">Quotes</button>
+        </div>
+      </article>`;
   }
 
   function renderReceipt() {
@@ -2261,6 +2335,7 @@
     if (view === "orders") renderOrders();
     if (view === "products") renderProducts();
     if (view === "customers") renderCustomers();
+    if (view === "invoices") renderInvoices();
     if (view === "receipt") renderReceipt();
     if (view === "intake") renderIntake();
     if (view === "relations") renderRelations();
@@ -2390,12 +2465,21 @@
         toast("Reloaded from master snapshot.");
         return render();
       }
-      if (action === "print-shipment" || action === "email-shipment") return toast(`${action.replace("ship-","").replace("shipment","Shipment")} scaffold.`);
+      if (action === "print-shipment") {
+        const ship = currentShipment();
+        if (!ship) return;
+        return toast(`Print packing slip ${ship.shipmentId} · ${customerName(ship.customerId) || "no customer"} · ${ship.lines.length} lines`);
+      }
+      if (action === "email-shipment") {
+        const ship = currentShipment();
+        if (!ship) return;
+        const to = ship.shippingContact || ship.arContact || working.customers.find((c) => c.id === ship.customerId)?.email || "";
+        return toast(to ? `Email packing slip ${ship.shipmentId} → ${to}` : `Set Shipping Contact on ${ship.shipmentId} first (Contact Management).`);
+      }
       if (action === "ship-memos") { shipTab = "lines"; toast("Memos shown under shipment notes / tree."); return render(); }
       if (action === "ship-close-view") return setHub("shipping");
-      if (action === "ship-lookup") return toast("Lookup dialog scaffold.");
+      if (action === "ship-lookup") return toast("Use the Customer ID dropdown — Contact Management owns the master list.");
       if (action === "ship-add-from-order") return addShipmentLinesFromOrder();
-      if (action === "ship-add-from-job") return toast("Add From Job scaffold.");
       if (action === "ship-add-line") {
         if (!canAdd("shipmentLines")) return toast("Role cannot add lines.");
         const ship = currentShipment();
@@ -2449,7 +2533,11 @@
       if (action === "accept-quote") return acceptQuote(actionEl.dataset.quote);
       if (action === "receive-po") return receivePo(actionEl.dataset.po);
       if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
-      if (action === "print-po") return toast("Print preview scaffold.");
+      if (action === "print-po") {
+        const po = currentPo();
+        if (!po) return;
+        return toast(`Print PO ${po.poNo} · ${supplierName(po.supplierId)} · ${money(sumLines(po.lines, "unitCost"))}`);
+      }
       if (action === "request-approval") {
         const po = currentPo();
         if (!po) return;
@@ -2466,13 +2554,25 @@
         return render();
       }
 
-      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
-      if (viewBtn) return go(viewBtn.dataset.view);
+      if (action === "add-customer") return addCustomer();
+      if (action === "po-new-followups" || action === "po-new-calls") {
+        const kind = action.endsWith("calls") ? "calls" : "followups";
+        const po = currentPo();
+        if (!po) return;
+        if (!mutate(`New ${kind} on PO ${po.poNo}`, () => {
+          if (!Array.isArray(po[kind])) po[kind] = [];
+          po[kind].push({ id: (po[kind].length || 0) + 1, text: `New ${kind.slice(0, -1)}`, subject: `New ${kind.slice(0, -1)}` });
+        })) return;
+        poTab = kind;
+        toast(`Added PO ${kind} item.`);
+        return render();
+      }
 
-      const toastBtn = e.target.closest("[data-toast]");
-      if (toastBtn) {
-        closeMobileNav();
-        return toast(toastBtn.dataset.toast);
+      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
+      if (viewBtn) {
+        if (viewBtn.dataset.openShipTab) shipTab = viewBtn.dataset.openShipTab;
+        if (viewBtn.dataset.openPoTab) poTab = viewBtn.dataset.openPoTab;
+        return go(viewBtn.dataset.view);
       }
 
       const openPo = e.target.closest("[data-open-po]");
