@@ -1652,7 +1652,7 @@
     }
 
     const a = ship.customerAddress || emptyAddr();
-    form.innerHTML = `
+    const headerForm = `
       <div class="po-section"><div class="po-section-head">ID Info</div>
         <div class="field-grid">
           ${field("Shipment ID", `<input class="mono" value="${ship.shipmentId}" disabled />`)}
@@ -1708,9 +1708,17 @@
           ${field("Print Labels?", `<input type="checkbox" data-path="shipments.${idx}.printLabels" ${ship.printLabels ? "checked" : ""} ${!editMode || !canEdit("shipments.printLabels") ? "disabled" : ""} />`)}
           ${field("Standard Message", `<input data-path="shipments.${idx}.standardMessage" value="${ship.standardMessage||""}" ${!editMode || !canEdit("shipments.standardMessage") ? "disabled" : ""} />`, true)}
         </div>
-      </div>
-      ${detail}
-      <p class="note">Linking keys: <span class="mono">shipmentId=${ship.shipmentId}</span> · lines.orderNo → Sales Order · lines.sku → Product</p>`;
+      </div>`;
+    const compact = `
+      <div class="po-section"><div class="po-section-head">Shipment</div>
+        <p class="note" style="padding:0.55rem"><span class="mono">${ship.shipmentId}</span> · ${customerName(ship.customerId) || "no customer"} · ${ship.status}
+          · <button type="button" class="linkish" data-ship-tab="lines">Open Detail Info</button>
+          · <button type="button" class="linkish" data-view="customers">Contact Management</button></p>
+      </div>`;
+    // Follow-ups / Calls / Attachments lead with the tab body so Management shortcuts land on content.
+    form.innerHTML = shipTab === "lines"
+      ? `${headerForm}${detail}<p class="note">Linking keys: <span class="mono">shipmentId=${ship.shipmentId}</span> · lines.orderNo → Sales Order · lines.sku → Product</p>`
+      : `${compact}${detail}${headerForm}`;
 
     bindPaths(form);
     const sel = document.getElementById("shipSelect");
@@ -2570,7 +2578,15 @@
 
       const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
       if (viewBtn) {
-        if (viewBtn.dataset.openShipTab) shipTab = viewBtn.dataset.openShipTab;
+        if (viewBtn.dataset.openShipTab) {
+          shipTab = viewBtn.dataset.openShipTab;
+          const kind = shipTab;
+          const cur = working.shipments.find((s) => s.shipmentId === shipId);
+          if (!cur || !(cur[kind] || []).length) {
+            const withItems = working.shipments.find((s) => (s[kind] || []).length);
+            if (withItems) shipId = withItems.shipmentId;
+          }
+        }
         if (viewBtn.dataset.openPoTab) poTab = viewBtn.dataset.openPoTab;
         return go(viewBtn.dataset.view);
       }
