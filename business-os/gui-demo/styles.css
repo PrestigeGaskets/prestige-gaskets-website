@@ -496,6 +496,64 @@ button, input, select, textarea { font: inherit; }
 }
 .intake-steps li + li { margin-top: 0.35rem; }
 
+.ship-detail-layout {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.35rem 0.45rem 0.55rem;
+}
+.ship-side-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 8.5rem;
+}
+.ship-side-actions .btn { width: 100%; justify-content: center; }
+.lookup-wrap {
+  display: flex;
+  gap: 0.25rem;
+  align-items: stretch;
+}
+.lookup-wrap > :first-child { flex: 1; min-width: 0; }
+.lookup-btn {
+  min-width: 2rem;
+  border: 1px solid var(--line-soft);
+  background: #f7f8fa;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.req-link {
+  color: #b42318;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.82rem;
+  margin: 0.2rem 0;
+}
+.req-link:hover { color: #7a1610; }
+.linkish {
+  background: none;
+  border: 0;
+  color: var(--accent, #0b6e4f);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+.is-hot-field { outline: 2px solid #b42318; }
+.po-msg-tabs .is-hot { color: #b42318; font-weight: 600; }
+.ship-lines { font-size: 0.78rem; }
+
+@media (max-width: 960px) {
+  .ship-detail-layout { flex-direction: column; }
+  .ship-side-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
+  }
+  .ship-side-actions .btn { width: auto; flex: 1 1 40%; }
+}
+
 @media (max-width: 860px) {
   .form-grid { grid-template-columns: 1fr; }
 }

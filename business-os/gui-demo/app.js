@@ -6,7 +6,7 @@
 (() => {
   "use strict";
 
-  const STORAGE = "rushmore-bos-v7";
+  const STORAGE = "rushmore-bos-v8";
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
   const EDIT_KEY = "rushmore-edit-v2";
@@ -208,6 +208,85 @@
         attachments: [],
       },
     ],
+    shipments: [
+      {
+        shipmentId: "275525",
+        shipDate: "10/09/2026",
+        reversalEntry: false,
+        customerId: "",
+        invLocation: "",
+        shipOrganisation: "",
+        shipLocation: "",
+        arContact: "",
+        shippingContact: "",
+        creditHold: false,
+        customerAddress: { name: "", line1: "", line2: "", city: "", postcode: "", phone: "", fax: "" },
+        shipMethodId: "CARRIER",
+        shipPaymentType: "PREPAID",
+        trackingNumber: "",
+        currency: "GBP",
+        exchangeRate: 1,
+        customRate: false,
+        freightSubtotal: 0,
+        taxTotal: 0,
+        freightTotal: 0,
+        weightTotal: 0,
+        shippingComments: "",
+        printPackingSlip: false,
+        printLabels: false,
+        standardMessage: "",
+        status: "Draft",
+        lines: [],
+        memos: [],
+        attachments: [],
+        followups: [],
+        calls: [],
+      },
+      {
+        shipmentId: "275526",
+        shipDate: "10/09/2026",
+        reversalEntry: false,
+        customerId: "C004",
+        invLocation: "MAIN",
+        shipOrganisation: "C004",
+        shipLocation: "MAIN",
+        arContact: "pilot@prestige.example",
+        shippingContact: "pilot@prestige.example",
+        creditHold: false,
+        customerAddress: {
+          name: "Prestige Pilot",
+          line1: "1 Parliament Sq",
+          line2: "",
+          city: "London",
+          postcode: "SW1A 1AA",
+          phone: "020 7946 0001",
+          fax: "",
+        },
+        shipMethodId: "CARRIER",
+        shipPaymentType: "PREPAID",
+        trackingNumber: "",
+        currency: "GBP",
+        exchangeRate: 1,
+        customRate: false,
+        freightSubtotal: 12.5,
+        taxTotal: 0,
+        freightTotal: 12.5,
+        weightTotal: 4.2,
+        shippingComments: "Deliver to goods-in.",
+        printPackingSlip: true,
+        printLabels: false,
+        standardMessage: "Standard shipping terms.",
+        status: "Open",
+        lines: [
+          { line: 1, sku: "P1001", revision: "", warehouseBin: "A-01", deliveryQty: 10, openQty: 10, jobQtyShipped: 0, qtyShipped: 10, shipComplete: true, invoiceComplete: false, deliveryDate: "10/09/2026", jobId: "", orderNo: "O-500", marked: true },
+          { line: 2, sku: "P1002", revision: "", warehouseBin: "A-02", deliveryQty: 5, openQty: 5, jobQtyShipped: 0, qtyShipped: 5, shipComplete: true, invoiceComplete: false, deliveryDate: "10/09/2026", jobId: "", orderNo: "O-500", marked: true },
+        ],
+        memos: [{ id: 1, text: "Confirm carrier booking." }],
+        attachments: [],
+        followups: [],
+        calls: [],
+      },
+    ],
   });
 
   const ROLES = {
@@ -241,8 +320,28 @@
       ],
       canAdd: ["purchaseOrders", "poLines", "goodsReceipts"],
     },
+    Shipping: {
+      inherits: ["Viewer"],
+      blurb: "Shipment Entry, lines, Add From Order.",
+      canEdit: [
+        "shipments.status", "shipments.customerId", "shipments.shipDate",
+        "shipments.invLocation", "shipments.shipOrganisation", "shipments.shipLocation",
+        "shipments.arContact", "shipments.shippingContact", "shipments.creditHold",
+        "shipments.shipMethodId", "shipments.shipPaymentType", "shipments.trackingNumber",
+        "shipments.currency", "shipments.exchangeRate", "shipments.customRate",
+        "shipments.freightSubtotal", "shipments.taxTotal", "shipments.freightTotal", "shipments.weightTotal",
+        "shipments.shippingComments", "shipments.printPackingSlip", "shipments.printLabels",
+        "shipments.standardMessage", "shipments.reversalEntry",
+        "shipments.customerAddress.name", "shipments.customerAddress.line1", "shipments.customerAddress.line2",
+        "shipments.customerAddress.city", "shipments.customerAddress.postcode",
+        "shipments.customerAddress.phone", "shipments.customerAddress.fax",
+        "shipments.lines.sku", "shipments.lines.qtyShipped", "shipments.lines.deliveryQty",
+        "shipments.lines.warehouseBin", "shipments.lines.orderNo", "shipments.lines.marked",
+      ],
+      canAdd: ["shipments", "shipmentLines"],
+    },
     Manager: {
-      inherits: ["Sales", "Inventory", "Finance", "Purchasing"],
+      inherits: ["Sales", "Inventory", "Finance", "Purchasing", "Shipping"],
       blurb: "Full network on working copy.",
       canEdit: [],
       canAdd: [],
@@ -262,6 +361,9 @@
   const QUOTE_STATUSES = ["Open", "Sent", "Won", "Lost"];
   const ORDER_STATUSES = ["Open", "Picked", "Shipped", "Closed"];
   const CUSTOMER_STATUSES = ["Active", "Inactive"];
+  const SHIPMENT_STATUSES = ["Draft", "Open", "Shipped", "Posted", "Closed"];
+  const SHIP_PAYMENT_TYPES = ["PREPAID", "COLLECT", "THIRD PARTY"];
+  const PLANTS = ["J A HARRISON (MANCHESTER)", "J A HARRISON (SHEFFIELD)"];
 
   /* My Shortcuts — same set as M1 rail */
   const ICONS = [
@@ -269,7 +371,7 @@
     { id: "orders", label: "Sales Order Entry", ico: "📦" },
     { id: "job", label: "Job Entry", ico: "🔧", toast: "Job Entry scaffold" },
     { id: "po-entry", label: "PO Entry", ico: "🛒" },
-    { id: "shipment", label: "Shipment Entry", ico: "🚚", toast: "Shipment Entry scaffold" },
+    { id: "shipment", label: "Shipment Entry", ico: "🚚" },
     { id: "receipt", label: "Receipt Entry", ico: "📥" },
     { id: "ar", label: "AR Invoice Entry", ico: "💵", toast: "AR Invoice Entry scaffold" },
     { id: "ap", label: "AP Invoice Entry", ico: "📄", toast: "AP Invoice Entry scaffold" },
@@ -319,7 +421,7 @@
         { label: "Purchasing Management", hub: "purchasing" },
         { label: "Receipt Management", view: "receipt" },
         { label: "End-to-end Intake Map", view: "intake" },
-        { label: "Shipping Management", toast: "Shipping Management scaffold" },
+        { label: "Shipping Management", hub: "shipping" },
       ],
     },
     {
@@ -372,6 +474,9 @@
   let editMode = sessionStorage.getItem(EDIT_KEY) === "1";
   let poNo = "70286";
   let poTab = "lines";
+  let shipId = "275525";
+  let shipTab = "lines";
+  let shipPlant = "J A HARRISON (MANCHESTER)";
   let undoStack = [];
   let redoStack = [];
   let posted = loadJson(POSTED_KEY, null);
@@ -419,6 +524,15 @@
     for (const q of next.quotes) if (!Array.isArray(q.lines)) q.lines = [];
     for (const o of next.orders) if (!Array.isArray(o.lines)) o.lines = [];
     for (const g of next.goodsReceipts) if (!Array.isArray(g.lines)) g.lines = [];
+    if (!Array.isArray(next.shipments)) next.shipments = clone(MASTER.shipments);
+    for (const s of next.shipments) {
+      if (!s.customerAddress) s.customerAddress = emptyAddr();
+      if (!Array.isArray(s.lines)) s.lines = [];
+      if (!Array.isArray(s.memos)) s.memos = [];
+      if (!Array.isArray(s.attachments)) s.attachments = [];
+      if (!Array.isArray(s.followups)) s.followups = [];
+      if (!Array.isArray(s.calls)) s.calls = [];
+    }
     return next;
   }
 
@@ -527,6 +641,7 @@
     if (JSON.stringify(working.customers) !== JSON.stringify(m.customers)) n += 1;
     if (JSON.stringify(working.goodsReceipts) !== JSON.stringify(m.goodsReceipts)) n += 1;
     if (JSON.stringify(working.invoices) !== JSON.stringify(m.invoices)) n += 1;
+    if (JSON.stringify(working.shipments) !== JSON.stringify(m.shipments)) n += 1;
     return n;
   }
 
@@ -594,6 +709,7 @@
       if (hub === "sales") return "Sales Order Management";
       if (hub === "purchasing") return "Purchasing Management";
       if (hub === "quoting") return "Estimating/Quoting Management";
+      if (hub === "shipping") return "Shipping Management";
       if (hub === "inventory") return "Inventory Management";
       if (hub === "home") return "My Start Page";
       return "Management hub";
@@ -605,6 +721,7 @@
       orders: "Sales Orders",
       products: "Inventory",
       customers: "Customers",
+      shipment: `Shipment Entry · ${shipId}`,
       receipt: "Receipt Entry · GRN",
       intake: "End-to-end Intake",
       relations: "Relations",
@@ -637,7 +754,8 @@
         (i.id === "orders" && view === "orders") ||
         (i.id === "quotes" && view === "quotes") ||
         (i.id === "po-entry" && view === "po-entry") ||
-        (i.id === "receipt" && view === "receipt");
+        (i.id === "receipt" && view === "receipt") ||
+        (i.id === "shipment" && view === "shipment");
       let attrs = `data-go="${i.id}"`;
       if (i.toast) attrs = `data-toast="${i.toast}"`;
       else if (i.hub) attrs = `data-hub="${i.hub}"`;
@@ -719,7 +837,11 @@
       hub = "purchasing";
       localStorage.setItem(HUB_KEY, hub);
     }
-    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "receipt", "intake", "relations", "fields", "hub"];
+    if (target === "shipment") {
+      hub = "shipping";
+      localStorage.setItem(HUB_KEY, hub);
+    }
+    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "shipment", "receipt", "intake", "relations", "fields", "hub"];
     if (!known.includes(target)) {
       closeMobileNav();
       return toast(`${target} scaffold`);
@@ -837,6 +959,7 @@
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
           { label: "PO Entry", view: "po-entry", ico: "⚡", live: true },
+          { label: "Shipment Entry", view: "shipment", ico: "⚡", live: true },
           { label: "Receipt Entry (GRN)", view: "receipt", ico: "⚡", live: true },
           { label: "End-to-end Intake Map", view: "intake", ico: "⚡", live: true },
         ],
@@ -855,6 +978,31 @@
         ],
         customReports: [{ label: "Planned v Actual", toast: "Planned v Actual", ico: "📊" }],
         close: [{ label: "Close Period", toast: "Close Period scaffold", ico: "🔨" }],
+      };
+    }
+    if (hub === "shipping") {
+      return {
+        title: "Shipping Management",
+        explorer: "Shipment Explorer",
+        entry: [
+          { label: "Shipment Entry", view: "shipment", ico: "⚡", live: true },
+          { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
+          { label: "Add From Order (on Shipment)", view: "shipment", ico: "⚡", live: true },
+        ],
+        reports: [
+          { label: "Packing Slip", view: "shipment", ico: "🖨", live: true },
+          { label: "Open Shipments", view: "shipment", ico: "🖨", live: true },
+        ],
+        maintenance: [
+          { label: "Ship Method Maintenance", toast: "Ship Method Maintenance", ico: "⚙" },
+          { label: "Ship Payment Type Maintenance", toast: "Ship Payment Type Maintenance", ico: "⚙" },
+        ],
+        analysis: [
+          { label: `Open shipments · ${working.shipments.filter((s) => s.status !== "Posted" && s.status !== "Closed").length}`, view: "shipment", ico: "🔎", live: true },
+          { label: "Shipments linked to Sales Orders", view: "intake", ico: "📊", live: true },
+        ],
+        customReports: [{ label: "Carrier Spend", toast: "Carrier Spend scaffold", ico: "📊" }],
+        close: [{ label: "Close Shipments", toast: "Close Shipments scaffold", ico: "🔨" }],
       };
     }
     /* purchasing (default Production hub) */
@@ -1158,6 +1306,320 @@
     go("po-entry");
     toast(`PO ${next} added.`);
   }
+
+
+  /* —— Shipment Entry (M1) —— */
+  function currentShipment() {
+    return working.shipments.find((s) => s.shipmentId === shipId) || working.shipments[0];
+  }
+
+  function shipmentRequirements(ship) {
+    const reqs = [];
+    if (!ship.customerId) reqs.push({ field: "customerId", text: "Customer ID is required" });
+    if (!ship.shipOrganisation) reqs.push({ field: "shipOrganisation", text: "Ship Organisation is required" });
+    return reqs;
+  }
+
+  function nextShipmentId() {
+    let max = 275524;
+    for (const s of working.shipments) max = Math.max(max, Number(s.shipmentId) || 0);
+    return String(max + 1);
+  }
+
+  function addShipment() {
+    if (!canAdd("shipments")) return toast("Role cannot add shipments.");
+    const id = nextShipmentId();
+    if (!mutate(`Add shipment ${id}`, () => {
+      working.shipments.push({
+        shipmentId: id,
+        shipDate: new Date().toLocaleDateString("en-GB"),
+        reversalEntry: false,
+        customerId: "",
+        invLocation: "",
+        shipOrganisation: "",
+        shipLocation: "",
+        arContact: "",
+        shippingContact: "",
+        creditHold: false,
+        customerAddress: emptyAddr(),
+        shipMethodId: "CARRIER",
+        shipPaymentType: "PREPAID",
+        trackingNumber: "",
+        currency: "GBP",
+        exchangeRate: 1,
+        customRate: false,
+        freightSubtotal: 0,
+        taxTotal: 0,
+        freightTotal: 0,
+        weightTotal: 0,
+        shippingComments: "",
+        printPackingSlip: false,
+        printLabels: false,
+        standardMessage: "",
+        status: "Draft",
+        lines: [],
+        memos: [],
+        attachments: [],
+        followups: [],
+        calls: [],
+      });
+    })) return;
+    shipId = id;
+    shipTab = "lines";
+    go("shipment");
+    toast(`Shipment ${id} added.`);
+  }
+
+  function addShipmentLinesFromOrder() {
+    if (!canAdd("shipmentLines") && !canEdit("shipments.lines.sku")) {
+      return toast("Role cannot add shipment lines.");
+    }
+    const ship = currentShipment();
+    if (!ship) return;
+    const openOrders = working.orders.filter((o) => o.status === "Open" || o.status === "Picked" || o.status === "Shipped");
+    const pick = openOrders[0] || working.orders[0];
+    if (!pick || !pick.lines?.length) return toast("No sales order lines to add.");
+    if (!mutate(`Add from order ${pick.orderNo} → ${ship.shipmentId}`, () => {
+      if (!ship.customerId) ship.customerId = pick.customerId;
+      if (!ship.shipOrganisation) ship.shipOrganisation = pick.customerId;
+      const cust = working.customers.find((c) => c.id === pick.customerId);
+      if (cust && !ship.customerAddress.name) {
+        ship.customerAddress = {
+          name: cust.name,
+          line1: "",
+          line2: "",
+          city: "",
+          postcode: cust.postcode || "",
+          phone: "",
+          fax: "",
+        };
+      }
+      let lineNo = ship.lines.reduce((m, l) => Math.max(m, l.line), 0);
+      for (const ol of pick.lines) {
+        lineNo += 1;
+        ship.lines.push({
+          line: lineNo,
+          sku: ol.sku,
+          revision: "",
+          warehouseBin: "",
+          deliveryQty: ol.qty,
+          openQty: ol.qty,
+          jobQtyShipped: 0,
+          qtyShipped: ol.qty,
+          shipComplete: false,
+          invoiceComplete: false,
+          deliveryDate: ship.shipDate,
+          jobId: "",
+          orderNo: pick.orderNo,
+          marked: true,
+        });
+      }
+      if (ship.status === "Draft") ship.status = "Open";
+    })) return;
+    toast(`Lines added from Sales Order ${pick.orderNo}.`);
+    render();
+  }
+
+  function postShipment() {
+    const ship = currentShipment();
+    if (!ship) return;
+    if (!canEdit("shipments.status") && !canAdd("shipments")) return toast("Role cannot post shipments.");
+    const reqs = shipmentRequirements(ship);
+    if (reqs.length) return toast(reqs[0].text);
+    if (!ship.lines.length) return toast("Add lines before posting (Add From Order).");
+    if (!mutate(`Post shipment ${ship.shipmentId}`, () => {
+      ship.status = "Posted";
+      for (const l of ship.lines) {
+        if (!l.marked) continue;
+        const p = working.products.find((x) => x.sku === l.sku);
+        if (p) p.onHand = Math.max(0, Number(p.onHand) - Number(l.qtyShipped || 0));
+        const ord = working.orders.find((o) => o.orderNo === l.orderNo);
+        if (ord && ord.status === "Open") ord.status = "Shipped";
+        l.shipComplete = true;
+      }
+    })) return;
+    toast(`Shipment ${ship.shipmentId} posted — stock issued · orders updated.`);
+    render();
+  }
+
+  function renderShipment() {
+    const ship = currentShipment();
+    const ribbon = document.getElementById("shipRibbon");
+    const tree = document.getElementById("shipTree");
+    const form = document.getElementById("shipForm");
+    if (!ship) {
+      if (ribbon) ribbon.innerHTML = "";
+      if (form) form.innerHTML = `<p class="note">No shipments.</p>`;
+      return;
+    }
+    shipId = ship.shipmentId;
+    const idx = working.shipments.findIndex((s) => s.shipmentId === ship.shipmentId);
+    const locked = !editMode;
+    const reqs = shipmentRequirements(ship);
+
+    ribbon.innerHTML = `
+      <button type="button" class="btn" data-action="new-shipment" title="New">New</button>
+      <button type="button" class="btn" data-action="open-shipment" title="Open">Open</button>
+      <button type="button" class="btn" data-action="next-ship-id" title="Next ID">Next ID</button>
+      <button type="button" class="btn" data-action="save-shipment" title="Save">Save</button>
+      <button type="button" class="btn" data-action="prev-shipment" title="Move Previous">Prev</button>
+      <button type="button" class="btn" data-action="next-shipment" title="Move Next">Next</button>
+      <button type="button" class="btn" data-action="delete-shipment" title="Delete">Delete</button>
+      <button type="button" class="btn" data-action="reload-shipment" title="Reload">Reload</button>
+      <button type="button" class="btn" data-action="print-shipment" title="Print">Print</button>
+      <button type="button" class="btn" data-action="email-shipment" title="Email">Email</button>
+      <button type="button" class="btn" data-action="ship-memos" title="Memos">Memos</button>
+      <button type="button" class="btn" data-action="ship-close-view" title="Close">Close</button>
+      <label class="po-picker">Shipment
+        <select id="shipSelect">${working.shipments
+          .map((s) => `<option value="${s.shipmentId}" ${s.shipmentId === ship.shipmentId ? "selected" : ""}>${s.shipmentId} — ${s.shipDate}</option>`)
+          .join("")}</select>
+      </label>
+      <label class="po-picker">Plant
+        <select id="shipPlantSelect">${PLANTS.map((p) => `<option ${p === shipPlant ? "selected" : ""}>${p}</option>`).join("")}</select>
+      </label>`;
+
+    tree.innerHTML = `
+      <div class="po-tree-root">Shipments</div>
+      <div class="po-tree-active">${ship.shipmentId} — ${ship.shipDate}</div>
+      ${["lines", "followups", "calls", "attachments"]
+        .map((t) => {
+          const labels = { lines: "Detail Info", followups: "Follow-ups", calls: "Calls", attachments: "Attachments" };
+          return `<button type="button" class="po-tree-node ${shipTab === t ? "is-active" : ""}" data-ship-tab="${t}">${labels[t]}</button>
+            ${t !== "lines" && t !== "attachments" ? `<button type="button" class="po-tree-node" data-action="ship-new-${t}">&lt;New&gt;</button>` : ""}`;
+        })
+        .join("")}
+      <div class="po-msg">
+        <div class="po-msg-tabs">
+          <span class="${reqs.length ? "is-hot" : ""}">${reqs.length} Requirements</span>
+          <span>0 Warnings</span>
+          <span>0 Messages</span>
+        </div>
+        ${reqs.map((r) => `<p class="req-link" data-action="focus-ship-field" data-field="${r.field}">${r.text}</p>`).join("") || `<p>Shipment '${ship.shipmentId}' · ${ship.status}</p>`}
+      </div>`;
+
+    const field = (label, control, span = false) =>
+      `<div class="field ${span ? "field-span" : ""} ${locked ? "is-locked" : ""}"><label>${label}</label>${control}</div>`;
+    const lookup = (inner) => `<div class="lookup-wrap">${inner}<button type="button" class="lookup-btn" data-action="ship-lookup" title="Lookup">⌕</button></div>`;
+
+    const linesRows = (ship.lines || [])
+      .map((l, li) => `<tr>
+        <td><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} ${!editMode ? "disabled" : ""} /></td>
+        <td class="mono">${l.line}</td>
+        <td><input data-path="shipments.${idx}.lines.${li}.sku" value="${l.sku}" ${!editMode || !canEdit("shipments.lines.sku") ? "disabled" : ""} /></td>
+        <td><input data-path="shipments.${idx}.lines.${li}.revision" value="${l.revision || ""}" ${locked ? "disabled" : ""} /></td>
+        <td><input data-path="shipments.${idx}.lines.${li}.warehouseBin" value="${l.warehouseBin || ""}" ${!editMode || !canEdit("shipments.lines.warehouseBin") ? "disabled" : ""} /></td>
+        <td><input type="number" data-path="shipments.${idx}.lines.${li}.deliveryQty" value="${l.deliveryQty}" ${!editMode || !canEdit("shipments.lines.deliveryQty") ? "disabled" : ""} /></td>
+        <td>${l.openQty}</td>
+        <td>${l.jobQtyShipped || 0}</td>
+        <td><input type="number" data-path="shipments.${idx}.lines.${li}.qtyShipped" value="${l.qtyShipped}" ${!editMode || !canEdit("shipments.lines.qtyShipped") ? "disabled" : ""} /></td>
+        <td>${l.shipComplete ? "Y" : ""}</td>
+        <td>${l.invoiceComplete ? "Y" : ""}</td>
+        <td>${l.deliveryDate || ""}</td>
+        <td class="mono">${l.jobId || ""}</td>
+        <td class="mono"><button type="button" class="linkish" data-action="open-order" data-order="${l.orderNo || ""}">${l.orderNo || "—"}</button></td>
+      </tr>`)
+      .join("");
+
+    let detail = "";
+    if (shipTab === "lines") {
+      detail = `<div class="po-section"><div class="po-section-head">Detail Info</div>
+        <div class="ship-detail-layout">
+          <div class="table-wrap" style="padding:0.45rem; flex:1; min-width:0">
+            <table class="data ship-lines"><thead><tr>
+              <th></th><th>Line</th><th>Part ID*</th><th>Revision</th><th>Warehouse / Bin</th>
+              <th>Delivery Qty</th><th>Open Qty</th><th>Job Qty Shipped</th><th>Qty Shipped</th>
+              <th>Shp Cmpl?</th><th>Invoiced Cmpl?</th><th>Delivery Date</th><th>Job ID</th><th>Order ID</th>
+            </tr></thead><tbody>${linesRows || `<tr><td colspan="14">No lines — use Add From Order</td></tr>`}</tbody></table>
+          </div>
+          <div class="ship-side-actions">
+            <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add</button>
+            <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete</button>
+            <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
+            <button type="button" class="btn" data-action="ship-add-from-job" ${!editMode ? "disabled" : ""}>Add From Job</button>
+            <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
+            <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
+            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode ? "disabled" : ""}>Post</button>
+          </div>
+        </div>
+      </div>`;
+    } else if (shipTab === "attachments") {
+      detail = `<div class="po-section"><div class="po-section-head">Attachments</div>
+        <ul style="margin:0.5rem 1.1rem">${(ship.attachments||[]).map((a)=>`<li class="mono">${a.fileName}</li>`).join("") || "<li>No attachments</li>"}</ul></div>`;
+    } else {
+      detail = `<div class="po-section"><div class="po-section-head">${shipTab}</div>
+        <p class="note" style="padding:0.55rem">Use &lt;New&gt; in the tree to add ${shipTab} (scaffold list).</p>
+        <ul style="margin:0.5rem 1.1rem">${(ship[shipTab]||[]).map((x)=>`<li>${x.text || x.subject || JSON.stringify(x)}</li>`).join("") || `<li>None</li>`}</ul></div>`;
+    }
+
+    const a = ship.customerAddress || emptyAddr();
+    form.innerHTML = `
+      <div class="po-section"><div class="po-section-head">ID Info</div>
+        <div class="field-grid">
+          ${field("Shipment ID", `<input class="mono" value="${ship.shipmentId}" disabled />`)}
+          ${field("Ship Date *", `<input data-path="shipments.${idx}.shipDate" value="${ship.shipDate}" ${!editMode || !canEdit("shipments.shipDate") ? "disabled" : ""} />`)}
+          ${field("Reversal Entry?", `<input type="checkbox" data-path="shipments.${idx}.reversalEntry" ${ship.reversalEntry ? "checked" : ""} ${!editMode || !canEdit("shipments.reversalEntry") ? "disabled" : ""} />`)}
+          ${field("Status", `<select data-path="shipments.${idx}.status" ${!editMode || !canEdit("shipments.status") ? "disabled" : ""}>${SHIPMENT_STATUSES.map((s)=>`<option ${s===ship.status?"selected":""}>${s}</option>`).join("")}</select>`)}
+        </div>
+      </div>
+      <div class="po-section"><div class="po-section-head">Customer Info</div>
+        <div class="field-grid">
+          ${field("Customer ID *", lookup(`<select data-path="shipments.${idx}.customerId" ${!editMode || !canEdit("shipments.customerId") ? "disabled" : ""}><option value="">—</option>${working.customers.map((c)=>`<option value="${c.id}" ${c.id===ship.customerId?"selected":""}>${c.id} — ${c.name}</option>`).join("")}</select>`))}
+          ${field("Inv. Location", lookup(`<input data-path="shipments.${idx}.invLocation" value="${ship.invLocation||""}" ${!editMode || !canEdit("shipments.invLocation") ? "disabled" : ""} />`))}
+          ${field("Ship Organisation *", lookup(`<input data-path="shipments.${idx}.shipOrganisation" value="${ship.shipOrganisation||""}" ${!editMode || !canEdit("shipments.shipOrganisation") ? "disabled" : ""} />`))}
+          ${field("Ship Location", lookup(`<input data-path="shipments.${idx}.shipLocation" value="${ship.shipLocation||""}" ${!editMode || !canEdit("shipments.shipLocation") ? "disabled" : ""} />`))}
+          ${field("Accounting Contact (AR)", `<input data-path="shipments.${idx}.arContact" value="${ship.arContact||""}" ${!editMode || !canEdit("shipments.arContact") ? "disabled" : ""} />`)}
+          ${field("Shipping Contact", `<input data-path="shipments.${idx}.shippingContact" value="${ship.shippingContact||""}" ${!editMode || !canEdit("shipments.shippingContact") ? "disabled" : ""} />`)}
+          ${field("Credit Hold?", `<input type="checkbox" data-path="shipments.${idx}.creditHold" ${ship.creditHold ? "checked" : ""} ${!editMode || !canEdit("shipments.creditHold") ? "disabled" : ""} />`)}
+        </div>
+      </div>
+      <div class="po-section"><div class="po-section-head">Customer Address Info</div>
+        <div class="field-grid">
+          ${field("Name", `<input data-path="shipments.${idx}.customerAddress.name" value="${a.name||""}" ${!editMode || !canEdit("shipments.customerAddress.name") ? "disabled" : ""} />`, true)}
+          ${field("Address", `<input data-path="shipments.${idx}.customerAddress.line1" value="${a.line1||""}" ${!editMode || !canEdit("shipments.customerAddress.line1") ? "disabled" : ""} />`, true)}
+          ${field("Address 2", `<input data-path="shipments.${idx}.customerAddress.line2" value="${a.line2||""}" ${!editMode || !canEdit("shipments.customerAddress.line2") ? "disabled" : ""} />`, true)}
+          ${field("City", `<input data-path="shipments.${idx}.customerAddress.city" value="${a.city||""}" ${!editMode || !canEdit("shipments.customerAddress.city") ? "disabled" : ""} />`)}
+          ${field("Postcode", `<input data-path="shipments.${idx}.customerAddress.postcode" value="${a.postcode||""}" ${!editMode || !canEdit("shipments.customerAddress.postcode") ? "disabled" : ""} />`)}
+          ${field("Phone", `<input data-path="shipments.${idx}.customerAddress.phone" value="${a.phone||""}" ${!editMode || !canEdit("shipments.customerAddress.phone") ? "disabled" : ""} />`)}
+          ${field("Fax", `<input data-path="shipments.${idx}.customerAddress.fax" value="${a.fax||""}" ${!editMode || !canEdit("shipments.customerAddress.fax") ? "disabled" : ""} />`)}
+        </div>
+      </div>
+      <div class="po-section"><div class="po-section-head">Shipping Info</div>
+        <div class="field-grid">
+          ${field("Ship Method ID", `<select data-path="shipments.${idx}.shipMethodId" ${!editMode || !canEdit("shipments.shipMethodId") ? "disabled" : ""}>${SHIP_METHODS.map((t)=>`<option ${t===ship.shipMethodId?"selected":""}>${t}</option>`).join("")}</select>`)}
+          ${field("Ship Payment Type", `<select data-path="shipments.${idx}.shipPaymentType" ${!editMode || !canEdit("shipments.shipPaymentType") ? "disabled" : ""}>${SHIP_PAYMENT_TYPES.map((t)=>`<option ${t===ship.shipPaymentType?"selected":""}>${t}</option>`).join("")}</select>`)}
+          ${field("Tracking Number", lookup(`<input data-path="shipments.${idx}.trackingNumber" value="${ship.trackingNumber||""}" ${!editMode || !canEdit("shipments.trackingNumber") ? "disabled" : ""} />`))}
+        </div>
+      </div>
+      <div class="po-section"><div class="po-section-head">Carrier Freight Info</div>
+        <div class="field-grid">
+          ${field("Currency *", `<select data-path="shipments.${idx}.currency" ${!editMode || !canEdit("shipments.currency") ? "disabled" : ""}><option>GBP</option><option>EUR</option><option>USD</option></select>`)}
+          ${field("Exchange Rate", `<input type="number" step="0.0001" data-path="shipments.${idx}.exchangeRate" value="${ship.exchangeRate}" ${!editMode || !canEdit("shipments.exchangeRate") ? "disabled" : ""} />`)}
+          ${field("Custom Rate", `<input type="checkbox" data-path="shipments.${idx}.customRate" ${ship.customRate ? "checked" : ""} ${!editMode || !canEdit("shipments.customRate") ? "disabled" : ""} />`)}
+          ${field("Freight Subtotal", `<input type="number" step="0.01" data-path="shipments.${idx}.freightSubtotal" value="${ship.freightSubtotal}" ${!editMode || !canEdit("shipments.freightSubtotal") ? "disabled" : ""} />`)}
+          ${field("Tax Total", `<input type="number" step="0.01" data-path="shipments.${idx}.taxTotal" value="${ship.taxTotal}" ${!editMode || !canEdit("shipments.taxTotal") ? "disabled" : ""} />`)}
+          ${field("Freight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.freightTotal" value="${ship.freightTotal}" ${!editMode || !canEdit("shipments.freightTotal") ? "disabled" : ""} />`)}
+          ${field("Weight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.weightTotal" value="${ship.weightTotal}" ${!editMode || !canEdit("shipments.weightTotal") ? "disabled" : ""} />`)}
+          ${field("Shipping Comments", `<textarea data-path="shipments.${idx}.shippingComments" rows="3" ${!editMode || !canEdit("shipments.shippingComments") ? "disabled" : ""}>${ship.shippingComments||""}</textarea>`, true)}
+        </div>
+      </div>
+      <div class="po-section"><div class="po-section-head">Report Info</div>
+        <div class="field-grid">
+          ${field("Print Packing Slip?", `<input type="checkbox" data-path="shipments.${idx}.printPackingSlip" ${ship.printPackingSlip ? "checked" : ""} ${!editMode || !canEdit("shipments.printPackingSlip") ? "disabled" : ""} />`)}
+          ${field("Print Labels?", `<input type="checkbox" data-path="shipments.${idx}.printLabels" ${ship.printLabels ? "checked" : ""} ${!editMode || !canEdit("shipments.printLabels") ? "disabled" : ""} />`)}
+          ${field("Standard Message", `<input data-path="shipments.${idx}.standardMessage" value="${ship.standardMessage||""}" ${!editMode || !canEdit("shipments.standardMessage") ? "disabled" : ""} />`, true)}
+        </div>
+      </div>
+      ${detail}
+      <p class="note">Linking keys: <span class="mono">shipmentId=${ship.shipmentId}</span> · lines.orderNo → Sales Order · lines.sku → Product</p>`;
+
+    bindPaths(form);
+    const sel = document.getElementById("shipSelect");
+    if (sel) sel.onchange = (e) => { shipId = e.target.value; render(); };
+    const plant = document.getElementById("shipPlantSelect");
+    if (plant) plant.onchange = (e) => { shipPlant = e.target.value; toast(`Plant → ${shipPlant}`); };
+  }
+
 
   /* —— intake helpers —— */
   function trailingNum(id) {
@@ -1497,6 +1959,7 @@
         <p class="note"><span class="mono">Order.orderNo</span> = Sales Order number ← Invoice.orderNo · OrderLine.orderNo</p>
         <p class="note"><span class="mono">PurchaseOrder.poNo</span> ← GoodsReceipt.poNo · PoLine.poNo · GrnLine.poNo</p>
         <p class="note"><span class="mono">GoodsReceipt.grnNo</span> = GRN number ← GrnLine.grnNo → Product.sku (OH)</p>
+        <p class="note"><span class="mono">Shipment.shipmentId</span> · <span class="mono">ShipmentLine.orderNo</span> → Sales Order · post issues OH</p>
         <div class="card-actions">
           <button type="button" class="btn" data-view="quotes">Quotes</button>
           <button type="button" class="btn" data-view="orders">Sales Orders</button>
@@ -1557,6 +2020,7 @@
     syncButtons();
     if (view === "hub") renderHub();
     if (view === "po-entry") renderPoEntry();
+    if (view === "shipment") renderShipment();
     if (view === "purchasing") renderPoList();
     if (view === "quotes") renderQuotes();
     if (view === "orders") renderOrders();
@@ -1663,6 +2127,93 @@
       // Actions before data-view: sections also carry data-view and would steal clicks.
       const actionEl = e.target.closest("[data-action]");
       const action = actionEl?.dataset.action;
+
+      if (action === "new-shipment") return addShipment();
+      if (action === "save-shipment") return toast(editMode ? "Shipment fields save to working copy on change." : "Turn on Edit to change the shipment.");
+      if (action === "open-shipment") return toast("Use the Shipment picker to open another ID.");
+      if (action === "next-ship-id") { shipId = nextShipmentId(); return addShipment(); }
+      if (action === "prev-shipment" || action === "next-shipment") {
+        const list = working.shipments;
+        const i = list.findIndex((s) => s.shipmentId === shipId);
+        const n = action === "next-shipment" ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
+        shipId = list[n].shipmentId;
+        return render();
+      }
+      if (action === "delete-shipment") {
+        if (!editMode || !canAdd("shipments")) return toast("Role cannot delete shipments.");
+        if (working.shipments.length <= 1) return toast("Keep at least one shipment.");
+        if (!mutate(`Delete shipment ${shipId}`, () => {
+          working.shipments = working.shipments.filter((s) => s.shipmentId !== shipId);
+        })) return;
+        shipId = working.shipments[0].shipmentId;
+        toast("Shipment deleted.");
+        return render();
+      }
+      if (action === "reload-shipment") {
+        const m = normalize(clone(MASTER)).shipments.find((s) => s.shipmentId === shipId);
+        if (!m) return toast("Not on master — discard or keep working copy.");
+        if (!mutate(`Reload shipment ${shipId}`, () => {
+          const i = working.shipments.findIndex((s) => s.shipmentId === shipId);
+          if (i >= 0) working.shipments[i] = clone(m);
+        })) return;
+        toast("Reloaded from master snapshot.");
+        return render();
+      }
+      if (action === "print-shipment" || action === "email-shipment") return toast(`${action.replace("ship-","").replace("shipment","Shipment")} scaffold.`);
+      if (action === "ship-memos") { shipTab = "lines"; toast("Memos shown under shipment notes / tree."); return render(); }
+      if (action === "ship-close-view") return setHub("shipping");
+      if (action === "ship-lookup") return toast("Lookup dialog scaffold.");
+      if (action === "ship-add-from-order") return addShipmentLinesFromOrder();
+      if (action === "ship-add-from-job") return toast("Add From Job scaffold.");
+      if (action === "ship-add-line") {
+        if (!canAdd("shipmentLines")) return toast("Role cannot add lines.");
+        const ship = currentShipment();
+        if (!mutate(`Add blank line ${ship.shipmentId}`, () => {
+          const line = (ship.lines.reduce((m, l) => Math.max(m, l.line), 0) || 0) + 1;
+          ship.lines.push({ line, sku: working.products[0]?.sku || "", revision: "", warehouseBin: "", deliveryQty: 0, openQty: 0, jobQtyShipped: 0, qtyShipped: 0, shipComplete: false, invoiceComplete: false, deliveryDate: ship.shipDate, jobId: "", orderNo: "", marked: true });
+        })) return;
+        return render();
+      }
+      if (action === "ship-delete-lines") {
+        const ship = currentShipment();
+        if (!mutate(`Delete marked lines ${ship.shipmentId}`, () => {
+          ship.lines = ship.lines.filter((l) => !l.marked);
+        })) return;
+        return render();
+      }
+      if (action === "ship-mark-all" || action === "ship-unmark-all") {
+        const ship = currentShipment();
+        const on = action === "ship-mark-all";
+        if (!mutate(`${on ? "Mark" : "Unmark"} all ${ship.shipmentId}`, () => {
+          for (const l of ship.lines) l.marked = on;
+        })) return;
+        return render();
+      }
+      if (action === "ship-post") return postShipment();
+      if (action === "open-order") {
+        const orderNo = actionEl.dataset.order;
+        if (!orderNo) return toast("No Order ID on line.");
+        go("orders");
+        toast(`Sales Order ${orderNo}`);
+        return;
+      }
+      if (action === "ship-new-followups" || action === "ship-new-calls") {
+        const kind = action.endsWith("calls") ? "calls" : "followups";
+        const ship = currentShipment();
+        if (!mutate(`New ${kind} on ${ship.shipmentId}`, () => {
+          ship[kind].push({ id: (ship[kind].length || 0) + 1, text: `New ${kind.slice(0, -1)}`, subject: `New ${kind.slice(0, -1)}` });
+        })) return;
+        shipTab = kind;
+        toast(`Added ${kind} item.`);
+        return render();
+      }
+      if (action === "focus-ship-field") {
+        const fieldName = actionEl.dataset.field;
+        const el = document.querySelector(`[data-path$=".${fieldName}"]`);
+        if (el) { el.focus(); el.classList.add("is-hot-field"); setTimeout(() => el.classList.remove("is-hot-field"), 1200); }
+        return;
+      }
+
       if (action === "new-po") return addPo();
       if (action === "accept-quote") return acceptQuote(actionEl.dataset.quote);
       if (action === "receive-po") return receivePo(actionEl.dataset.po);
@@ -1702,6 +2253,12 @@
       const tab = e.target.closest("[data-po-tab]");
       if (tab) {
         poTab = tab.dataset.poTab;
+        return render();
+      }
+
+      const shipTabBtn = e.target.closest("[data-ship-tab]");
+      if (shipTabBtn) {
+        shipTab = shipTabBtn.dataset.shipTab;
         return render();
       }
     });
