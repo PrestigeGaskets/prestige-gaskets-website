@@ -1020,8 +1020,15 @@
     syncMobileChrome();
   }
 
+  function closeToolbarMore() {
+    document.querySelectorAll("details.toolbar-more[open]").forEach((d) => {
+      d.open = false;
+    });
+  }
+
   function showView(name) {
     view = name;
+    closeToolbarMore();
     document.querySelectorAll(".view").forEach((el) => {
       const on = el.dataset.view === name;
       el.hidden = !on;
@@ -3246,10 +3253,57 @@
     document.getElementById("roleSelect").onchange = (e) => {
       role = e.target.value;
       localStorage.setItem(ROLE_KEY, role);
+      // Jump to this role's dashboard so Hub tabs/tiles match permissions immediately.
+      const roleHub = {
+        Viewer: "home",
+        Sales: "sales",
+        Inventory: "inventory",
+        Finance: "sales",
+        Purchasing: "purchasing",
+        Shipping: "shipping",
+        Manager: "home",
+        Admin: "home",
+      };
+      hub = roleHub[role] || "home";
+      localStorage.setItem(HUB_KEY, hub);
+      dashTab = "role";
+      localStorage.setItem("rushmore-dash-tab-v1", dashTab);
+      dashQuery = "";
+      showView("hub");
+      closeMobileNav();
+      closeToolbarMore();
       log(`Role → ${role}`, "mode");
-      toast(`Role → ${role}`);
+      toast(`Role → ${role} · ${ROLES[role]?.blurb || "dashboard ready"}`);
       render();
     };
+
+    // Dismiss ⋯ menu as soon as the user taps/clicks elsewhere.
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        const open = document.querySelector("details.toolbar-more[open]");
+        if (!open) return;
+        if (open.contains(e.target)) return;
+        open.open = false;
+      },
+      true
+    );
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeToolbarMore();
+    });
+    document.querySelectorAll(".toolbar-more-body .btn, .toolbar-more-body button").forEach((btn) => {
+      btn.addEventListener("click", () => closeToolbarMore());
+    });
+    // Also close after native toggle if focus moves away (iOS Safari).
+    document.querySelectorAll("details.toolbar-more").forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (!d.open) return;
+        // Ensure only one toolbar-more is open at a time.
+        document.querySelectorAll("details.toolbar-more[open]").forEach((other) => {
+          if (other !== d) other.open = false;
+        });
+      });
+    });
 
     document.getElementById("treeSearch").oninput = () => renderChrome();
 
