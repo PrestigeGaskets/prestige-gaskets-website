@@ -633,12 +633,18 @@ body {
     overflow: visible;
   }
 
+  .brand-mark {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+  }
+
   .titlebar {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.55rem;
-    padding: 0.65rem 0.75rem;
-    padding-top: max(0.65rem, var(--safe-t));
+    gap: 0.45rem;
+    padding: 0.55rem 0.7rem;
+    padding-top: max(0.55rem, var(--safe-t));
   }
 
   .brand-inline {
