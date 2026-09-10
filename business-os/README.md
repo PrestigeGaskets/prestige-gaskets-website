@@ -1,4 +1,4 @@
-# Business OS (C++ scaffold + GUI demo)
+# Business OS (C++ + GUI demo)
 
 Standalone **Business OS** aimed at a slick desktop GUI `.exe`, rooted in the
 `SMB-Operating-System.xlsx` domain verified by `_verify_aec5.py`.
@@ -15,7 +15,13 @@ python3 -m http.server 8765 --directory gui-demo
 
 Or open `gui-demo/index.html` directly. The home hub follows an M1-style
 **Sales Order / Purchasing Management** layout (Entry / Reports / Maintenance /
-M1 Business Analysis / Custom Reports / Close).
+M1 Business Analysis / Custom Reports). Hub and module-tree links are **live only**
+(no toast placeholders).
+
+**Contact Management** (Sales-owned customers) links quotes, orders, shipments, and
+AR invoices. Follow-ups / calls open on **Shipment Entry**. Choosing a shipment
+customer fills AR/shipping contact from the customer email.
+
 Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
 ribbon actions, Requirements pane, **Add From Order**, and detail **Post**
 (stages until toolbar **Post** issues OH).
@@ -30,15 +36,15 @@ Open **PO Entry** for order `70286` / supplier `CITY0002`.
   repository** for the active Role (backend/report lookup — no Activity UI).
 - Turn **Edit** on; role-gated fields update the working copy (master stays sealed).
 
-Other views: Quotes, Products, Customers, Sales Orders, Receipt Entry, Intake Map,
-Relations, Fields.
+Other views: Quotes, Products, Contact Management, AR Invoices, Sales Orders,
+Receipt Entry, Intake Map, Relations, Fields.
 
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
 Edits are role-gated and write to a working copy only (master stays sealed).
 
 The dashboard mirrors M1 chrome: **My Shortcuts** rail, module tree with
-All/Sales/Production/Financial/My Folders filters, and hub panels
-Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports · Close.
+All/Sales/Production/Financial filters, and hub panels
+Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports.
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
 plus a bottom dock (Hub / Orders / PO / Quotes / More). Desktop layout unchanged.
