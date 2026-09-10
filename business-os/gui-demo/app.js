@@ -542,6 +542,7 @@
   let addFromOrderOpen = false;
   let addFromOrderAck = "";
   let addFromOrderLineMarks = {}; // lineNo -> bool
+  let recordDialog = null; // { title, note, fields, onSave }
   let undoStack = [];
   let redoStack = [];
   let posted = loadJson(POSTED_KEY, null);
@@ -680,6 +681,135 @@
       if (f === prefix || f.startsWith(`${prefix}.`)) return true;
     }
     return false;
+  }
+
+
+  /** Create-form field: show when role can edit it, or it is a create key with canAdd. */
+  function canFillCreate(entity, fieldPath, opts = {}) {
+    if (opts.system) return true;
+    if (canEdit(fieldPath)) return true;
+    if (opts.isKey && canAdd(entity)) return true;
+    return false;
+  }
+
+  function escAttr(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function openRecordDialog(spec) {
+    if (!editMode) return toast("Turn on Edit first.");
+    recordDialog = {
+      title: spec.title || "Record",
+      note: spec.note || "",
+      fields: (spec.fields || []).slice(),
+      onSave: spec.onSave,
+    };
+    render();
+  }
+
+  function closeRecordDialog() {
+    if (!recordDialog) return;
+    recordDialog = null;
+    render();
+  }
+
+  function readRecordDialogValues() {
+    const root = document.getElementById("recordDialogPanel");
+    const vals = {};
+    if (!recordDialog || !root) return vals;
+    for (const f of recordDialog.fields) {
+      const el = root.querySelector(`[data-rec-key="${CSS.escape(f.key)}"]`);
+      if (!el) {
+        vals[f.key] = f.value;
+        continue;
+      }
+      if (f.type === "checkbox") vals[f.key] = el.checked;
+      else if (f.type === "number") vals[f.key] = el.value === "" ? "" : Number(el.value);
+      else vals[f.key] = el.value;
+    }
+    return vals;
+  }
+
+  function saveRecordDialog() {
+    if (!recordDialog) return;
+    const vals = readRecordDialogValues();
+    for (const f of recordDialog.fields) {
+      if (!f.required || f.readonly) continue;
+      const v = vals[f.key];
+      if (v == null || String(v).trim() === "") {
+        return toast(`${f.label} is required.`);
+      }
+    }
+    if (typeof recordDialog.onSave !== "function") {
+      recordDialog = null;
+      return render();
+    }
+    const ok = recordDialog.onSave(vals);
+    if (ok === false) return;
+    recordDialog = null;
+    render();
+  }
+
+  function renderRecordDialog() {
+    const root = document.getElementById("recordDialogPanel");
+    if (!root) return;
+    if (!recordDialog) {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    const d = recordDialog;
+    const fieldsHtml = d.fields.map((f) => {
+      const locked = !!(f.readonly || f.disabled);
+      let control = "";
+      if (f.type === "select") {
+        control = `<select data-rec-key="${escAttr(f.key)}" ${locked ? "disabled" : ""} ${f.required ? "required" : ""}>
+          ${(f.options || []).map((o) => {
+            const val = typeof o === "object" ? o.value : o;
+            const lab = typeof o === "object" ? o.label : o;
+            return `<option value="${escAttr(val)}" ${String(val) === String(f.value ?? "") ? "selected" : ""}>${escAttr(lab)}</option>`;
+          }).join("")}
+        </select>`;
+      } else if (f.type === "textarea") {
+        control = `<textarea data-rec-key="${escAttr(f.key)}" rows="3" ${locked ? "disabled" : ""} ${f.required ? "required" : ""}>${escAttr(f.value ?? "")}</textarea>`;
+      } else if (f.type === "checkbox") {
+        control = `<input type="checkbox" data-rec-key="${escAttr(f.key)}" ${f.value ? "checked" : ""} ${locked ? "disabled" : ""} />`;
+      } else {
+        const t = f.type || "text";
+        control = `<input type="${escAttr(t)}" data-rec-key="${escAttr(f.key)}" value="${escAttr(f.value ?? "")}" ${locked ? "readonly" : ""} ${f.required ? "required" : ""} ${f.step != null ? `step="${escAttr(f.step)}"` : ""} ${f.min != null ? `min="${escAttr(f.min)}"` : ""} placeholder="${escAttr(f.placeholder || "")}" autocomplete="off" />`;
+      }
+      return `<div class="field ${locked ? "is-locked" : ""}"><label>${escAttr(f.label)}${f.required ? " *" : ""}${f.hint ? ` <span class="meta">${escAttr(f.hint)}</span>` : ""}</label>${control}</div>`;
+    }).join("");
+
+    root.hidden = false;
+    root.innerHTML = `
+      <div class="afo-dialog rec-dialog" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+        <div class="afo-head rec-titlebar">
+          <div>
+            <h2 id="recTitle">${escAttr(d.title)}</h2>
+            ${d.note ? `<p class="rec-sub">${escAttr(d.note)}</p>` : ""}
+          </div>
+          <button type="button" class="btn" data-action="rec-close" aria-label="Close">✕</button>
+        </div>
+        <div class="afo-body">
+          <div class="field-grid rec-fields">${fieldsHtml || `<p class="note">No editable fields for this role.</p>`}</div>
+        </div>
+        <div class="afo-actions">
+          <button type="button" class="btn" data-action="rec-close">Cancel</button>
+          <button type="button" class="btn btn-primary" data-action="rec-save">Save</button>
+        </div>
+      </div>`;
+
+    const first = root.querySelector("input:not([readonly]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
+    if (first) setTimeout(() => first.focus(), 30);
+  }
+
+  function pushCreateField(fields, entity, def) {
+    if (!canFillCreate(entity, def.fieldPath, def)) return;
+    fields.push(def);
   }
 
   function dashIco(name) {
@@ -1622,66 +1752,152 @@
 
   function addPo() {
     if (!canAdd("purchaseOrders")) return toast("Role cannot add purchase orders.");
+    if (!editMode) return toast("Turn on Edit first.");
     const nums = working.purchaseOrders.map((p) => Number(p.poNo) || 70000);
     const next = String(Math.max(70000, ...nums) + 1);
-    const supplier = working.suppliers[0];
-    if (!mutate(`Add PO ${next}`, () => {
-      working.purchaseOrders.push({
-        poNo: next,
-        supplierId: supplier?.id || "",
-        invLocation: "",
-        purLocation: "",
-        orgAccountId: "",
-        dropShipOrgId: "",
-        dropShipLocation: "",
-        apContact: "",
-        purchasingContact: "",
-        dropShipContact: "",
-        invAddress: {
-          name: supplier?.name || "",
-          line1: supplier?.line1 || "",
-          line2: supplier?.line2 || "",
-          city: supplier?.city || "",
-          postcode: supplier?.postcode || "",
-          phone: supplier?.phone || "",
-          fax: supplier?.fax || "",
-        },
-        purAddress: {
-          name: supplier?.name || "",
-          line1: supplier?.line1 || "",
-          line2: supplier?.line2 || "",
-          city: supplier?.city || "",
-          postcode: supplier?.postcode || "",
-          phone: supplier?.phone || "",
-          fax: supplier?.fax || "",
-        },
-        dropShipAddress: emptyAddr(),
-        paymentTerms: "Net-30",
-        dueDate: "",
-        shipMethod: "CARRIER",
-        fob: "",
-        supplierRating: "",
-        landedCost: false,
-        orderDate: new Date().toLocaleDateString("en-GB"),
-        buyer: "JAMES CRAVEN",
-        standardMessage: "Standard purchasing terms.",
-        comments: "",
-        readyToPrint: false,
-        currency: "GBP",
-        exchangeRate: 1,
-        customRate: false,
-        status: "Draft",
-        lines: [],
-        memos: [],
-        attachments: [],
-        followups: [],
-        calls: [],
-      });
-    })) return;
-    poNo = next;
-    go("po-entry");
-    toast(`PO ${next} added.`);
+    const fields = [];
+    fields.push({
+      key: "poNo",
+      label: "PO No",
+      type: "text",
+      value: next,
+      readonly: true,
+      hint: "System key",
+      system: true,
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "supplierId",
+      label: "Supplier",
+      type: "select",
+      required: true,
+      fieldPath: "purchaseOrders.supplierId",
+      value: "",
+      options: [
+        { value: "", label: "— Select supplier —" },
+        ...working.suppliers.map((s) => ({ value: s.id, label: `${s.id} — ${s.name}` })),
+      ],
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "buyer",
+      label: "Buyer",
+      type: "select",
+      fieldPath: "purchaseOrders.buyer",
+      value: "",
+      options: [{ value: "", label: "— Select buyer —" }, ...BUYERS.map((b) => ({ value: b, label: b }))],
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "paymentTerms",
+      label: "Payment Terms",
+      type: "select",
+      fieldPath: "purchaseOrders.paymentTerms",
+      value: "",
+      options: [{ value: "", label: "—" }, ...PAYMENT_TERMS.map((t) => ({ value: t, label: t }))],
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "shipMethod",
+      label: "Ship Method",
+      type: "select",
+      fieldPath: "purchaseOrders.shipMethod",
+      value: "",
+      options: [{ value: "", label: "—" }, ...SHIP_METHODS.map((t) => ({ value: t, label: t }))],
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "orderDate",
+      label: "Order Date",
+      type: "text",
+      fieldPath: "purchaseOrders.orderDate",
+      value: "",
+      placeholder: "DD/MM/YYYY",
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "currency",
+      label: "Currency",
+      type: "text",
+      fieldPath: "purchaseOrders.currency",
+      value: "GBP",
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "status",
+      label: "Status",
+      type: "select",
+      fieldPath: "purchaseOrders.status",
+      value: "Draft",
+      options: PO_STATUSES.map((t) => ({ value: t, label: t })),
+    });
+    pushCreateField(fields, "purchaseOrders", {
+      key: "comments",
+      label: "Comments",
+      type: "textarea",
+      fieldPath: "purchaseOrders.comments",
+      value: "",
+    });
+
+    openRecordDialog({
+      title: "New Purchase Order",
+      note: "Fill fields your role can edit, then Save. Supplier address copies from the supplier master.",
+      fields,
+      onSave(vals) {
+        if (!vals.supplierId) {
+          toast("Supplier is required.");
+          return false;
+        }
+        const supplier = working.suppliers.find((s) => s.id === vals.supplierId);
+        if (!mutate(`Add PO ${next}`, () => {
+          const addr = supplier
+            ? {
+                name: supplier.name || "",
+                line1: supplier.line1 || "",
+                line2: supplier.line2 || "",
+                city: supplier.city || "",
+                postcode: supplier.postcode || "",
+                phone: supplier.phone || "",
+                fax: supplier.fax || "",
+              }
+            : emptyAddr();
+          working.purchaseOrders.push({
+            poNo: next,
+            supplierId: vals.supplierId || "",
+            invLocation: "",
+            purLocation: "",
+            orgAccountId: "",
+            dropShipOrgId: "",
+            dropShipLocation: "",
+            apContact: "",
+            purchasingContact: "",
+            dropShipContact: "",
+            invAddress: clone(addr),
+            purAddress: clone(addr),
+            dropShipAddress: emptyAddr(),
+            paymentTerms: vals.paymentTerms || "",
+            dueDate: "",
+            shipMethod: vals.shipMethod || "",
+            fob: "",
+            supplierRating: "",
+            landedCost: false,
+            orderDate: vals.orderDate || "",
+            buyer: vals.buyer || "",
+            standardMessage: "",
+            comments: vals.comments || "",
+            readyToPrint: false,
+            currency: vals.currency || "GBP",
+            exchangeRate: 1,
+            customRate: false,
+            status: vals.status || "Draft",
+            lines: [],
+            memos: [],
+            attachments: [],
+            followups: [],
+            calls: [],
+          });
+        })) return false;
+        poNo = next;
+        toast(`PO ${next} saved to working copy.`);
+        go("po-entry");
+        return true;
+      },
+    });
   }
+
 
 
   /* —— Shipment Entry (M1) —— */
@@ -1704,49 +1920,159 @@
 
   function addShipment() {
     if (!canAdd("shipments")) return toast("Role cannot add shipments.");
+    if (!editMode) return toast("Turn on Edit first.");
     const id = nextShipmentId();
-    if (!mutate(`Add shipment ${id}`, () => {
-      working.shipments.push({
-        shipmentId: id,
-        shipDate: new Date().toLocaleDateString("en-GB"),
-        reversalEntry: false,
-        customerId: "",
-        invLocation: "",
-        shipOrganisation: "",
-        shipLocation: "",
-        arContact: "",
-        shippingContact: "",
-        creditHold: false,
-        customerAddress: emptyAddr(),
-        shipMethodId: "CARRIER",
-        shipPaymentType: "PREPAID",
-        trackingNumber: "",
-        currency: "GBP",
-        exchangeRate: 1,
-        customRate: false,
-        freightSubtotal: 0,
-        taxTotal: 0,
-        freightTotal: 0,
-        weightTotal: 0,
-        shippingComments: "",
-        printPackingSlip: false,
-        printLabels: false,
-        standardMessage: "",
-        deliveryNoteIssued: false,
-        deliveryNoteNo: "",
-        status: "Draft",
-        lines: [],
-        memos: [],
-        attachments: [],
-        followups: [],
-        calls: [],
-      });
-    })) return;
-    shipId = id;
-    shipTab = "lines";
-    go("shipment");
-    toast(`Shipment ${id} added.`);
+    const fields = [];
+    fields.push({
+      key: "shipmentId",
+      label: "Shipment ID",
+      type: "text",
+      value: id,
+      readonly: true,
+      hint: "System key",
+      system: true,
+    });
+    pushCreateField(fields, "shipments", {
+      key: "customerId",
+      label: "Customer",
+      type: "select",
+      required: true,
+      fieldPath: "shipments.customerId",
+      value: "",
+      options: [
+        { value: "", label: "— Select customer —" },
+        ...working.customers.map((c) => ({ value: c.id, label: `${c.id} — ${c.name}` })),
+      ],
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shipOrganisation",
+      label: "Ship Organisation",
+      type: "text",
+      required: true,
+      fieldPath: "shipments.shipOrganisation",
+      value: "",
+      placeholder: "Plant / organisation",
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shipDate",
+      label: "Ship Date",
+      type: "text",
+      fieldPath: "shipments.shipDate",
+      value: "",
+      placeholder: "DD/MM/YYYY",
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shipLocation",
+      label: "Ship Location",
+      type: "text",
+      fieldPath: "shipments.shipLocation",
+      value: "",
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shipMethodId",
+      label: "Ship Method",
+      type: "select",
+      fieldPath: "shipments.shipMethodId",
+      value: "",
+      options: [{ value: "", label: "—" }, ...SHIP_METHODS.map((t) => ({ value: t, label: t }))],
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shipPaymentType",
+      label: "Ship Payment",
+      type: "select",
+      fieldPath: "shipments.shipPaymentType",
+      value: "",
+      options: [{ value: "", label: "—" }, ...SHIP_PAYMENT_TYPES.map((t) => ({ value: t, label: t }))],
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shippingContact",
+      label: "Shipping Contact",
+      type: "text",
+      fieldPath: "shipments.shippingContact",
+      value: "",
+    });
+    pushCreateField(fields, "shipments", {
+      key: "arContact",
+      label: "AR Contact",
+      type: "text",
+      fieldPath: "shipments.arContact",
+      value: "",
+    });
+    pushCreateField(fields, "shipments", {
+      key: "status",
+      label: "Status",
+      type: "select",
+      fieldPath: "shipments.status",
+      value: "Draft",
+      options: SHIPMENT_STATUSES.map((t) => ({ value: t, label: t })),
+    });
+    pushCreateField(fields, "shipments", {
+      key: "shippingComments",
+      label: "Shipping Comments",
+      type: "textarea",
+      fieldPath: "shipments.shippingComments",
+      value: "",
+    });
+
+    openRecordDialog({
+      title: "New Shipment",
+      note: "Enter despatch header fields your role can edit. Customer address stays blank until set on the form.",
+      fields,
+      onSave(vals) {
+        if (!vals.customerId) {
+          toast("Customer is required.");
+          return false;
+        }
+        if (!String(vals.shipOrganisation || "").trim()) {
+          toast("Ship Organisation is required.");
+          return false;
+        }
+        if (!mutate(`Add shipment ${id}`, () => {
+          working.shipments.push({
+            shipmentId: id,
+            shipDate: vals.shipDate || "",
+            reversalEntry: false,
+            customerId: vals.customerId || "",
+            invLocation: "",
+            shipOrganisation: String(vals.shipOrganisation || "").trim(),
+            shipLocation: vals.shipLocation || "",
+            arContact: vals.arContact || "",
+            shippingContact: vals.shippingContact || "",
+            creditHold: false,
+            customerAddress: emptyAddr(),
+            shipMethodId: vals.shipMethodId || "",
+            shipPaymentType: vals.shipPaymentType || "",
+            trackingNumber: "",
+            currency: "GBP",
+            exchangeRate: 1,
+            customRate: false,
+            freightSubtotal: 0,
+            taxTotal: 0,
+            freightTotal: 0,
+            weightTotal: 0,
+            shippingComments: vals.shippingComments || "",
+            printPackingSlip: false,
+            printLabels: false,
+            standardMessage: "",
+            deliveryNoteIssued: false,
+            deliveryNoteNo: "",
+            status: vals.status || "Draft",
+            lines: [],
+            memos: [],
+            attachments: [],
+            followups: [],
+            calls: [],
+          });
+        })) return false;
+        shipId = id;
+        shipTab = "lines";
+        toast(`Shipment ${id} saved to working copy.`);
+        go("shipment");
+        return true;
+      },
+    });
   }
+
 
   function findOrderByAck(ack) {
     const key = String(ack || "").trim().toUpperCase();
@@ -2903,7 +3229,11 @@
   function renderProducts() {
     const root = document.getElementById("productsRoot");
     root.innerHTML = `
-      <article class="card"><div class="table-wrap"><table class="data">
+      <article class="card">
+        <div class="card-actions" style="padding:0.55rem 0.55rem 0">
+          <button type="button" class="btn btn-primary" data-action="add-product" ${editMode && canAdd("products") ? "" : "disabled"}>Add product</button>
+        </div>
+        <div class="table-wrap"><table class="data">
         <thead><tr><th>SKU</th><th>Description</th><th>OH</th><th>ROP</th><th>Lead</th><th>Cost</th><th>Sell</th><th>Flag</th></tr></thead>
         <tbody>${working.products
           .map((p, pi) => {
@@ -2940,18 +3270,203 @@
     return `C${String(max + 1).padStart(3, "0")}`;
   }
 
+  function nextProductSku() {
+    let max = 1000;
+    for (const p of working.products) {
+      const n = Number(String(p.sku).replace(/^P/i, ""));
+      if (!Number.isNaN(n)) max = Math.max(max, n);
+    }
+    return `P${max + 1}`;
+  }
+
   function addCustomer() {
     if (!canAdd("customers")) return toast("Role cannot add customers.");
+    if (!editMode) return toast("Turn on Edit first.");
     const id = nextCustomerId();
-    if (!mutate(`Add customer ${id}`, () => {
-      working.customers.push({ id, name: "New customer", email: "", postcode: "", status: "Active" });
-      if (!working.accounts.some((a) => a.customerId === id)) {
-        working.accounts.push({ customerId: id, accountCode: `ACC-${id}`, creditLimit: 0, paymentTerms: "Net-30" });
-      }
-    })) return;
-    toast(`Customer ${id} added.`);
-    render();
+    const fields = [];
+    fields.push({
+      key: "id",
+      label: "Customer ID",
+      type: "text",
+      value: id,
+      readonly: true,
+      hint: "System key",
+      system: true,
+    });
+    pushCreateField(fields, "customers", {
+      key: "name",
+      label: "Name",
+      type: "text",
+      required: true,
+      fieldPath: "customers.name",
+      value: "",
+      placeholder: "Customer / contact name",
+    });
+    pushCreateField(fields, "customers", {
+      key: "email",
+      label: "Email",
+      type: "email",
+      fieldPath: "customers.email",
+      value: "",
+    });
+    pushCreateField(fields, "customers", {
+      key: "postcode",
+      label: "Postcode",
+      type: "text",
+      fieldPath: "customers.postcode",
+      value: "",
+      placeholder: "UK postcode",
+    });
+    pushCreateField(fields, "customers", {
+      key: "status",
+      label: "Status",
+      type: "select",
+      fieldPath: "customers.status",
+      value: "Active",
+      options: CUSTOMER_STATUSES.map((s) => ({ value: s, label: s })),
+    });
+
+    openRecordDialog({
+      title: "Add Customer",
+      note: "Contact Management · editable fields follow your role. AR account key is created on Save.",
+      fields,
+      onSave(vals) {
+        const name = String(vals.name || "").trim();
+        if (!name) {
+          toast("Name is required.");
+          return false;
+        }
+        if (!mutate(`Add customer ${id}`, () => {
+          working.customers.push({
+            id,
+            name,
+            email: String(vals.email || "").trim(),
+            postcode: String(vals.postcode || "").trim(),
+            status: vals.status || "Active",
+          });
+          if (!working.accounts.some((a) => a.customerId === id)) {
+            working.accounts.push({
+              customerId: id,
+              accountCode: `ACC-${id}`,
+              creditLimit: 0,
+              paymentTerms: "",
+            });
+          }
+        })) return false;
+        toast(`Customer ${id} saved to working copy.`);
+        return true;
+      },
+    });
   }
+
+  function addProduct() {
+    if (!canAdd("products")) return toast("Role cannot add products.");
+    if (!editMode) return toast("Turn on Edit first.");
+    const skuDefault = nextProductSku();
+    const fields = [];
+    pushCreateField(fields, "products", {
+      key: "sku",
+      label: "SKU",
+      type: "text",
+      required: true,
+      fieldPath: "products.sku",
+      isKey: true,
+      value: skuDefault,
+      placeholder: "Product SKU",
+    });
+    pushCreateField(fields, "products", {
+      key: "description",
+      label: "Description",
+      type: "text",
+      required: true,
+      fieldPath: "products.description",
+      isKey: true,
+      value: "",
+    });
+    pushCreateField(fields, "products", {
+      key: "onHand",
+      label: "On Hand",
+      type: "number",
+      fieldPath: "products.onHand",
+      value: "",
+      min: 0,
+      step: 1,
+    });
+    pushCreateField(fields, "products", {
+      key: "reorderPoint",
+      label: "Reorder Point",
+      type: "number",
+      fieldPath: "products.reorderPoint",
+      value: "",
+      min: 0,
+      step: 1,
+    });
+    pushCreateField(fields, "products", {
+      key: "leadDays",
+      label: "Lead Days",
+      type: "number",
+      fieldPath: "products.leadDays",
+      value: "",
+      min: 0,
+      step: 1,
+    });
+    pushCreateField(fields, "products", {
+      key: "cost",
+      label: "Cost",
+      type: "number",
+      fieldPath: "products.cost",
+      value: "",
+      min: 0,
+      step: 0.01,
+    });
+    pushCreateField(fields, "products", {
+      key: "sell",
+      label: "Sell",
+      type: "number",
+      fieldPath: "products.sell",
+      value: "",
+      min: 0,
+      step: 0.01,
+    });
+
+    openRecordDialog({
+      title: "Add Product",
+      note: "Inventory master · only fields your role can edit are shown. Blank numbers stay 0.",
+      fields,
+      onSave(vals) {
+        const sku = String(vals.sku || "").trim().toUpperCase();
+        const description = String(vals.description || "").trim();
+        if (!sku) {
+          toast("SKU is required.");
+          return false;
+        }
+        if (!description) {
+          toast("Description is required.");
+          return false;
+        }
+        if (working.products.some((p) => String(p.sku).toUpperCase() === sku)) {
+          toast(`SKU ${sku} already exists.`);
+          return false;
+        }
+        const num = (v) => (v === "" || v == null || Number.isNaN(Number(v)) ? 0 : Number(v));
+        if (!mutate(`Add product ${sku}`, () => {
+          working.products.push({
+            sku,
+            description,
+            onHand: num(vals.onHand),
+            reorderPoint: num(vals.reorderPoint),
+            leadDays: num(vals.leadDays),
+            cost: num(vals.cost),
+            sell: num(vals.sell),
+          });
+        })) return false;
+        toast(`Product ${sku} saved to working copy.`);
+        go("products");
+        return true;
+      },
+    });
+  }
+
 
   function renderCustomers() {
     const root = document.getElementById("customersRoot");
@@ -3192,6 +3707,7 @@
   function render() {
     renderChrome();
     renderAddFromOrderPanel();
+    renderRecordDialog();
     updatePill();
     syncButtons();
     if (view === "hub") renderHub();
@@ -3289,7 +3805,13 @@
       true
     );
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeToolbarMore();
+      if (e.key === "Escape") {
+        if (recordDialog) {
+          e.preventDefault();
+          return closeRecordDialog();
+        }
+        closeToolbarMore();
+      }
     });
     document.querySelectorAll(".toolbar-more-body .btn, .toolbar-more-body button").forEach((btn) => {
       btn.addEventListener("click", () => closeToolbarMore());
@@ -3367,7 +3889,7 @@
       if (action === "new-shipment") return addShipment();
       if (action === "save-shipment") return toast(editMode ? "Shipment fields save to working copy on change." : "Turn on Edit to change the shipment.");
       if (action === "open-shipment") return toast("Use the Shipment picker to open another ID.");
-      if (action === "next-ship-id") { shipId = nextShipmentId(); return addShipment(); }
+      if (action === "next-ship-id") return addShipment();
       if (action === "prev-shipment" || action === "next-shipment") {
         const list = working.shipments;
         const i = list.findIndex((s) => s.shipmentId === shipId);
@@ -3410,6 +3932,8 @@
       if (action === "afo-close") return closeAddFromOrder();
       if (action === "afo-lookup") return lookupAddFromOrder();
       if (action === "afo-commit") return commitAddFromOrder();
+      if (action === "rec-close") return closeRecordDialog();
+      if (action === "rec-save") return saveRecordDialog();
       if (action === "ship-add-line") {
         if (!canAdd("shipmentLines")) return toast("Role cannot add lines.");
         const ship = currentShipment();
@@ -3447,12 +3971,33 @@
       if (action === "ship-new-followups" || action === "ship-new-calls") {
         const kind = action.endsWith("calls") ? "calls" : "followups";
         const ship = currentShipment();
-        if (!mutate(`New ${kind} on ${ship.shipmentId}`, () => {
-          ship[kind].push({ id: (ship[kind].length || 0) + 1, text: `New ${kind.slice(0, -1)}`, subject: `New ${kind.slice(0, -1)}` });
-        })) return;
-        shipTab = kind;
-        toast(`Added ${kind} item.`);
-        return render();
+        if (!editMode) return toast("Turn on Edit first.");
+        openRecordDialog({
+          title: kind === "calls" ? "New Call" : "New Follow-up",
+          note: `Shipment ${ship.shipmentId} · working copy`,
+          fields: [
+            { key: "subject", label: "Subject", type: "text", required: true, value: "" },
+            { key: "text", label: "Notes", type: "textarea", value: "" },
+          ],
+          onSave(vals) {
+            const subject = String(vals.subject || "").trim();
+            if (!subject) {
+              toast("Subject is required.");
+              return false;
+            }
+            if (!mutate(`New ${kind} on ${ship.shipmentId}`, () => {
+              ship[kind].push({
+                id: (ship[kind].length || 0) + 1,
+                text: String(vals.text || "").trim() || subject,
+                subject,
+              });
+            })) return false;
+            shipTab = kind;
+            toast(`Saved ${kind.slice(0, -1)}.`);
+            return true;
+          },
+        });
+        return;
       }
       if (action === "focus-ship-field") {
         const fieldName = actionEl.dataset.field;
@@ -3488,17 +4033,39 @@
       }
 
       if (action === "add-customer") return addCustomer();
+      if (action === "add-product") return addProduct();
       if (action === "po-new-followups" || action === "po-new-calls") {
         const kind = action.endsWith("calls") ? "calls" : "followups";
         const po = currentPo();
         if (!po) return;
-        if (!mutate(`New ${kind} on PO ${po.poNo}`, () => {
-          if (!Array.isArray(po[kind])) po[kind] = [];
-          po[kind].push({ id: (po[kind].length || 0) + 1, text: `New ${kind.slice(0, -1)}`, subject: `New ${kind.slice(0, -1)}` });
-        })) return;
-        poTab = kind;
-        toast(`Added PO ${kind} item.`);
-        return render();
+        if (!editMode) return toast("Turn on Edit first.");
+        openRecordDialog({
+          title: kind === "calls" ? "New Call" : "New Follow-up",
+          note: `PO ${po.poNo} · working copy`,
+          fields: [
+            { key: "subject", label: "Subject", type: "text", required: true, value: "" },
+            { key: "text", label: "Notes", type: "textarea", value: "" },
+          ],
+          onSave(vals) {
+            const subject = String(vals.subject || "").trim();
+            if (!subject) {
+              toast("Subject is required.");
+              return false;
+            }
+            if (!mutate(`New ${kind} on PO ${po.poNo}`, () => {
+              if (!Array.isArray(po[kind])) po[kind] = [];
+              po[kind].push({
+                id: (po[kind].length || 0) + 1,
+                text: String(vals.text || "").trim() || subject,
+                subject,
+              });
+            })) return false;
+            poTab = kind;
+            toast(`Saved ${kind.slice(0, -1)}.`);
+            return true;
+          },
+        });
+        return;
       }
 
       const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");

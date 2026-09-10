@@ -2186,3 +2186,69 @@ table.data input {
   border-color: #5a6f9e;
   color: #fff;
 }
+
+
+/* —— Record create dialog (C++/M1-style popup; same chrome as Add From Order) —— */
+.rec-overlay {
+  z-index: 90;
+}
+.rec-dialog .rec-titlebar {
+  background: linear-gradient(180deg, #e8ecf0 0%, #d7dde5 100%);
+  border-bottom: 1px solid #9aa5b1;
+}
+.rec-dialog .rec-titlebar h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.rec-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted, #5c6570);
+}
+.rec-fields {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.65rem 0.75rem;
+}
+.rec-fields .field.is-locked label,
+.rec-fields .field.is-locked input,
+.rec-fields .field.is-locked select {
+  opacity: 0.85;
+}
+.rec-fields textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+@media (max-width: 960px) {
+  .rec-overlay.afo-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    background: #fff;
+  }
+  .rec-dialog.afo-dialog {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .rec-dialog .afo-body {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rec-dialog .afo-actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 0.75rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .rec-dialog .afo-actions .btn {
+    flex: 1;
+    min-height: 2.75rem;
+  }
+}
