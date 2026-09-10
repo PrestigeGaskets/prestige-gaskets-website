@@ -22,6 +22,11 @@ M1 Business Analysis / Custom Reports). Hub and module-tree links are **live onl
 AR invoices. Follow-ups / calls open on **Shipment Entry**. Choosing a shipment
 customer fills AR/shipping contact from the customer email.
 
+**Sales** has Finance-equivalent cost/order fields plus PO accuracy/lookups.
+**Confirm** a live quote (14-day window) → Accept → Post creates a ready-to-print
+SO with collect / ship **via** white-label providers. **Shipping** can Issue DN,
+Post (OH out), and **Unpost DN** (OH restore).
+
 Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
 ribbon actions, Requirements pane, **Add From Order**, and detail **Post**
 (stages until toolbar **Post** issues OH).
@@ -31,9 +36,11 @@ Open **PO Entry** for order `70286` / supplier `CITY0002`.
 **End-to-end intake** (see [docs/INTAKE_FLOW.md](docs/INTAKE_FLOW.md) and
 [docs/ACTION_REPOSITORY.md](docs/ACTION_REPOSITORY.md)):
 
-- **Accept quote** / **Receive PO** / ship detail **Post** **stage** until toolbar **Post**.
-- Toolbar **Post** runs baked-in logic (SO / GRN / OH) and writes a **daily action
-  repository** for the active Role (backend/report lookup — no Activity UI).
+- **Accept quote** / **Receive PO** / ship detail **Post** / **Unpost DN** **stage**
+  until toolbar **Post**.
+- Toolbar **Post** runs through polymorphic `PostCommitService` (SO / GRN / OH /
+  unpost) and writes a **daily action repository** for the active Role
+  (backend/report lookup — no Activity UI).
 - Turn **Edit** on; role-gated fields update the working copy (master stays sealed).
 
 Other views: Quotes, Products, Contact Management, AR Invoices, Sales Orders,
@@ -48,9 +55,11 @@ Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
 plus a bottom dock (Hub / Orders / PO / Quotes / More). Desktop layout unchanged.
-**Sales** (with **Edit** on) can read/write customers, quotes, sales-order lines,
-sell price, and customer shipment fields; accept quotes → SO; create shipments.
-Purchasing/Inventory post GRNs. See the Fields view for the full permission network.
+**Sales** (with **Edit** on) has Finance-equivalent product cost/sell rights, PO
+accuracy/lookup fields, quote confirm (14-day live window) → SO ready-to-print, and
+collect/ship **via** white-label procurement providers. **Shipping** issues delivery
+notes with Post / Unpost DN (OH out / restore). See the Fields view for the full
+permission network.
 
 ## Build the `.exe` (Visual Studio)
 

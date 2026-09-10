@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "ActionEntry.h"
 #include "Customer.h"
 #include "Order.h"
 #include "Product.h"
@@ -45,6 +46,27 @@ public:
     virtual void reload() = 0;
     virtual const std::vector<Order>& all() const = 0;
     virtual std::optional<Order> findByNo(const std::string& orderNo) const = 0;
+};
+
+/// Daily action ledger — stage until Post; lookup by Role/day and document keys.
+class IDailyActionRepository {
+public:
+    virtual ~IDailyActionRepository() = default;
+
+    virtual void clearPending() = 0;
+    virtual void stage(ActionEntry entry) = 0;
+    virtual std::vector<ActionEntry> pending() const = 0;
+
+    virtual void appendPosted(ActionEntry entry) = 0;
+    virtual std::vector<ActionEntry> forDay(const std::string& day) const = 0;
+    virtual std::vector<ActionEntry> forActorDay(const std::string& actor,
+                                                 const std::string& day) const = 0;
+    virtual std::vector<ActionEntry> allPosted() const = 0;
+
+    virtual std::vector<ActionEntry> lookupByOrderNo(const std::string& orderNo) const = 0;
+    virtual std::vector<ActionEntry> lookupByQuoteNo(const std::string& quoteNo) const = 0;
+    virtual std::vector<ActionEntry> lookupByPoNo(const std::string& poNo) const = 0;
+    virtual std::vector<ActionEntry> lookupByGrnNo(const std::string& grnNo) const = 0;
 };
 
 }  // namespace bos

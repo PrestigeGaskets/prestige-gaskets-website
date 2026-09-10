@@ -72,6 +72,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\ActionEntry.h" />
     <ClInclude Include="..\include\Application.h" />
     <ClInclude Include="..\include\CommandInvoker.h" />
     <ClInclude Include="..\include\ConsoleUi.h" />
@@ -90,6 +91,7 @@
     <ClInclude Include="..\include\IRolePolicy.h" />
     <ClInclude Include="..\include\IServices.h" />
     <ClInclude Include="..\include\IUserInterface.h" />
+    <ClInclude Include="..\include\IWorkingCopyMutations.h" />
     <ClInclude Include="..\include\IWorkspaceSession.h" />
     <ClInclude Include="..\include\InMemoryStore.h" />
     <ClInclude Include="..\include\IntakeService.h" />
@@ -98,6 +100,7 @@
     <ClInclude Include="..\include\Order.h" />
     <ClInclude Include="..\include\OrderLine.h" />
     <ClInclude Include="..\include\OrderRepository.h" />
+    <ClInclude Include="..\include\PostCommitService.h" />
     <ClInclude Include="..\include\Product.h" />
     <ClInclude Include="..\include\ProductCatalog.h" />
     <ClInclude Include="..\include\PurchaseOrder.h" />
@@ -126,6 +129,7 @@
     <ClCompile Include="..\src\InventoryService.cpp" />
     <ClCompile Include="..\src\ListCatalog.cpp" />
     <ClCompile Include="..\src\OrderRepository.cpp" />
+    <ClCompile Include="..\src\PostCommitService.cpp" />
     <ClCompile Include="..\src\ProductCatalog.cpp" />
     <ClCompile Include="..\src\QuoteRepository.cpp" />
     <ClCompile Include="..\src\QuoteService.cpp" />

@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <ctime>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -24,6 +26,54 @@ int extractTrailingNumber(const std::string& id) {
     } catch (...) {
         return 0;
     }
+}
+
+bool parseGbDate(const std::string& text, std::tm& out) {
+    int d = 0;
+    int m = 0;
+    int y = 0;
+    char slash1 = 0;
+    char slash2 = 0;
+    std::istringstream iss(text);
+    if (!(iss >> d >> slash1 >> m >> slash2 >> y) || slash1 != '/' || slash2 != '/') {
+        return false;
+    }
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1970) {
+        return false;
+    }
+    out = {};
+    out.tm_mday = d;
+    out.tm_mon = m - 1;
+    out.tm_year = y - 1900;
+    return true;
+}
+
+bool quoteStillLive(const Quote& q) {
+    if (q.status != "Open" && q.status != "Sent" && q.status != "Confirmed") {
+        return false;
+    }
+    std::tm quoted{};
+    if (!parseGbDate(q.quotedDate, quoted)) {
+        return false;
+    }
+    const int validDays = q.validDays > 0 ? q.validDays : 14;
+    std::time_t start = std::mktime(&quoted);
+    if (start == -1) {
+        return false;
+    }
+    const std::time_t end = start + static_cast<std::time_t>(validDays) * 24 * 60 * 60;
+    const std::time_t now = std::time(nullptr);
+    std::tm localNow{};
+#if defined(_WIN32)
+    localtime_s(&localNow, &now);
+#else
+    localtime_r(&now, &localNow);
+#endif
+    localNow.tm_hour = 0;
+    localNow.tm_min = 0;
+    localNow.tm_sec = 0;
+    const std::time_t today = std::mktime(&localNow);
+    return today != -1 && today <= end;
 }
 
 }  // namespace
@@ -219,6 +269,14 @@ void WorkingCopyStore::updateOrderField(const std::string& orderNo,
         it->customerId = value;
     } else if (field == "value") {
         it->value = std::stod(value);
+    } else if (field == "readyToPrint") {
+        it->readyToPrint = (value == "true");
+    } else if (field == "shipMethod") {
+        it->shipMethod = value;
+    } else if (field == "via") {
+        it->via = value;
+    } else if (field == "shipPaymentType") {
+        it->shipPaymentType = value;
     } else {
         throw std::runtime_error("Unsupported order field: " + field);
     }
@@ -288,6 +346,13 @@ std::string WorkingCopyStore::convertQuoteToSalesOrder(const std::string& quoteN
     if (qit->lines.empty()) {
         throw std::runtime_error("Quote has no lines: " + quoteNo);
     }
+    if (qit->status != "Confirmed" && qit->status != "Won") {
+        throw std::runtime_error("Quote must be Confirmed before Sales Order conversion: " +
+                                 quoteNo);
+    }
+    if (qit->status == "Confirmed" && !quoteStillLive(*qit)) {
+        throw std::runtime_error("Quote expired (live window elapsed): " + quoteNo);
+    }
     for (const auto& o : orders_) {
         if (o.quoteNo == quoteNo) {
             throw std::runtime_error("Quote already converted to sales order " + o.orderNo);
@@ -300,6 +365,10 @@ std::string WorkingCopyStore::convertQuoteToSalesOrder(const std::string& quoteN
     order.quoteNo = quoteNo;
     order.customerId = qit->customerId;
     order.status = "Open";
+    order.readyToPrint = true;
+    order.shipMethod = qit->shipMethod.empty() ? "CARRIER" : qit->shipMethod;
+    order.via = order.shipMethod == "COLLECT" ? "" : qit->via;
+    order.shipPaymentType = order.shipMethod == "COLLECT" ? "COLLECT" : "PREPAID";
     order.value = 0.0;
     for (const auto& ql : qit->lines) {
         OrderLine ol;
@@ -465,13 +534,72 @@ void WorkingCopyStore::postShipment(const std::string& shipmentId) {
         if (!line.orderNo.empty()) {
             auto oit = std::find_if(orders_.begin(), orders_.end(),
                                     [&](const Order& o) { return o.orderNo == line.orderNo; });
-            if (oit != orders_.end() && oit->status == "Open") {
+            if (oit != orders_.end() &&
+                (oit->status == "Open" || oit->status == "Picked")) {
                 oit->status = "Shipped";
             }
         }
     }
 
     it->status = "Posted";
+    it->deliveryNoteIssued = true;
+    if (it->deliveryNoteNo.empty()) {
+        it->deliveryNoteNo = "DN-" + shipmentId;
+    }
+    it->printPackingSlip = true;
+    it->reversalEntry = false;
+    dirty_ = true;
+}
+
+void WorkingCopyStore::unpostShipment(const std::string& shipmentId) {
+    auto it = std::find_if(shipments_.begin(), shipments_.end(),
+                           [&](const Shipment& s) { return s.shipmentId == shipmentId; });
+    if (it == shipments_.end()) {
+        throw std::runtime_error("Unknown shipment: " + shipmentId);
+    }
+    if (it->status != "Posted") {
+        throw std::runtime_error("Shipment is not posted: " + shipmentId);
+    }
+
+    for (auto& line : it->lines) {
+        if (line.qtyShipped <= 0) {
+            continue;
+        }
+        auto pit = std::find_if(products_.begin(), products_.end(),
+                                [&](const Product& p) { return p.sku == line.sku; });
+        if (pit == products_.end()) {
+            throw std::runtime_error("Unknown product on shipment line: " + line.sku);
+        }
+        pit->onHand += line.qtyShipped;
+        line.shipComplete = false;
+
+        if (!line.orderNo.empty()) {
+            bool stillPosted = false;
+            for (const auto& other : shipments_) {
+                if (other.shipmentId == shipmentId || other.status != "Posted") {
+                    continue;
+                }
+                for (const auto& ol : other.lines) {
+                    if (ol.orderNo == line.orderNo) {
+                        stillPosted = true;
+                        break;
+                    }
+                }
+                if (stillPosted) {
+                    break;
+                }
+            }
+            auto oit = std::find_if(orders_.begin(), orders_.end(),
+                                    [&](const Order& o) { return o.orderNo == line.orderNo; });
+            if (oit != orders_.end() && !stillPosted && oit->status == "Shipped") {
+                oit->status = "Open";
+            }
+        }
+    }
+
+    it->status = "Open";
+    it->reversalEntry = false;
+    it->deliveryNoteIssued = false;
     dirty_ = true;
 }
 

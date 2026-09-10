@@ -2,21 +2,19 @@
 
 #include "ConsoleUi.h"
 #include "CustomerRepository.h"
+#include "DailyActionRepository.h"
 #include "DashboardService.h"
 #include "IntakeService.h"
 #include "InventoryService.h"
 #include "OrderRepository.h"
+#include "PostCommitService.h"
 #include "ProductCatalog.h"
 #include "QuoteRepository.h"
 #include "QuoteService.h"
 #include "RoleHierarchy.h"
 #include "RelationService.h"
-#include "WorkingCopyStore.h"
 #include "WorkspaceSession.h"
 
-#include <chrono>
-#include <ctime>
-#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
@@ -28,7 +26,7 @@ Application::Application() { wire(); }
 
 void Application::wire() {
     auto session = std::make_unique<WorkspaceSession>();
-    workingCopy_ = &session->workingCopy();
+    mutations_ = &session->workingCopy();  // WorkingCopyStore : IWorkingCopyMutations
     IDataStore& store = session->workingStore();
 
     roles_ = std::make_unique<RoleHierarchy>();
@@ -41,45 +39,14 @@ void Application::wire() {
     dashboard_ =
         std::make_unique<DashboardService>(*customers_, *products_, *quoteService_, *orders_);
     relations_ = std::make_unique<RelationService>(store);
-    intake_ = std::make_unique<IntakeService>(*workingCopy_);
+    intake_ = std::make_unique<IntakeService>(*mutations_);
+    actions_ = std::make_unique<DailyActionRepository>();
     ui_ = std::make_unique<ConsoleUi>(*dashboard_, *quoteService_, *inventory_, *customers_,
                                      *orders_);
 
     session_ = std::move(session);
+    postCommit_ = std::make_unique<PostCommitService>(*actions_, *intake_, *session_);
     inventory_->refreshReorderFlags();
-}
-
-std::string Application::nowIso() const {
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{};
-#if defined(_WIN32)
-    gmtime_s(&tm, &t);
-#else
-    gmtime_r(&t, &tm);
-#endif
-    std::ostringstream os;
-    os << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
-    return os.str();
-}
-
-std::string Application::todayLocal() const {
-    const auto now = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{};
-#if defined(_WIN32)
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
-    std::ostringstream os;
-    os << std::put_time(&tm, "%Y-%m-%d");
-    return os.str();
-}
-
-std::string Application::nextActionId() {
-    ++actionSeq_;
-    return "ACT-" + std::to_string(actionSeq_);
 }
 
 bool Application::handleCommand(const std::string& cmd) {
@@ -89,7 +56,7 @@ bool Application::handleCommand(const std::string& cmd) {
     if (cmd == "help" || cmd == "?") {
         ui_->showToast(
             "dashboard|quotes|products|customers|orders|relations|intake|"
-            "accept-quote Q-101|receive-po 70286|post-shipment 275525|"
+            "accept-quote Q-101|receive-po 70286|post-shipment 275525|unpost-shipment 275525|"
             "edit|post|undo|redo|discard|role|status|actions");
         return true;
     }
@@ -119,20 +86,11 @@ bool Application::handleCommand(const std::string& cmd) {
     }
     if (cmd == "status") {
         ui_->showToast(session_->statusSummary() + " | role=" + activeRole_ +
-                       " | pending=" + std::to_string(actions_.pending().size()));
+                       " | pending=" + std::to_string(postCommit_->pendingCount()));
         return true;
     }
     if (cmd == "actions") {
-        std::ostringstream os;
-        os << "pending=" << actions_.pending().size()
-           << " posted=" << actions_.allPosted().size();
-        for (const auto& e : actions_.pending()) {
-            os << "\n  [staged] " << e.type << " " << e.detail;
-        }
-        for (const auto& e : actions_.forActorDay(activeRole_, todayLocal())) {
-            os << "\n  [posted " << e.day << "] " << e.type << " " << e.detail;
-        }
-        ui_->showToast(os.str());
+        ui_->showToast(postCommit_->describePendingAndToday(activeRole_));
         return true;
     }
     if (cmd.rfind("role", 0) == 0) {
@@ -188,73 +146,17 @@ bool Application::handleCommand(const std::string& cmd) {
         return true;
     }
     if (cmd == "post") {
-        const auto pending = actions_.pending();
-        const std::string day = todayLocal();
-        const std::string postedAt = nowIso();
-        std::ostringstream summary;
-        int n = 0;
-
         try {
-            for (const auto& staged : pending) {
-                ActionEntry live = staged;
-                live.actor = activeRole_;
-                live.day = day;
-                live.postedAt = postedAt;
-                live.status = "posted";
-
-                if (staged.type == "accept-quote") {
-                    std::string soNo;
-                    session_->runMutation("post accept-quote " + staged.quoteNo, [&]() {
-                        soNo = intake_->acceptQuoteToSalesOrder(staged.quoteNo);
-                    });
-                    live.orderNo = soNo;
-                    live.detail = "Accept " + staged.quoteNo + " → " + soNo;
-                } else if (staged.type == "receive-po") {
-                    std::string grnNo;
-                    session_->runMutation("post receive-po " + staged.poNo, [&]() {
-                        grnNo = intake_->receivePurchaseOrder(staged.poNo, {}, activeRole_);
-                    });
-                    live.grnNo = grnNo;
-                    live.detail = "Receive " + staged.poNo + " → " + grnNo;
-                } else if (staged.type == "post-shipment") {
-                    session_->runMutation("post shipment " + staged.shipmentId, [&]() {
-                        intake_->postShipment(staged.shipmentId);
-                    });
-                    live.detail = "Ship " + staged.shipmentId + " posted · OH issued";
-                }
-
-                actions_.appendPosted(live);
-                if (n++) summary << " · ";
-                summary << live.detail;
-            }
-            actions_.clearPending();
-
-            if (pending.empty() && session_->isDirty()) {
-                ActionEntry edits;
-                edits.id = nextActionId();
-                edits.day = day;
-                edits.actor = activeRole_;
-                edits.type = "working-copy-edits";
-                edits.status = "posted";
-                edits.stagedAt = postedAt;
-                edits.postedAt = postedAt;
-                edits.detail = "Working-copy field edits";
-                actions_.appendPosted(edits);
-                if (n++) summary << " · ";
-                summary << edits.detail;
-            }
-
+            const PostCommitResult result = postCommit_->commit(activeRole_);
             quotes_->reload();
             orders_->reload();
             products_->reload();
             inventory_->refreshReorderFlags();
-            session_->postJournal();
-
-            if (n == 0) {
+            if (result.count == 0) {
                 ui_->showToast("Posted journal (master remains sealed).");
             } else {
-                ui_->showToast("Posted " + std::to_string(n) + ": " + summary.str() +
-                               " (action repo updated for " + activeRole_ + "/" + day + ")");
+                ui_->showToast("Posted " + std::to_string(result.count) + ": " + result.summary +
+                               " (action repo updated for " + activeRole_ + ")");
             }
         } catch (const std::exception& ex) {
             ui_->showToast(std::string("post failed: ") + ex.what());
@@ -263,7 +165,7 @@ bool Application::handleCommand(const std::string& cmd) {
     }
     if (cmd == "discard") {
         session_->discardToMaster();
-        actions_.clearPending();
+        postCommit_->clearPending();
         customers_->reload();
         products_->reload();
         quotes_->reload();
@@ -307,15 +209,7 @@ bool Application::handleCommand(const std::string& cmd) {
             return true;
         }
         const std::string quoteNo = cmd.substr(13);
-        ActionEntry entry;
-        entry.id = nextActionId();
-        entry.day = todayLocal();
-        entry.actor = activeRole_;
-        entry.type = "accept-quote";
-        entry.stagedAt = nowIso();
-        entry.quoteNo = quoteNo;
-        entry.detail = "Stage accept " + quoteNo + " → Sales Order on Post";
-        actions_.stage(entry);
+        postCommit_->stageAcceptQuote(quoteNo, activeRole_);
         ui_->showToast("Quote " + quoteNo + " staged — run post to create Sales Order.");
         return true;
     }
@@ -330,15 +224,7 @@ bool Application::handleCommand(const std::string& cmd) {
             return true;
         }
         const std::string poNo = cmd.substr(11);
-        ActionEntry entry;
-        entry.id = nextActionId();
-        entry.day = todayLocal();
-        entry.actor = activeRole_;
-        entry.type = "receive-po";
-        entry.stagedAt = nowIso();
-        entry.poNo = poNo;
-        entry.detail = "Stage receive PO " + poNo + " → GRN on Post";
-        actions_.stage(entry);
+        postCommit_->stageReceivePo(poNo, activeRole_);
         ui_->showToast("PO " + poNo + " staged — run post to create GRN.");
         return true;
     }
@@ -355,16 +241,25 @@ bool Application::handleCommand(const std::string& cmd) {
             return true;
         }
         const std::string shipmentId = cmd.substr(14);
-        ActionEntry entry;
-        entry.id = nextActionId();
-        entry.day = todayLocal();
-        entry.actor = activeRole_;
-        entry.type = "post-shipment";
-        entry.stagedAt = nowIso();
-        entry.shipmentId = shipmentId;
-        entry.detail = "Stage ship " + shipmentId + " → OH on Post";
-        actions_.stage(entry);
+        postCommit_->stagePostShipment(shipmentId, activeRole_);
         ui_->showToast("Shipment " + shipmentId + " staged — run post to issue stock.");
+        return true;
+    }
+
+    if (cmd.rfind("unpost-shipment ", 0) == 0) {
+        if (!session_->isEditMode()) {
+            ui_->showToast("Enter edit mode first (edit).");
+            return true;
+        }
+        if (!roles_->canAdd(activeRole_, "shipments") &&
+            !roles_->canEdit(activeRole_, "shipments.status") &&
+            !roles_->canAdd(activeRole_, "*")) {
+            ui_->showToast("Role " + activeRole_ + " cannot unpost shipments.");
+            return true;
+        }
+        const std::string shipmentId = cmd.substr(16);
+        postCommit_->stageUnpostShipment(shipmentId, activeRole_);
+        ui_->showToast("Unpost " + shipmentId + " staged — run post to restore stock.");
         return true;
     }
 
@@ -382,13 +277,13 @@ bool Application::handleCommand(const std::string& cmd) {
         std::string setTok, ohTok, sku;
         double value = 0.0;
         iss >> setTok >> ohTok >> sku >> value;
-        if (!workingCopy_) {
+        if (!mutations_) {
             ui_->showToast("Working copy unavailable.");
             return true;
         }
-        WorkingCopyStore* copy = workingCopy_;
-        session_->runMutation("set OH " + sku, [copy, sku, value]() {
-            copy->updateProductField(sku, "onHand", value);
+        IWorkingCopyMutations* mutations = mutations_;
+        session_->runMutation("set OH " + sku, [mutations, sku, value]() {
+            mutations->updateProductField(sku, "onHand", value);
         });
         products_->reload();
         inventory_->refreshReorderFlags();

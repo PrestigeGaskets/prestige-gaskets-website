@@ -22,7 +22,7 @@ void ConsoleUi::showBanner() {
               << "========================================\n"
               << "Commands: dashboard | quotes | products | customers | orders |\n"
               << "          relations | edit | post | undo | redo | discard | role | status | actions | help | quit\n"
-              << "          accept-quote Q-101 | receive-po 70286 | post-shipment 275525  (stage; finalize on post)\n\n";
+              << "          accept-quote Q-101 | receive-po 70286 | post-shipment 275525 | unpost-shipment 275525  (stage; finalize on post)\n\n";
 }
 
 void ConsoleUi::showToast(const std::string& message) {

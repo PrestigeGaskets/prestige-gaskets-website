@@ -1,6 +1,7 @@
 # Daily action repository (backend lookup)
 
-Operational stage actions (`accept-quote`, `receive-po`, `post-shipment`) and
+Operational stage actions (`accept-quote`, `receive-po`, `post-shipment`,
+`unpost-shipment`) and
 field edits stay on the **working copy** until toolbar / CLI **Post**.
 
 Post finalizes baked-in intake logic and appends rows to an in-memory **daily
@@ -23,7 +24,7 @@ lookups only.
 | `id` | Action id (`ACT-…`) |
 | `day` | `YYYY-MM-DD` business day |
 | `actor` | Active **Role** (Sales, Purchasing, Shipping, …) |
-| `type` | `accept-quote` \| `receive-po` \| `post-shipment` \| `working-copy-edits` |
+| `type` | `accept-quote` \| `receive-po` \| `post-shipment` \| `unpost-shipment` \| `working-copy-edits` |
 | `status` | `staged` \| `posted` \| `failed` |
 | `stagedAt` / `postedAt` | ISO-8601 |
 | `quoteNo` | Lookup → Quote |
@@ -48,9 +49,16 @@ edit
 accept-quote Q-101
 receive-po 70286
 post-shipment 275525
+unpost-shipment 275525
 post
 actions          # pending + today's posted for active role (debug; not a GUI)
 ```
 
-C++: `DailyActionRepository` in `Application` — `lookupByOrderNo` /
-`lookupByQuoteNo` / `lookupByPoNo` / `lookupByGrnNo` / `forActorDay`.
+C++: `IDailyActionRepository` / `DailyActionRepository` owned by Application
+behind `unique_ptr<I…>`; staging + commit via polymorphic `IPostCommitService`
+(`PostCommitService`) depending only on `IDailyActionRepository`, `IIntakeService`,
+and `IWorkspaceSession`. Lookups: `lookupByOrderNo` / `lookupByQuoteNo` /
+`lookupByPoNo` / `lookupByGrnNo` / `forActorDay`.
+
+Intake mutators go through `IWorkingCopyMutations` (implemented by
+`WorkingCopyStore`) so `IntakeService` never depends on a concrete store type.
