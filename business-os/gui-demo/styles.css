@@ -1499,3 +1499,756 @@ table.data input {
   .afo-stats { grid-template-columns: 1fr 1fr; }
   .phone-line-card .plc-grid { grid-template-columns: 1fr; }
 }
+
+/* —— Role-aware master-table dashboard (dark tile grid) —— */
+.dash {
+  --dash-bg: #121417;
+  --dash-tile: #2a2d33;
+  --dash-tile-hover: #343840;
+  --dash-ink: #f3f5f7;
+  --dash-muted: #9aa3ad;
+  --dash-accent: #9eb6ff;
+  --dash-line: #3a3f48;
+  background: var(--dash-bg);
+  color: var(--dash-ink);
+  min-height: calc(100% - 0.2rem);
+  padding: 0.75rem 0.75rem 4.5rem;
+  border-radius: 0;
+}
+
+.dash-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
+.dash-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #1c1f24;
+  border: 1px solid var(--dash-line);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  min-width: 0;
+}
+.dash-search-ico {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--dash-accent);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.dash-search-ico svg { width: 100%; height: 100%; }
+.dash-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dash-ink);
+  padding: 0.35rem 0;
+  font-size: 0.92rem;
+  outline: none;
+}
+.dash-search input::placeholder { color: var(--dash-muted); }
+
+.dash-role {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  max-width: 14rem;
+  text-align: right;
+}
+.dash-role-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--dash-accent);
+}
+.dash-role-blurb {
+  font-size: 0.68rem;
+  color: var(--dash-muted);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dash-tabs {
+  display: flex;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--dash-line);
+  margin-bottom: 0.55rem;
+}
+.dash-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--dash-muted);
+  font-weight: 600;
+  font-size: 0.86rem;
+  padding: 0.55rem 0.7rem 0.65rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.dash-tab.is-active {
+  color: var(--dash-ink);
+  border-bottom-color: var(--dash-accent);
+}
+
+.dash-lead {
+  margin: 0 0 0.75rem;
+  color: var(--dash-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.dash-lead strong { color: var(--dash-ink); }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.dash-tile {
+  appearance: none;
+  border: 0;
+  background: var(--dash-tile);
+  color: var(--dash-ink);
+  border-radius: 14px;
+  min-height: 7.5rem;
+  padding: 0.85rem 0.7rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.dash-tile:hover { background: var(--dash-tile-hover); }
+.dash-tile:active { transform: scale(0.98); }
+.dash-tile-ico {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dash-accent);
+  background: rgba(158, 182, 255, 0.12);
+}
+.dash-tile-ico svg { width: 1.35rem; height: 1.35rem; }
+.dash-tile-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.dash-tile-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--dash-muted);
+  letter-spacing: 0.02em;
+}
+.dash-tile.is-write .dash-tile-badge { color: #9fd6b5; }
+.dash-tile-count {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.55rem;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  color: var(--dash-muted);
+  background: rgba(0,0,0,0.25);
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+}
+.dash-empty {
+  grid-column: 1 / -1;
+  margin: 1.5rem 0;
+  text-align: center;
+  color: var(--dash-muted);
+}
+
+.dash-fab {
+  position: fixed;
+  right: max(0.85rem, var(--safe-r, 0px));
+  bottom: calc(4.25rem + var(--safe-b));
+  width: 3.15rem;
+  height: 3.15rem;
+  border-radius: 999px;
+  border: 0;
+  background: #f4f6f8;
+  color: #3b5bcc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+  cursor: pointer;
+  z-index: 35;
+}
+.dash-fab svg { width: 1.35rem; height: 1.35rem; }
+
+.classic-hub {
+  background: transparent;
+}
+.classic-hub .hub-panel {
+  background: #f0ece0;
+  color: var(--ink);
+}
+
+@media (min-width: 961px) {
+  .dash {
+    padding: 1rem 1rem 2rem;
+    border-radius: 4px;
+  }
+  .dash-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .dash-fab {
+    bottom: 1.25rem;
+    right: 1.25rem;
+  }
+  .dash-role { max-width: 18rem; }
+}
+
+@media (max-width: 960px) {
+  #view-hub.is-active {
+    padding: 0;
+    background: #121417;
+  }
+  #hubGrid { min-height: 100%; }
+  .dash-role-blurb { display: none; }
+  .dash-top { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+/* —— Dark stage theme for dock tabs (Hub already dark via .dash).
+   Applies to Orders / Despatch / PO and other workspace views.
+   Explicitly does NOT restyle .icon-rail (More / My Shortcuts). —— */
+#view-orders.is-active,
+#view-shipment.is-active,
+#view-po-entry.is-active,
+#view-purchasing.is-active,
+#view-quotes.is-active,
+#view-products.is-active,
+#view-customers.is-active,
+#view-invoices.is-active,
+#view-receipt.is-active,
+#view-intake.is-active,
+#view-relations.is-active,
+#view-fields.is-active {
+  --ink: #f3f5f7;
+  --muted: #9aa3ad;
+  --line: #3a3f48;
+  --line-soft: #2e333b;
+  --panel: #1c1f24;
+  --panel-inner: #2a2d33;
+  --head: #3a4050;
+  --select: #3d4f7a;
+  --accent: #9eb6ff;
+  --warn: #e0a15a;
+  --danger: #f0a090;
+  --ok: #9fd6b5;
+  --tree: #1a1d22;
+  background: #121417;
+  color: var(--ink);
+  min-height: 100%;
+}
+
+/* Stage canvas matches active dark view (Hub included). More drawer untouched. */
+.shell:has(#view-hub.is-active) .stage,
+.shell:has(#view-orders.is-active) .stage,
+.shell:has(#view-shipment.is-active) .stage,
+.shell:has(#view-po-entry.is-active) .stage,
+.shell:has(#view-purchasing.is-active) .stage,
+.shell:has(#view-quotes.is-active) .stage,
+.shell:has(#view-products.is-active) .stage,
+.shell:has(#view-customers.is-active) .stage,
+.shell:has(#view-invoices.is-active) .stage,
+.shell:has(#view-receipt.is-active) .stage,
+.shell:has(#view-intake.is-active) .stage,
+.shell:has(#view-relations.is-active) .stage,
+.shell:has(#view-fields.is-active) .stage {
+  background: #121417;
+}
+
+#view-orders.is-active .view-head h1,
+#view-shipment.is-active .view-head h1,
+#view-po-entry.is-active .view-head h1,
+#view-purchasing.is-active .view-head h1,
+#view-quotes.is-active .view-head h1,
+#view-products.is-active .view-head h1,
+#view-customers.is-active .view-head h1,
+#view-invoices.is-active .view-head h1,
+#view-receipt.is-active .view-head h1,
+#view-intake.is-active .view-head h1,
+#view-relations.is-active .view-head h1,
+#view-fields.is-active .view-head h1 {
+  color: var(--ink);
+}
+
+#view-orders.is-active .card,
+#view-purchasing.is-active .card,
+#view-quotes.is-active .card,
+#view-products.is-active .card,
+#view-customers.is-active .card,
+#view-invoices.is-active .card,
+#view-receipt.is-active .card,
+#view-intake.is-active .card,
+#view-relations.is-active .card,
+#view-fields.is-active .card {
+  background: var(--panel-inner);
+  border-color: var(--line);
+  color: var(--ink);
+  border-radius: 12px;
+}
+
+#view-orders.is-active .btn,
+#view-shipment.is-active .btn,
+#view-po-entry.is-active .btn,
+#view-purchasing.is-active .btn,
+#view-quotes.is-active .btn,
+#view-products.is-active .btn,
+#view-customers.is-active .btn,
+#view-invoices.is-active .btn,
+#view-receipt.is-active .btn,
+#view-intake.is-active .btn,
+#view-relations.is-active .btn,
+#view-fields.is-active .btn {
+  background: #2a2d33;
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-orders.is-active .btn-primary,
+#view-shipment.is-active .btn-primary,
+#view-po-entry.is-active .btn-primary,
+#view-purchasing.is-active .btn-primary,
+#view-quotes.is-active .btn-primary,
+#view-products.is-active .btn-primary,
+#view-customers.is-active .btn-primary,
+#view-invoices.is-active .btn-primary,
+#view-receipt.is-active .btn-primary,
+#view-intake.is-active .btn-primary,
+#view-relations.is-active .btn-primary,
+#view-fields.is-active .btn-primary,
+#view-orders.is-active .btn.is-active,
+#view-shipment.is-active .btn.is-active,
+#view-po-entry.is-active .btn.is-active {
+  background: #3d4f7a;
+  border-color: #5a6f9e;
+  color: #fff;
+}
+#view-orders.is-active .btn-danger,
+#view-shipment.is-active .btn-danger,
+#view-po-entry.is-active .btn-danger {
+  color: var(--danger);
+  border-color: #6a3a32;
+}
+
+/* Shared form controls inside dark views */
+#view-orders.is-active input,
+#view-orders.is-active select,
+#view-orders.is-active textarea,
+#view-shipment.is-active input,
+#view-shipment.is-active select,
+#view-shipment.is-active textarea,
+#view-po-entry.is-active input,
+#view-po-entry.is-active select,
+#view-po-entry.is-active textarea,
+#view-purchasing.is-active input,
+#view-purchasing.is-active select,
+#view-purchasing.is-active textarea,
+#view-quotes.is-active input,
+#view-quotes.is-active select,
+#view-quotes.is-active textarea,
+#view-products.is-active input,
+#view-products.is-active select,
+#view-products.is-active textarea,
+#view-customers.is-active input,
+#view-customers.is-active select,
+#view-customers.is-active textarea,
+#view-invoices.is-active input,
+#view-invoices.is-active select,
+#view-invoices.is-active textarea,
+#view-receipt.is-active input,
+#view-receipt.is-active select,
+#view-receipt.is-active textarea,
+#view-intake.is-active input,
+#view-intake.is-active select,
+#view-intake.is-active textarea,
+#view-relations.is-active input,
+#view-relations.is-active select,
+#view-relations.is-active textarea,
+#view-fields.is-active input,
+#view-fields.is-active select,
+#view-fields.is-active textarea,
+#view-orders.is-active .form-grid input,
+#view-orders.is-active .form-grid select,
+#view-orders.is-active .card .data input,
+#view-shipment.is-active .field input,
+#view-shipment.is-active .field select,
+#view-shipment.is-active .field textarea,
+#view-po-entry.is-active .field input,
+#view-po-entry.is-active .field select,
+#view-po-entry.is-active .field textarea,
+#view-shipment.is-active table.data input,
+#view-po-entry.is-active table.data input {
+  background: #121417;
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-orders.is-active input:disabled,
+#view-orders.is-active select:disabled,
+#view-shipment.is-active input:disabled,
+#view-shipment.is-active select:disabled,
+#view-po-entry.is-active input:disabled,
+#view-po-entry.is-active select:disabled,
+#view-purchasing.is-active input:disabled,
+#view-quotes.is-active input:disabled,
+#view-products.is-active input:disabled,
+#view-customers.is-active input:disabled {
+  background: #1a1d22;
+  color: var(--muted);
+}
+
+#view-orders.is-active table.data,
+#view-shipment.is-active table.data,
+#view-po-entry.is-active table.data,
+#view-purchasing.is-active table.data,
+#view-quotes.is-active table.data,
+#view-products.is-active table.data,
+#view-customers.is-active table.data,
+#view-invoices.is-active table.data,
+#view-receipt.is-active table.data,
+#view-relations.is-active table.data,
+#view-fields.is-active table.data {
+  background: var(--panel-inner);
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-orders.is-active table.data th,
+#view-shipment.is-active table.data th,
+#view-po-entry.is-active table.data th,
+#view-purchasing.is-active table.data th,
+#view-quotes.is-active table.data th,
+#view-products.is-active table.data th,
+#view-customers.is-active table.data th,
+#view-invoices.is-active table.data th,
+#view-receipt.is-active table.data th,
+#view-relations.is-active table.data th,
+#view-fields.is-active table.data th {
+  color: var(--muted);
+  border-color: var(--line-soft);
+}
+#view-orders.is-active table.data td,
+#view-shipment.is-active table.data td,
+#view-po-entry.is-active table.data td {
+  border-color: var(--line-soft);
+}
+
+#view-orders.is-active .linkish,
+#view-shipment.is-active .linkish,
+#view-po-entry.is-active .linkish,
+#view-purchasing.is-active .linkish,
+#view-quotes.is-active .linkish,
+#view-customers.is-active .linkish,
+#view-invoices.is-active .linkish,
+#view-receipt.is-active .linkish,
+#view-intake.is-active .linkish {
+  color: var(--accent);
+}
+
+/* PO + Despatch chrome */
+#view-shipment.is-active .po-ribbon,
+#view-po-entry.is-active .po-ribbon {
+  background: #1c1f24;
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-shipment.is-active .po-picker,
+#view-po-entry.is-active .po-picker {
+  color: var(--muted);
+}
+#view-shipment.is-active .po-picker select,
+#view-po-entry.is-active .po-picker select {
+  background: #121417;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+#view-shipment.is-active .po-tree,
+#view-po-entry.is-active .po-tree {
+  background: #1a1d22;
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-shipment.is-active .po-tree-active,
+#view-po-entry.is-active .po-tree-active {
+  background: #3d4f7a;
+  color: #fff;
+}
+#view-shipment.is-active .po-tree-node,
+#view-po-entry.is-active .po-tree-node {
+  color: var(--ink);
+}
+#view-shipment.is-active .po-tree-node.is-active,
+#view-shipment.is-active .po-tree-node:hover,
+#view-po-entry.is-active .po-tree-node.is-active,
+#view-po-entry.is-active .po-tree-node:hover {
+  background: #2a3350;
+}
+
+#view-shipment.is-active .po-msg,
+#view-po-entry.is-active .po-msg {
+  border-top-color: var(--line-soft);
+  color: var(--muted);
+}
+#view-shipment.is-active .po-msg-tabs,
+#view-po-entry.is-active .po-msg-tabs {
+  color: var(--ink);
+}
+
+#view-shipment.is-active .po-form,
+#view-po-entry.is-active .po-form {
+  background: var(--panel);
+  border-color: var(--line);
+}
+#view-shipment.is-active .po-section,
+#view-po-entry.is-active .po-section {
+  background: var(--panel-inner);
+  border-color: var(--line);
+}
+#view-shipment.is-active .po-section-head,
+#view-po-entry.is-active .po-section-head {
+  background: #323844;
+  color: #fff;
+}
+
+#view-shipment.is-active .lookup-btn,
+#view-po-entry.is-active .lookup-btn {
+  background: #2a2d33;
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-shipment.is-active .req-link,
+#view-po-entry.is-active .req-link {
+  color: #f0a090;
+}
+#view-shipment.is-active .addr-col,
+#view-po-entry.is-active .addr-col {
+  color: var(--ink);
+}
+
+/* Phone despatch / line cards */
+#view-shipment.is-active .ship-phone-bar {
+  background: rgba(18, 20, 23, 0.96);
+  border-top-color: var(--line);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+}
+#view-shipment.is-active .phone-line-card,
+#view-shipment.is-active .afo-phone-line {
+  background: var(--panel-inner);
+  border-color: var(--line);
+  color: var(--ink);
+}
+#view-shipment.is-active .ribbon-more > summary {
+  background: #1c1f24;
+  border-color: var(--line);
+  color: var(--muted);
+}
+#view-shipment.is-active .ribbon-more[open] > summary {
+  background: #2a3350;
+  color: var(--ink);
+}
+#view-shipment.is-active .ribbon-more-body .btn {
+  background: #2a2d33;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+/* Add From Order sheet when opened from Despatch */
+.shell:has(#view-shipment.is-active) .afo-overlay {
+  background: rgba(0, 0, 0, 0.72);
+}
+.shell:has(#view-shipment.is-active) .afo-dialog {
+  background: #1c1f24;
+  color: #f3f5f7;
+  border-color: #3a3f48;
+}
+.shell:has(#view-shipment.is-active) .afo-head {
+  background: #1c1f24;
+  border-bottom: 1px solid #3a3f48;
+}
+.shell:has(#view-shipment.is-active) .afo-stat {
+  background: #2a2d33;
+  border-color: #3a3f48;
+}
+.shell:has(#view-shipment.is-active) .afo-actions {
+  background: #1c1f24;
+  border-top: 1px solid #3a3f48;
+}
+
+/* Toast over dark stage */
+.shell:has(#view-hub.is-active) .toast,
+.shell:has(#view-orders.is-active) .toast,
+.shell:has(#view-shipment.is-active) .toast,
+.shell:has(#view-po-entry.is-active) .toast,
+.shell:has(#view-purchasing.is-active) .toast,
+.shell:has(#view-quotes.is-active) .toast,
+.shell:has(#view-products.is-active) .toast,
+.shell:has(#view-customers.is-active) .toast,
+.shell:has(#view-invoices.is-active) .toast,
+.shell:has(#view-receipt.is-active) .toast,
+.shell:has(#view-intake.is-active) .toast,
+.shell:has(#view-relations.is-active) .toast,
+.shell:has(#view-fields.is-active) .toast {
+  background: #243028;
+  border-color: #3d5a4a;
+  color: #9fd6b5;
+}
+
+/* More / My Shortcuts (.icon-rail) stays on the existing light M1 chrome. */
+
+@media (max-width: 960px) {
+  #view-orders.is-active,
+  #view-shipment.is-active,
+  #view-po-entry.is-active,
+  #view-purchasing.is-active,
+  #view-quotes.is-active,
+  #view-products.is-active,
+  #view-customers.is-active,
+  #view-invoices.is-active,
+  #view-receipt.is-active,
+  #view-intake.is-active,
+  #view-relations.is-active,
+  #view-fields.is-active {
+    padding: 0.45rem 0.45rem 5.5rem;
+  }
+}
+
+/* Dark overrides for phone hardcodes (white chips / bars) */
+@media (max-width: 960px) {
+  #view-po-entry.is-active .po-tree-node,
+  #view-shipment.is-active .po-tree-node {
+    background: #2a2d33;
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  #view-po-entry.is-active .po-tree-node.is-active,
+  #view-shipment.is-active .po-tree-node.is-active {
+    background: #3d4f7a;
+    border-color: #5a6f9e;
+    color: #fff;
+  }
+  #view-shipment.is-active .po-tree {
+    background: #1a1d22;
+    border-bottom-color: var(--line);
+  }
+  #view-shipment.is-active .ship-phone-bar {
+    background: rgba(18, 20, 23, 0.97);
+    border-top-color: var(--line);
+  }
+  #view-shipment.is-active .ribbon-more[open] > summary,
+  #view-po-entry.is-active .ribbon-more[open] > summary {
+    background: #2a3350;
+  }
+  #view-shipment.is-active .ribbon-more > summary,
+  #view-po-entry.is-active .ribbon-more > summary {
+    background: #1c1f24;
+    border-color: var(--line);
+    color: var(--muted);
+  }
+}
+
+.shell:has(#view-shipment.is-active) .afo-dialog {
+  background: #1c1f24 !important;
+  color: #f3f5f7;
+}
+.shell:has(#view-shipment.is-active) .afo-dialog input,
+.shell:has(#view-shipment.is-active) .afo-dialog select {
+  background: #121417;
+  border-color: #3a3f48;
+  color: #f3f5f7;
+}
+.shell:has(#view-shipment.is-active) .afo-dialog .btn {
+  background: #2a2d33;
+  border-color: #3a3f48;
+  color: #f3f5f7;
+}
+.shell:has(#view-shipment.is-active) .afo-dialog .btn-primary {
+  background: #3d4f7a;
+  border-color: #5a6f9e;
+  color: #fff;
+}
+
+
+/* —— Record create dialog (C++/M1-style popup; same chrome as Add From Order) —— */
+.rec-overlay {
+  z-index: 90;
+}
+.rec-dialog .rec-titlebar {
+  background: linear-gradient(180deg, #e8ecf0 0%, #d7dde5 100%);
+  border-bottom: 1px solid #9aa5b1;
+}
+.rec-dialog .rec-titlebar h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.rec-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted, #5c6570);
+}
+.rec-fields {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.65rem 0.75rem;
+}
+.rec-fields .field.is-locked label,
+.rec-fields .field.is-locked input,
+.rec-fields .field.is-locked select {
+  opacity: 0.85;
+}
+.rec-fields textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+@media (max-width: 960px) {
+  .rec-overlay.afo-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    background: #fff;
+  }
+  .rec-dialog.afo-dialog {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .rec-dialog .afo-body {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rec-dialog .afo-actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 0.75rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  .rec-dialog .afo-actions .btn {
+    flex: 1;
+    min-height: 2.75rem;
+  }
+}
