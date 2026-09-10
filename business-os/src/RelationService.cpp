@@ -22,11 +22,16 @@ std::vector<RelationEdge> RelationService::catalog() const {
          "Quote header owns lines"},
         {"1:N", "Order", "OrderLine", "Order.lines[] / OrderLine.orderNo",
          "Order header owns lines"},
+        {"1:N", "Supplier", "PurchaseOrder", "PurchaseOrder.supplierId",
+         "Supplier has many purchase orders"},
+        {"1:N", "PurchaseOrder", "PoLine", "PurchaseOrder.lines[] / PoLine.poNo",
+         "PO header owns lines"},
         {"M:N", "Product", "Tag", "ProductTag", "Junction ProductTag(sku, tagId)"},
         {"M:N", "Product", "Supplier", "ProductSupplier",
          "Junction ProductSupplier(sku, supplierId)"},
         {"M:N", "Quote", "Product", "QuoteLine", "Association entity QuoteLine"},
         {"M:N", "Order", "Product", "OrderLine", "Association entity OrderLine"},
+        {"M:N", "PurchaseOrder", "Product", "PoLine", "Association entity PoLine"},
     };
 }
 
@@ -129,6 +134,18 @@ std::vector<std::string> RelationService::validate() const {
         }
         if (!supplierIds.count(ps.supplierId)) {
             issues.push_back("ProductSupplier orphan supplierId=" + ps.supplierId);
+        }
+    }
+
+    for (const auto& po : store_.loadPurchaseOrders()) {
+        if (!supplierIds.count(po.supplierId)) {
+            issues.push_back("PurchaseOrder " + po.poNo + " orphan supplierId=" + po.supplierId);
+        }
+        for (const auto& line : po.lines) {
+            if (!skus.count(line.sku)) {
+                issues.push_back("PoLine " + po.poNo + "/" + std::to_string(line.line) +
+                                 " orphan sku=" + line.sku);
+            }
         }
     }
 

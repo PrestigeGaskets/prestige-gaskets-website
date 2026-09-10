@@ -1,157 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Rushmore Business OS</title>
+  <title>Rushmore Business OS — M1 Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="atmosphere" aria-hidden="true"></div>
-
-  <div class="app-shell" role="application" aria-label="Rushmore Business OS">
+  <div id="app" class="shell">
     <header class="titlebar">
-      <div class="brand-inline">
-        <p class="brand-mark">RUSHMORE</p>
-        <p class="brand-sub">Business OS</p>
+      <div class="brand">
+        <span class="brand-name">RUSHMORE</span>
+        <span class="brand-product">Business OS</span>
       </div>
-      <div class="session-bar">
-        <label class="role-picker">
-          <span>Role</span>
-          <select id="role-select" aria-label="Active role"></select>
+      <div class="session">
+        <label class="session-role">
+          Role
+          <select id="roleSelect"></select>
         </label>
-        <p class="copy-pill" id="copy-pill" title="Edits save to your working copy only">Working copy</p>
-        <div class="cmd-bar" id="global-cmd-bar" role="toolbar" aria-label="Workspace commands">
-          <button type="button" class="cmd-btn" id="btn-edit" title="Toggle edit mode">Edit</button>
-          <button type="button" class="cmd-btn cmd-primary" id="btn-post" title="Post working copy to journal">Post</button>
-          <button type="button" class="cmd-btn" id="btn-undo" title="Undo last change">Undo</button>
-          <button type="button" class="cmd-btn" id="btn-redo" title="Redo">Redo</button>
-          <button type="button" class="cmd-btn cmd-danger" id="btn-discard" title="Discard working-copy changes">Discard</button>
+        <span id="copyPill" class="pill">Working · clean</span>
+        <div class="toolbar" role="toolbar" aria-label="Workspace">
+          <button type="button" id="btnEdit" class="btn">Edit</button>
+          <button type="button" id="btnPost" class="btn btn-primary">Post</button>
+          <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
+          <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
+          <button type="button" id="btnDiscard" class="btn btn-danger" disabled>Discard</button>
         </div>
       </div>
     </header>
 
-    <aside class="rail" aria-label="Primary">
-      <nav class="nav" id="primary-nav">
-        <button type="button" class="nav-item is-active" data-view="dashboard">Dashboard</button>
-        <button type="button" class="nav-item" data-view="quotes">Quotes</button>
-        <button type="button" class="nav-item" data-view="products">Products</button>
-        <button type="button" class="nav-item" data-view="customers">Customers</button>
-        <button type="button" class="nav-item" data-view="orders">Orders</button>
-        <button type="button" class="nav-item" data-view="relations">Relations</button>
-        <button type="button" class="nav-item" data-view="fields">Fields</button>
-      </nav>
-      <div class="rail-meta">
-        <p id="role-blurb"></p>
-        <p class="rail-foot">Master stays sealed · writes hit working copy only</p>
+    <aside class="icon-rail" aria-label="My Shortcuts">
+      <div class="icon-rail-scroll" id="iconRail"></div>
+      <div class="icon-rail-foot">My Shortcuts</div>
+    </aside>
+
+    <aside class="tree-pane">
+      <div class="tree-search">
+        <input type="search" id="treeSearch" placeholder="Start Search" autocomplete="off" />
       </div>
+      <nav class="tree" id="moduleTree" aria-label="Modules"></nav>
+      <div class="tree-filters" id="treeFilters" role="tablist" aria-label="Module filter"></div>
     </aside>
 
     <main class="stage">
-      <p class="toast" id="toast" hidden></p>
+      <div id="toast" class="toast" hidden></div>
 
-      <section id="view-dashboard" class="view is-active" data-view-panel="dashboard">
-        <header class="view-head view-head-row">
+      <section id="view-hub" class="view is-active" data-view="hub">
+        <div id="hubGrid" class="hub-grid" aria-label="Management hub"></div>
+      </section>
+
+      <section id="view-po-entry" class="view" data-view="po-entry" hidden>
+        <div class="po-ribbon" id="poRibbon"></div>
+        <div class="po-workspace">
+          <aside class="po-tree" id="poTree"></aside>
+          <div class="po-form" id="poForm"></div>
+        </div>
+      </section>
+
+      <section id="view-purchasing" class="view" data-view="purchasing" hidden>
+        <header class="view-head row">
           <div>
-            <h1>Dashboard</h1>
-            <p id="dash-status">Command centre for the working copy.</p>
+            <h1>Open Purchase Orders</h1>
+            <p>Supplier POs · working copy only</p>
           </div>
-          <div class="cmd-bar dash-cmd-bar" role="toolbar" aria-label="Dashboard commands">
-            <button type="button" class="cmd-btn" data-cmd="edit">Edit</button>
-            <button type="button" class="cmd-btn cmd-primary" data-cmd="post">Post</button>
-            <button type="button" class="cmd-btn" data-cmd="undo">Undo</button>
-            <button type="button" class="cmd-btn" data-cmd="redo">Redo</button>
-            <button type="button" class="cmd-btn cmd-danger" data-cmd="discard">Discard</button>
-          </div>
+          <button type="button" class="btn btn-primary" data-action="new-po">New PO</button>
         </header>
-
-        <div class="status-strip" id="status-strip"></div>
-        <div class="metric-strip" id="metric-strip"></div>
-
-        <div class="split">
-          <div class="panel">
-            <h2>Open quote value</h2>
-            <p class="hero-figure" id="grand-total">£0.00</p>
-            <p class="panel-note">QuoteLines qty × price · GBP</p>
-          </div>
-          <div class="panel">
-            <h2>Reorder watch</h2>
-            <ul class="watch-list" id="reorder-watch"></ul>
-          </div>
-        </div>
-
-        <div class="dash-grid">
-          <article class="panel dash-panel">
-            <h2>Quick actions</h2>
-            <div class="quick-actions" id="quick-actions"></div>
-          </article>
-          <article class="panel dash-panel">
-            <h2>Pending vs master</h2>
-            <ul class="change-list" id="change-list"></ul>
-          </article>
-          <article class="panel dash-panel dash-panel-wide">
-            <div class="panel-head-row">
-              <h2>Activity</h2>
-              <button type="button" class="ghost-btn" id="btn-clear-activity">Clear</button>
-            </div>
-            <ul class="activity-list" id="activity-list"></ul>
-          </article>
-        </div>
+        <div id="poList" class="stack"></div>
       </section>
 
-      <section id="view-quotes" class="view" data-view-panel="quotes" hidden>
-        <header class="view-head">
-          <h1>Quotes</h1>
-          <p>Fields unlock by role · deltas stay off master</p>
-        </header>
-        <div id="quotes-root" class="card-stack"></div>
+      <section id="view-quotes" class="view" data-view="quotes" hidden>
+        <header class="view-head"><h1>Quotes</h1><p>Sales quotes · GBP</p></header>
+        <div id="quotesRoot" class="stack"></div>
       </section>
 
-      <section id="view-products" class="view" data-view-panel="products" hidden>
-        <header class="view-head">
-          <h1>Products</h1>
-          <p>Inventory / pricing gated by hierarchy</p>
-        </header>
-        <div id="products-root" class="card-stack"></div>
+      <section id="view-orders" class="view" data-view="orders" hidden>
+        <header class="view-head"><h1>Sales Orders</h1><p>Customer orders · GBP</p></header>
+        <div id="ordersRoot" class="stack"></div>
       </section>
 
-      <section id="view-customers" class="view" data-view-panel="customers" hidden>
-        <header class="view-head">
-          <h1>Customers</h1>
-          <p>Sales can add customers · UK postcode · GBP elsewhere</p>
-        </header>
-        <div id="customers-root" class="card-stack"></div>
+      <section id="view-products" class="view" data-view="products" hidden>
+        <header class="view-head"><h1>Inventory</h1><p>Products · OH / ROP</p></header>
+        <div id="productsRoot" class="stack"></div>
       </section>
 
-      <section id="view-orders" class="view" data-view-panel="orders" hidden>
-        <header class="view-head">
-          <h1>Orders</h1>
-          <p>1:N lines · optional 1:1 quote conversion · Finance can add</p>
-        </header>
-        <div id="orders-root" class="card-stack"></div>
+      <section id="view-customers" class="view" data-view="customers" hidden>
+        <header class="view-head"><h1>Customers</h1><p>UK postcode · GBP</p></header>
+        <div id="customersRoot" class="stack"></div>
       </section>
 
-      <section id="view-relations" class="view" data-view-panel="relations" hidden>
-        <header class="view-head">
-          <h1>Relations</h1>
-          <p>Master 1:1 · 1:N · M:N graph (sealed with master)</p>
-        </header>
-        <div id="relations-root" class="card-stack"></div>
+      <section id="view-relations" class="view" data-view="relations" hidden>
+        <header class="view-head"><h1>Relations</h1><p>1:1 · 1:N · M:N masters</p></header>
+        <div id="relationsRoot" class="stack"></div>
       </section>
 
-      <section id="view-fields" class="view" data-view-panel="fields" hidden>
-        <header class="view-head">
-          <h1>Field network</h1>
-          <p>Role permissions + Finance custom fields (never written to master)</p>
-        </header>
-        <div id="fields-root" class="card-stack"></div>
+      <section id="view-fields" class="view" data-view="fields" hidden>
+        <header class="view-head"><h1>Field network</h1><p>Role permissions</p></header>
+        <div id="fieldsRoot" class="stack"></div>
       </section>
     </main>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>

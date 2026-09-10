@@ -13,11 +13,19 @@ python3 -m http.server 8765 --directory gui-demo
 # → http://127.0.0.1:8765/
 ```
 
-Or open `gui-demo/index.html` directly. Nav views match the C++ commands:
-Dashboard, Quotes, Products, Customers, Orders — same seed data and totals.
+Or open `gui-demo/index.html` directly. The home hub follows an M1-style
+**Purchasing Management** layout (Entry / Reports / Maintenance / Analysis).
+Open **PO Entry** for order `70286` / supplier `CITY0002`.
+
+Other views: Quotes, Products, Customers, Sales Orders, Relations, Fields.
 
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
 Edits are role-gated and write to a working copy only (master stays sealed).
+
+The dashboard mirrors M1’s **Sales Order Management** chrome: **My Shortcuts**
+rail, module tree with All/Sales/Production/Financial/My Folders filters, and
+hub panels Entry Screens · Reports · Maintenance | M1 Business Analysis ·
+Custom Reports · Close.
 Sales can **add customers**; Finance can **add products/orders** and **define custom fields**.
 See the Fields view for the full permission network.
 Mobile layouts wrap field grids / entity cards / session chrome at ≤860px / ≤420px.

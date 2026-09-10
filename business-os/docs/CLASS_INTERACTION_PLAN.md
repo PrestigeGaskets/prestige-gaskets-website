@@ -121,13 +121,17 @@ main()
 | **1:N** | Customer → Quote / Order | `customerId` |
 | **1:N** | Quote → QuoteLine | `Quote.lines` |
 | **1:N** | Order → OrderLine | `Order.lines` |
+| **1:N** | Supplier → PurchaseOrder | `PurchaseOrder.supplierId` |
+| **1:N** | PurchaseOrder → PoLine / Memo / Attachment | nested children |
 | **M:N** | Product ↔ Tag | `ProductTag` junction |
 | **M:N** | Product ↔ Supplier | `ProductSupplier` junction |
 | **M:N** | Quote ↔ Product | `QuoteLine` association |
 | **M:N** | Order ↔ Product | `OrderLine` association |
+| **M:N** | PurchaseOrder ↔ Product | `PoLine` association |
 
-`RelationService` (`relations` CLI / Relations GUI view) prints this catalog and
-validates FK integrity on the working store.
+GUI: M1-style **Purchasing Management** hub (Entry / Reports / Maintenance /
+Business Analysis) plus **PO Entry** form mapped to the ERP template panels.
+
 
 ## Suggested build / next increments
 

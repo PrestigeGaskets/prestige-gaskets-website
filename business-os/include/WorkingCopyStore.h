@@ -8,7 +8,6 @@
 
 namespace bos {
 
-// Immutable system-of-record. Seeded once; never mutated by user edits.
 class MasterStore : public IDataStore {
 public:
     MasterStore();
@@ -17,6 +16,7 @@ public:
     std::vector<Product> loadProducts() override;
     std::vector<Quote> loadQuotes() override;
     std::vector<Order> loadOrders() override;
+    std::vector<PurchaseOrder> loadPurchaseOrders() override;
     std::vector<std::string> loadList(const std::string& listName) override;
 
     std::vector<CustomerAccount> loadCustomerAccounts() override;
@@ -33,6 +33,7 @@ private:
     std::vector<Product> products_;
     std::vector<Quote> quotes_;
     std::vector<Order> orders_;
+    std::vector<PurchaseOrder> purchaseOrders_;
     std::vector<CustomerAccount> accounts_;
     std::vector<Invoice> invoices_;
     std::vector<Tag> tags_;
@@ -42,8 +43,6 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> lists_;
 };
 
-// Per-session overlay. Transactional tables clone master; relation masters
-// (accounts/tags/suppliers) read through to sealed master.
 class WorkingCopyStore : public IDataStore {
 public:
     explicit WorkingCopyStore(IDataStore& master);
@@ -55,6 +54,7 @@ public:
     std::vector<Product> loadProducts() override;
     std::vector<Quote> loadQuotes() override;
     std::vector<Order> loadOrders() override;
+    std::vector<PurchaseOrder> loadPurchaseOrders() override;
     std::vector<std::string> loadList(const std::string& listName) override;
 
     std::vector<CustomerAccount> loadCustomerAccounts() override;
@@ -68,12 +68,14 @@ public:
     void updateCustomerField(const std::string& id, const std::string& field, const std::string& value);
     void updateQuoteLine(const std::string& quoteNo, int line, const std::string& field, double value);
     void updateOrderField(const std::string& orderNo, const std::string& field, const std::string& value);
+    void updatePoField(const std::string& poNo, const std::string& field, const std::string& value);
 
     struct Snapshot {
         std::vector<Customer> customers;
         std::vector<Product> products;
         std::vector<Quote> quotes;
         std::vector<Order> orders;
+        std::vector<PurchaseOrder> purchaseOrders;
         bool dirty = false;
     };
     Snapshot capture() const;
@@ -85,6 +87,7 @@ private:
     std::vector<Product> products_;
     std::vector<Quote> quotes_;
     std::vector<Order> orders_;
+    std::vector<PurchaseOrder> purchaseOrders_;
     bool dirty_ = false;
 
     void cloneFromMaster();

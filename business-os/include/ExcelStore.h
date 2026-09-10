@@ -30,6 +30,10 @@ public:
         fail();
         return {};
     }
+    std::vector<PurchaseOrder> loadPurchaseOrders() override {
+        fail();
+        return {};
+    }
     std::vector<std::string> loadList(const std::string& /*listName*/) override {
         fail();
         return {};
