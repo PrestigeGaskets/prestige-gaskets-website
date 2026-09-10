@@ -63,7 +63,11 @@ DemoSeed makeDemoSeed() {
     Quote q1;
     q1.quoteNo = "Q-100";
     q1.customerId = "C004";
-    q1.status = "Open";
+    q1.status = "Won";
+    q1.quotedDate = "20/08/2026";
+    q1.validDays = 14;
+    q1.shipMethod = "CARRIER";
+    q1.via = "WL-CITY";
     q1.lines = {
         {"Q-100", 1, "P1001", 10, 4.75, "=D2*E2"},
         {"Q-100", 2, "P1002", 5, 5.90, "=D3*E3"},
@@ -75,7 +79,11 @@ DemoSeed makeDemoSeed() {
     Quote q2;
     q2.quoteNo = "Q-101";
     q2.customerId = "C001";
-    q2.status = "Open";
+    q2.status = "Confirmed";
+    q2.quotedDate = "01/09/2026";
+    q2.validDays = 14;
+    q2.shipMethod = "COLLECT";
+    q2.via = "";
     q2.lines = {
         {"Q-101", 1, "P1003", 40, 2.40, "=D2*E2"},
         {"Q-101", 2, "P1005", 100, 0.95, "=D3*E3"},
@@ -83,13 +91,32 @@ DemoSeed makeDemoSeed() {
     for (const auto& line : q2.lines) {
         q2.value += line.lineTotal();
     }
-    s.quotes = {q1, q2};
+
+    Quote q3;
+    q3.quoteNo = "Q-102";
+    q3.customerId = "C002";
+    q3.status = "Sent";
+    q3.quotedDate = "05/09/2026";
+    q3.validDays = 14;
+    q3.shipMethod = "COURIER";
+    q3.via = "WL-MID";
+    q3.lines = {
+        {"Q-102", 1, "P1006", 12, 3.25, "=D2*E2"},
+    };
+    for (const auto& line : q3.lines) {
+        q3.value += line.lineTotal();
+    }
+    s.quotes = {q1, q2, q3};
 
     Order o1;
     o1.orderNo = "O-500";
     o1.quoteNo = "Q-100";
     o1.customerId = "C004";
     o1.status = "Shipped";
+    o1.readyToPrint = false;
+    o1.shipMethod = "CARRIER";
+    o1.via = "WL-CITY";
+    o1.shipPaymentType = "PREPAID";
     o1.lines = {
         {"O-500", 1, "P1001", 10, 4.75},
         {"O-500", 2, "P1002", 5, 5.90},
@@ -103,6 +130,10 @@ DemoSeed makeDemoSeed() {
     o2.quoteNo = "";
     o2.customerId = "C002";
     o2.status = "Open";
+    o2.readyToPrint = true;
+    o2.shipMethod = "COLLECT";
+    o2.via = "";
+    o2.shipPaymentType = "COLLECT";
     o2.lines = {
         {"O-501", 1, "P1005", 80, 0.95},
         {"O-501", 2, "P1006", 10, 3.25},
@@ -210,6 +241,9 @@ DemoSeed makeDemoSeed() {
     openShip.exchangeRate = 1.0;
     openShip.customerId = "C004";
     openShip.customerAddress = {"Prestige Pilot", "", "", "", "SW1A 1AA", "", ""};
+    openShip.printPackingSlip = true;
+    openShip.deliveryNoteIssued = true;
+    openShip.deliveryNoteNo = "DN-275526";
     openShip.lines = {
         {"275526", 1, "P1001", "", "", 10.0, 0.0, 0.0, 10.0, false, false, "10/09/2026", "",
          "O-500"},
@@ -218,17 +252,18 @@ DemoSeed makeDemoSeed() {
     };
     s.shipments = {draftShip, openShip};
 
-    s.lists["QuoteStatus"] = {"Open", "Sent", "Won", "Lost"};
+    s.lists["QuoteStatus"] = {"Open", "Sent", "Confirmed", "Won", "Lost"};
     s.lists["OrderStatus"] = {"Open", "Picked", "Shipped", "Closed"};
     s.lists["CustomerStatus"] = {"Active", "Inactive"};
     s.lists["InvoiceStatus"] = {"Draft", "Issued", "Paid"};
     s.lists["PoStatus"] = {"Draft", "Pending Approval", "Approved", "Closed", "Received"};
     s.lists["GrnStatus"] = {"Draft", "Posted"};
     s.lists["ShipmentStatus"] = {"Draft", "Open", "Shipped", "Posted", "Closed"};
-    s.lists["ShipPaymentType"] = {"Prepaid", "Collect", "Third Party", "Consignee"};
+    s.lists["ShipPaymentType"] = {"PREPAID", "COLLECT", "THIRD PARTY"};
     s.lists["PaymentTerms"] = {"30 DAYS EOM", "Net-30", "Net-45", "Net-15"};
     s.lists["ShipMethod"] = {"CARRIER", "COLLECT", "COURIER"};
     s.lists["Buyer"] = {"JAMES CRAVEN", "A. BUYER"};
+    s.lists["ProcurementProvider"] = {"WL-CITY", "WL-MID", "WL-CLYDE"};
 
     return s;
 }

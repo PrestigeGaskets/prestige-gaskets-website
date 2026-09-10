@@ -10,7 +10,7 @@ struct ActionEntry {
     std::string id;
     std::string day;       // YYYY-MM-DD (local business day)
     std::string actor;     // role name (Sales, Purchasing, …)
-    std::string type;      // accept-quote | receive-po | post-shipment | working-copy-edits
+    std::string type;      // accept-quote | receive-po | post-shipment | unpost-shipment | working-copy-edits
     std::string status;    // staged | posted | failed
     std::string stagedAt;  // ISO-8601
     std::string postedAt;  // ISO-8601 when posted
