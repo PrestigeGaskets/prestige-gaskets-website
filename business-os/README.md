@@ -14,7 +14,8 @@ python3 -m http.server 8765 --directory gui-demo
 ```
 
 Or open `gui-demo/index.html` directly. The home hub follows an M1-style
-**Purchasing Management** layout (Entry / Reports / Maintenance / Analysis).
+**Sales Order / Purchasing Management** layout (Entry / Reports / Maintenance /
+M1 Business Analysis / Custom Reports / Close).
 Open **PO Entry** for order `70286` / supplier `CITY0002`.
 
 Other views: Quotes, Products, Customers, Sales Orders, Relations, Fields.
@@ -22,13 +23,14 @@ Other views: Quotes, Products, Customers, Sales Orders, Relations, Fields.
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
 Edits are role-gated and write to a working copy only (master stays sealed).
 
-The dashboard mirrors M1’s **Sales Order Management** chrome: **My Shortcuts**
-rail, module tree with All/Sales/Production/Financial/My Folders filters, and
-hub panels Entry Screens · Reports · Maintenance | M1 Business Analysis ·
-Custom Reports · Close.
+The dashboard mirrors M1 chrome: **My Shortcuts** rail, module tree with
+All/Sales/Production/Financial/My Folders filters, and hub panels
+Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports · Close.
+
+**Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
+plus a bottom dock (Hub / Orders / PO / Quotes / More). Desktop layout unchanged.
 Sales can **add customers**; Finance can **add products/orders** and **define custom fields**.
 See the Fields view for the full permission network.
-Mobile layouts wrap field grids / entity cards / session chrome at ≤860px / ≤420px.
 
 ## Build the `.exe` (Visual Studio)
 

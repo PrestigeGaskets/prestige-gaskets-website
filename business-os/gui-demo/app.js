@@ -554,6 +554,69 @@
     });
   }
 
+  function closeMobileNav() {
+    const app = document.getElementById("app");
+    app.classList.remove("is-modules-open", "is-shortcuts-open");
+    document.body.classList.remove("nav-open");
+    const backdrop = document.getElementById("navBackdrop");
+    if (backdrop) backdrop.hidden = true;
+    const btnModules = document.getElementById("btnModules");
+    const btnShortcuts = document.getElementById("btnShortcuts");
+    if (btnModules) btnModules.setAttribute("aria-expanded", "false");
+    if (btnShortcuts) btnShortcuts.setAttribute("aria-expanded", "false");
+  }
+
+  function openMobileNav(which) {
+    const app = document.getElementById("app");
+    closeMobileNav();
+    if (which === "modules") {
+      app.classList.add("is-modules-open");
+      document.getElementById("btnModules")?.setAttribute("aria-expanded", "true");
+    } else if (which === "shortcuts") {
+      app.classList.add("is-shortcuts-open");
+      document.getElementById("btnShortcuts")?.setAttribute("aria-expanded", "true");
+    }
+    document.body.classList.add("nav-open");
+    const backdrop = document.getElementById("navBackdrop");
+    if (backdrop) backdrop.hidden = false;
+  }
+
+  function contextLabel() {
+    if (view === "hub") {
+      if (hub === "sales") return "Sales Order Management";
+      if (hub === "purchasing") return "Purchasing Management";
+      if (hub === "quoting") return "Estimating/Quoting Management";
+      if (hub === "inventory") return "Inventory Management";
+      if (hub === "home") return "My Start Page";
+      return "Management hub";
+    }
+    const labels = {
+      "po-entry": `PO Entry · ${poNo}`,
+      purchasing: "Open Purchase Orders",
+      quotes: "Quotes",
+      orders: "Sales Orders",
+      products: "Inventory",
+      customers: "Customers",
+      relations: "Relations",
+      fields: "Field network",
+    };
+    return labels[view] || view;
+  }
+
+  function syncMobileChrome() {
+    const ctx = document.getElementById("mobileContext");
+    if (ctx) ctx.textContent = contextLabel();
+    document.querySelectorAll(".dock-btn[data-dock]").forEach((btn) => {
+      const key = btn.dataset.dock;
+      const on =
+        (key === "hub" && view === "hub") ||
+        (key === "orders" && view === "orders") ||
+        (key === "po-entry" && view === "po-entry") ||
+        (key === "quotes" && view === "quotes");
+      btn.classList.toggle("is-active", on);
+    });
+  }
+
   /* —— chrome —— */
   function renderChrome() {
     const rail = document.getElementById("iconRail");
@@ -613,6 +676,8 @@
     select.innerHTML = Object.keys(ROLES)
       .map((r) => `<option value="${r}" ${r === role ? "selected" : ""}>${r}</option>`)
       .join("");
+
+    syncMobileChrome();
   }
 
   function showView(name) {
@@ -628,20 +693,28 @@
     hub = name;
     localStorage.setItem(HUB_KEY, name);
     showView("hub");
+    closeMobileNav();
     render();
   }
 
   function go(target) {
     const icon = ICONS.find((i) => i.id === target);
-    if (icon?.toast) return toast(icon.toast);
+    if (icon?.toast) {
+      closeMobileNav();
+      return toast(icon.toast);
+    }
     if (icon?.hub) return setHub(icon.hub);
     if (target === "po-entry") {
       hub = "purchasing";
       localStorage.setItem(HUB_KEY, hub);
     }
     const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "relations", "fields", "hub"];
-    if (!known.includes(target)) return toast(`${target} scaffold`);
+    if (!known.includes(target)) {
+      closeMobileNav();
+      return toast(`${target} scaffold`);
+    }
     showView(target);
+    closeMobileNav();
     render();
   }
 
@@ -1220,7 +1293,30 @@
 
     document.getElementById("treeSearch").oninput = () => renderChrome();
 
+    document.getElementById("btnModules").onclick = () => {
+      const open = document.getElementById("app").classList.contains("is-modules-open");
+      if (open) closeMobileNav();
+      else openMobileNav("modules");
+    };
+    document.getElementById("btnShortcuts").onclick = () => {
+      const open = document.getElementById("app").classList.contains("is-shortcuts-open");
+      if (open) closeMobileNav();
+      else openMobileNav("shortcuts");
+    };
+    document.getElementById("navBackdrop").onclick = () => closeMobileNav();
+    document.querySelectorAll("[data-close-nav]").forEach((btn) => {
+      btn.onclick = () => closeMobileNav();
+    });
+    document.getElementById("dockMore").onclick = () => openMobileNav("shortcuts");
+    document.getElementById("dockHub").onclick = () => {
+      showView("hub");
+      closeMobileNav();
+      render();
+    };
+
     document.getElementById("app").addEventListener("click", (e) => {
+      if (e.target.closest("[data-close-nav]")) return closeMobileNav();
+
       const filterBtn = e.target.closest("[data-tree-filter]");
       if (filterBtn) {
         treeFilter = filterBtn.dataset.treeFilter;
@@ -1238,7 +1334,10 @@
       if (viewBtn) return go(viewBtn.dataset.view);
 
       const toastBtn = e.target.closest("[data-toast]");
-      if (toastBtn) return toast(toastBtn.dataset.toast);
+      if (toastBtn) {
+        closeMobileNav();
+        return toast(toastBtn.dataset.toast);
+      }
 
       const openPo = e.target.closest("[data-open-po]");
       if (openPo) {
