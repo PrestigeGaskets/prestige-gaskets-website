@@ -262,63 +262,109 @@
   const ORDER_STATUSES = ["Open", "Picked", "Shipped", "Closed"];
   const CUSTOMER_STATUSES = ["Active", "Inactive"];
 
+  /* My Shortcuts — same set as M1 rail */
   const ICONS = [
-    { id: "quotes", label: "Quote Entry", ico: "✎" },
-    { id: "orders", label: "Sales Order", ico: "☰" },
-    { id: "po-entry", label: "PO Entry", ico: "📋" },
-    { id: "products", label: "Inventory", ico: "▦" },
-    { id: "customers", label: "Customers", ico: "☺" },
-    { id: "relations", label: "Relations", ico: "⇄" },
-    { id: "fields", label: "Fields", ico: "⚙" },
+    { id: "quotes", label: "Quote Entry", ico: "📝" },
+    { id: "orders", label: "Sales Order Entry", ico: "📦" },
+    { id: "job", label: "Job Entry", ico: "🔧", toast: "Job Entry scaffold" },
+    { id: "po-entry", label: "PO Entry", ico: "🛒" },
+    { id: "shipment", label: "Shipment Entry", ico: "🚚", toast: "Shipment Entry scaffold" },
+    { id: "receipt", label: "Receipt Entry", ico: "📥", toast: "Receipt Entry scaffold" },
+    { id: "ar", label: "AR Invoice Entry", ico: "💵", toast: "AR Invoice Entry scaffold" },
+    { id: "ap", label: "AP Invoice Entry", ico: "📄", toast: "AP Invoice Entry scaffold" },
+    { id: "so-explorer", label: "Sales Order Explorer", ico: "🔍", hub: "sales" },
   ];
+
+  const TREE_FILTERS = ["All", "Sales", "Production", "Financial", "My Folders"];
 
   const TREE = [
     {
+      id: "start",
       title: "My Start Page",
+      ico: "🏠",
+      filter: "All",
       open: true,
-      items: [{ label: "Home Hub", hub: "home" }],
+      items: [{ label: "My Start Page", hub: "home" }],
     },
     {
+      id: "sales",
       title: "Sales",
+      ico: "💰",
+      filter: "Sales",
       open: true,
       items: [
+        { label: "Contact Management", toast: "Contact Management scaffold" },
+        { label: "Follow-up Management", toast: "Follow-up Management scaffold" },
+        { label: "Call Management", toast: "Call Management scaffold" },
+        { label: "Estimating/Quoting Management", hub: "quoting" },
         { label: "Sales Order Management", hub: "sales" },
-        { label: "Quote Entry", view: "quotes" },
-        { label: "Sales Order Entry", view: "orders" },
-        { label: "Customers", view: "customers" },
       ],
     },
     {
+      id: "production",
       title: "Production",
+      ico: "🏭",
+      filter: "Production",
       open: true,
       items: [
+        { label: "HR Management", toast: "HR Management scaffold" },
+        { label: "Job Management", toast: "Job Management scaffold" },
+        { label: "Scheduling Management", toast: "Scheduling Management scaffold" },
+        { label: "Timecard Management", toast: "Timecard Management scaffold" },
+        { label: "Inventory Management", hub: "inventory" },
+        { label: "Quality Management", toast: "Quality Management scaffold" },
+        { label: "Change Request Management", toast: "Change Request Management scaffold" },
+        { label: "Warehouse Management", toast: "Warehouse Management scaffold" },
         { label: "Purchasing Management", hub: "purchasing" },
-        { label: "PO Entry", view: "po-entry" },
-        { label: "Open Purchase Orders", view: "purchasing" },
-        { label: "Inventory", view: "products" },
+        { label: "Receipt Management", toast: "Receipt Management scaffold" },
+        { label: "Shipping Management", toast: "Shipping Management scaffold" },
       ],
     },
     {
+      id: "financial",
       title: "Financial",
+      ico: "🪙",
+      filter: "Financial",
       open: false,
       items: [
-        { label: "AR / Sales Orders", view: "orders" },
-        { label: "AP / Purchasing", hub: "purchasing" },
+        { label: "Accounts Receivable Management", toast: "AR Management scaffold" },
+        { label: "Accounts Payable Management", toast: "AP Management scaffold" },
+        { label: "General Ledger Management", toast: "GL Management scaffold" },
       ],
     },
     {
+      id: "tools",
       title: "Tools",
+      ico: "🛠",
+      filter: "All",
       open: false,
       items: [
         { label: "Relations", view: "relations" },
         { label: "Field Network", view: "fields" },
       ],
     },
+    {
+      id: "custom-reports",
+      title: "Custom Reports",
+      ico: "📊",
+      filter: "My Folders",
+      open: false,
+      items: [{ label: "Planned v Actual", toast: "Custom report scaffold" }],
+    },
+    {
+      id: "custom-forms",
+      title: "Custom Forms",
+      ico: "📋",
+      filter: "My Folders",
+      open: false,
+      items: [{ label: "Form Designer", toast: "Custom forms scaffold" }],
+    },
   ];
 
   let working = loadWorking();
   let role = localStorage.getItem(ROLE_KEY) || "Purchasing";
-  let hub = localStorage.getItem(HUB_KEY) || "purchasing";
+  let hub = localStorage.getItem(HUB_KEY) || "sales";
+  let treeFilter = localStorage.getItem("rushmore-tree-filter-v1") || "All";
   let view = "hub";
   let editMode = sessionStorage.getItem(EDIT_KEY) === "1";
   let poNo = "70286";
@@ -511,30 +557,58 @@
   /* —— chrome —— */
   function renderChrome() {
     const rail = document.getElementById("iconRail");
-    rail.innerHTML = ICONS.map(
-      (i) => `<button type="button" class="icon-btn ${view === i.id || (view === "hub" && i.id === "po-entry" && hub === "purchasing") ? "is-active" : ""}" data-go="${i.id}"><span class="ico">${i.ico}</span><span>${i.label}</span></button>`
+    rail.innerHTML = ICONS.map((i) => {
+      const active =
+        view === i.id ||
+        (i.id === "so-explorer" && view === "hub" && hub === "sales") ||
+        (i.id === "orders" && view === "orders") ||
+        (i.id === "quotes" && view === "quotes") ||
+        (i.id === "po-entry" && view === "po-entry");
+      let attrs = `data-go="${i.id}"`;
+      if (i.toast) attrs = `data-toast="${i.toast}"`;
+      else if (i.hub) attrs = `data-hub="${i.hub}"`;
+      return `<button type="button" class="icon-btn ${active ? "is-active" : ""}" ${attrs} title="${i.label}"><span class="ico">${i.ico}</span><span>${i.label}</span></button>`;
+    }).join("");
+
+    document.getElementById("treeFilters").innerHTML = TREE_FILTERS.map(
+      (f) => `<button type="button" class="tree-filter ${treeFilter === f ? "is-active" : ""}" data-tree-filter="${f}">${f}</button>`
     ).join("");
 
     const tree = document.getElementById("moduleTree");
     const q = (document.getElementById("treeSearch").value || "").trim().toLowerCase();
     tree.innerHTML = TREE.map((group) => {
+      const inFilter =
+        treeFilter === "All" ||
+        group.filter === treeFilter ||
+        (treeFilter !== "All" && group.id === "start");
+      if (!inFilter) return "";
+
       const items = group.items.filter((it) => !q || it.label.toLowerCase().includes(q));
-      if (!items.length) return "";
-      return `<details ${group.open || q ? "open" : ""}>
-        <summary>${group.title}</summary>
+      if (q && !items.length && !group.title.toLowerCase().includes(q)) return "";
+
+      const open =
+        group.open ||
+        !!q ||
+        items.some((it) => it.hub && view === "hub" && hub === it.hub);
+
+      return `<details ${open ? "open" : ""}>
+        <summary><span class="tree-group-ico">${group.ico || ""}</span>${group.title}</summary>
         ${items
           .map((it) => {
             const selected =
               (it.hub && view === "hub" && hub === it.hub) ||
               (it.view && view === it.view);
-            const attrs = it.hub ? `data-hub="${it.hub}"` : `data-view="${it.view}"`;
+            const attrs = it.hub
+              ? `data-hub="${it.hub}"`
+              : it.view
+                ? `data-view="${it.view}"`
+                : `data-toast="${it.toast || "Scaffold"}"`;
             return `<button type="button" class="tree-leaf ${selected ? "is-selected" : ""}" ${attrs}>${it.label}</button>`;
           })
           .join("")}
       </details>`;
     }).join("");
 
-    document.getElementById("roleBlurb").textContent = ROLES[role]?.blurb || "";
     const select = document.getElementById("roleSelect");
     select.innerHTML = Object.keys(ROLES)
       .map((r) => `<option value="${r}" ${r === role ? "selected" : ""}>${r}</option>`)
@@ -558,39 +632,113 @@
   }
 
   function go(target) {
+    const icon = ICONS.find((i) => i.id === target);
+    if (icon?.toast) return toast(icon.toast);
+    if (icon?.hub) return setHub(icon.hub);
     if (target === "po-entry") {
       hub = "purchasing";
       localStorage.setItem(HUB_KEY, hub);
     }
+    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "relations", "fields", "hub"];
+    if (!known.includes(target)) return toast(`${target} scaffold`);
     showView(target);
     render();
   }
 
-  /* —— hub —— */
+  /* —— hub packs (M1: Entry / Reports / Maintenance | Business Analysis / Custom Reports / Close) —— */
   function hubPack() {
     if (hub === "sales") {
       return {
         title: "Sales Order Management",
         explorer: "Sales Order Explorer",
         entry: [
-          { label: "Quote Entry", view: "quotes", ico: "✎" },
-          { label: "Sales Order Entry", view: "orders", ico: "☰" },
-          { label: "Customer Maintenance", view: "customers", ico: "☺" },
+          { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
+          { label: "Sales Order Wizard", toast: "Sales Order Wizard scaffold", ico: "🪄" },
+          { label: "Create Order from RMA Claim", toast: "RMA → Order scaffold", ico: "⚡" },
+          { label: "Create Deposits from Order", toast: "Deposits scaffold", ico: "⚡" },
+          { label: "Pick List Session", toast: "Pick List Session scaffold", ico: "⚡" },
+          { label: "Manufacturing Order Wizard", toast: "MO Wizard scaffold", ico: "🪄" },
         ],
         reports: [
-          { label: "Open Sales Orders", view: "orders", ico: "🖨" },
-          { label: "Quote Totals", view: "quotes", ico: "🖨" },
-          { label: "Order Acknowledgment", toast: "Report scaffold", ico: "🖨" },
+          { label: "Order Acknowledgment", toast: "Order Acknowledgment report", ico: "🖨" },
+          { label: "Order Acknowledgment (Alt)", toast: "Order Acknowledgment alt", ico: "🖨" },
+          { label: "Picking Slip", toast: "Picking Slip report", ico: "🖨" },
+          { label: "Picking Slip (Alt)", toast: "Picking Slip alt", ico: "🖨" },
+          { label: "Sales Order Analysis Report", view: "orders", ico: "🖨", live: true },
+          { label: "New Orders By Employee", toast: "New Orders By Employee", ico: "🖨" },
+          { label: "Booked Orders Report", toast: "Booked Orders Report", ico: "🖨" },
+          { label: "Order Backlog Report", toast: "Order Backlog Report", ico: "🖨" },
         ],
         maintenance: [
-          { label: "Field Network", view: "fields", ico: "⚙" },
-          { label: "Relations Graph", view: "relations", ico: "⚙" },
+          { label: "Shipping Method Maintenance", toast: "Shipping Method Maintenance", ico: "⚙" },
+          { label: "Shipping Payment Type Maintenance", toast: "Shipping Payment Type Maintenance", ico: "⚙" },
+          { label: "Part Group Maintenance", toast: "Part Group Maintenance", ico: "⚙" },
+          { label: "Payment Terms Maintenance", toast: "Payment Terms Maintenance", ico: "⚙" },
+          { label: "Reason Maintenance", toast: "Reason Maintenance", ico: "⚙" },
+          { label: "Standard Message Maintenance", toast: "Standard Message Maintenance", ico: "⚙" },
         ],
         analysis: [
-          { label: `Open quote value · ${money(quoteTotal())}`, view: "quotes", ico: "📊" },
-          { label: "Orders requiring attention", view: "orders", ico: "🔎" },
-          { label: "Customer list", view: "customers", ico: "📅" },
+          { label: "Sales Orders Requiring Approval", view: "orders", ico: "🔎", live: true },
+          { label: `Open Sales Orders · ${working.orders.length}`, view: "orders", ico: "🔎", live: true },
+          { label: "Unprocessed Sales Orders", view: "orders", ico: "🔎", live: true },
+          { label: "Sales Order Backlog", view: "orders", ico: "🔎", live: true },
+          { label: "Sales Orders Made Today", toast: "Sales Orders Made Today", ico: "🔎" },
+          { label: `Open quote value · ${money(quoteTotal())}`, view: "quotes", ico: "📊", live: true },
+          { label: "Sales Order Analysis Trend Graph", toast: "Trend Graph scaffold", ico: "📈" },
+          { label: "Sales Order Analysis Pie Graph", toast: "Pie Graph scaffold", ico: "🕸" },
+          { label: "Sales Order Analysis Calendar", toast: "Calendar scaffold", ico: "📅" },
+          { label: "Sales Order Analysis Google Map", toast: "Map scaffold", ico: "🗺" },
         ],
+        customReports: [{ label: "Planned v Actual", toast: "Planned v Actual report", ico: "📊" }],
+        close: [{ label: "Close Sales Orders", toast: "Close Sales Orders scaffold", ico: "🔨" }],
+      };
+    }
+    if (hub === "quoting") {
+      return {
+        title: "Estimating/Quoting Management",
+        explorer: "Quote Explorer",
+        entry: [
+          { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
+          { label: "Customer Maintenance", view: "customers", ico: "⚡", live: true },
+        ],
+        reports: [
+          { label: "Open Quotes Report", view: "quotes", ico: "🖨", live: true },
+          { label: "Quote Acknowledgment", toast: "Quote Acknowledgment", ico: "🖨" },
+        ],
+        maintenance: [
+          { label: "Standard Message Maintenance", toast: "Standard Message Maintenance", ico: "⚙" },
+          { label: "Field Network", view: "fields", ico: "⚙", live: true },
+        ],
+        analysis: [
+          { label: `Open quote value · ${money(quoteTotal())}`, view: "quotes", ico: "🔎", live: true },
+          { label: "Quotes by customer", view: "customers", ico: "🔎", live: true },
+        ],
+        customReports: [{ label: "Quote Win Rate", toast: "Quote Win Rate scaffold", ico: "📊" }],
+        close: [{ label: "Close Quotes", toast: "Close Quotes scaffold", ico: "🔨" }],
+      };
+    }
+    if (hub === "inventory") {
+      return {
+        title: "Inventory Management",
+        explorer: "Inventory Explorer",
+        entry: [
+          { label: "Inventory / Products", view: "products", ico: "⚡", live: true },
+          { label: "Product–Supplier Links", view: "relations", ico: "⚡", live: true },
+        ],
+        reports: [
+          { label: "Reorder Point Report", view: "products", ico: "🖨", live: true },
+          { label: "Stock Status", view: "products", ico: "🖨", live: true },
+        ],
+        maintenance: [
+          { label: "Part Group Maintenance", toast: "Part Group Maintenance", ico: "⚙" },
+          { label: "Field Network", view: "fields", ico: "⚙", live: true },
+        ],
+        analysis: [
+          { label: `SKUs ≤ ROP · ${working.products.filter((p) => p.onHand <= p.reorderPoint).length}`, view: "products", ico: "🔎", live: true },
+          { label: "Product tags", view: "relations", ico: "🔎", live: true },
+        ],
+        customReports: [{ label: "ABC Analysis", toast: "ABC Analysis scaffold", ico: "📊" }],
+        close: [{ label: "Cycle Count Close", toast: "Cycle Count scaffold", ico: "🔨" }],
       };
     }
     if (hub === "home") {
@@ -598,52 +746,58 @@
         title: "My Start Page",
         explorer: "Business Explorer",
         entry: [
-          { label: "PO Entry", view: "po-entry", ico: "📋" },
-          { label: "Sales Order Entry", view: "orders", ico: "☰" },
-          { label: "Quote Entry", view: "quotes", ico: "✎" },
+          { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
+          { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
+          { label: "PO Entry", view: "po-entry", ico: "⚡", live: true },
         ],
         reports: [
-          { label: "Open PO Report", view: "purchasing", ico: "🖨" },
-          { label: "Reorder Watch", view: "products", ico: "🖨" },
+          { label: "Open Sales Orders", view: "orders", ico: "🖨", live: true },
+          { label: "Open Purchase Orders", view: "purchasing", ico: "🖨", live: true },
         ],
         maintenance: [
-          { label: "Suppliers / Relations", view: "relations", ico: "⚙" },
-          { label: "Field Network", view: "fields", ico: "⚙" },
+          { label: "Relations", view: "relations", ico: "⚙", live: true },
+          { label: "Field Network", view: "fields", ico: "⚙", live: true },
         ],
         analysis: [
-          { label: "Purchasing Management", hub: "purchasing", ico: "🔎" },
-          { label: "Sales Order Management", hub: "sales", ico: "🔎" },
+          { label: "Sales Order Management", hub: "sales", ico: "🔎", live: true },
+          { label: "Purchasing Management", hub: "purchasing", ico: "🔎", live: true },
+          { label: "Inventory Management", hub: "inventory", ico: "🔎", live: true },
         ],
+        customReports: [{ label: "Planned v Actual", toast: "Planned v Actual", ico: "📊" }],
+        close: [{ label: "Close Period", toast: "Close Period scaffold", ico: "🔨" }],
       };
     }
+    /* purchasing (default Production hub) */
     return {
       title: "Purchasing Management",
       explorer: "Purchase Order Explorer",
       entry: [
-        { label: "Purchase Order Entry", view: "po-entry", ico: "📋" },
-        { label: "Open Purchase Orders", view: "purchasing", ico: "📋" },
-        { label: "Inventory / Products", view: "products", ico: "▦" },
-        { label: "Vendor (Supplier) Links", view: "relations", ico: "⇄" },
+        { label: "Purchase Order Entry", view: "po-entry", ico: "⚡", live: true },
+        { label: "Open Purchase Orders", view: "purchasing", ico: "⚡", live: true },
+        { label: "Inventory / Products", view: "products", ico: "⚡", live: true },
+        { label: "Vendor (Supplier) Links", view: "relations", ico: "⚡", live: true },
       ],
       reports: [
-        { label: "Purchase Order Print", view: "po-entry", ico: "🖨" },
-        { label: "Open PO Report", view: "purchasing", ico: "🖨" },
-        { label: "Vendor Performance", toast: "Report scaffold", ico: "🖨" },
-        { label: "Expected Receipts", toast: "Report scaffold", ico: "🖨" },
+        { label: "Purchase Order Print", view: "po-entry", ico: "🖨", live: true },
+        { label: "Open PO Report", view: "purchasing", ico: "🖨", live: true },
+        { label: "Vendor Performance", toast: "Vendor Performance report", ico: "🖨" },
+        { label: "Expected Receipts", toast: "Expected Receipts report", ico: "🖨" },
       ],
       maintenance: [
-        { label: "Vendor Maintenance", view: "relations", ico: "⚙" },
-        { label: "Buyer / Terms Lists", view: "fields", ico: "⚙" },
-        { label: "Payment Terms", toast: "List: PaymentTerms", ico: "⚙" },
-        { label: "Ship Method Maintenance", toast: "List: ShipMethod", ico: "⚙" },
+        { label: "Vendor Maintenance", view: "relations", ico: "⚙", live: true },
+        { label: "Buyer / Terms Lists", view: "fields", ico: "⚙", live: true },
+        { label: "Payment Terms Maintenance", toast: "Payment Terms Maintenance", ico: "⚙" },
+        { label: "Ship Method Maintenance", toast: "Ship Method Maintenance", ico: "⚙" },
       ],
       analysis: [
-        { label: "POs requiring approval", view: "purchasing", ico: "🔎" },
-        { label: `Open PO value · ${money(poTotal())}`, view: "purchasing", ico: "📊" },
-        { label: "Price vs ProductSupplier", view: "relations", ico: "📊" },
-        { label: "PO 70286 · CITY0002", view: "po-entry", ico: "📅" },
-        { label: "Spend by supplier", toast: "Analysis scaffold", ico: "📈" },
+        { label: "POs requiring approval", view: "purchasing", ico: "🔎", live: true },
+        { label: `Open PO value · ${money(poTotal())}`, view: "purchasing", ico: "📊", live: true },
+        { label: "Price vs ProductSupplier", view: "relations", ico: "📊", live: true },
+        { label: "PO 70286 · CITY0002", view: "po-entry", ico: "📅", live: true },
+        { label: "Spend by supplier", toast: "Spend by supplier analysis", ico: "📈" },
       ],
+      customReports: [{ label: "Buyer Spend Summary", toast: "Buyer Spend Summary", ico: "📊" }],
+      close: [{ label: "Close Purchase Orders", toast: "Close Purchase Orders scaffold", ico: "🔨" }],
     };
   }
 
@@ -653,51 +807,30 @@
       : item.hub
         ? `data-hub="${item.hub}"`
         : `data-toast="${item.toast || "Scaffold"}"`;
-    return `<li><button type="button" class="hub-link" ${attrs}><span class="hub-ico">${item.ico}</span><span>${item.label}</span></button></li>`;
+    return `<li><button type="button" class="hub-link ${item.live ? "is-live" : ""}" ${attrs}><span class="hub-ico">${item.ico}</span><span>${item.label}</span></button></li>`;
+  }
+
+  function panel(title, bodyHtml) {
+    return `<section class="hub-panel"><div class="hub-panel-head">${title}</div>${bodyHtml}</section>`;
   }
 
   function renderHub() {
     const pack = hubPack();
-    document.getElementById("hubTitle").textContent = pack.title;
-    document.getElementById("hubSubtitle").textContent = editMode
-      ? `Editing as ${role} · working copy`
-      : "Entry · Reports · Maintenance · Business Analysis";
-
-    const openPos = working.purchaseOrders.filter((p) => p.status !== "Closed").length;
-    document.getElementById("statusStrip").innerHTML = `
-      <span class="chip ${editMode ? "is-live" : ""}">${editMode ? "EDIT" : "VIEW"}</span>
-      <span class="chip">${role}</span>
-      <span class="chip is-ok">${openPos} open POs</span>
-      <span class="chip">${working.suppliers.length} suppliers</span>
-      <span class="chip ${isDirty() ? "is-warn" : ""}">${countChanges()} pending</span>`;
-
     document.getElementById("hubGrid").innerHTML = `
-      <section class="hub-panel">
-        <div class="hub-panel-head">Entry Screens</div>
-        <ul class="hub-list">${pack.entry.map(linkHtml).join("")}</ul>
-      </section>
-      <section class="hub-panel analysis">
-        <div class="hub-panel-head">Business Analysis</div>
-        <div class="hub-explorer"><input type="search" placeholder="${pack.explorer}" disabled /></div>
-        <ul class="hub-list">${pack.analysis.map(linkHtml).join("")}</ul>
-      </section>
-      <section class="hub-panel">
-        <div class="hub-panel-head">Reports</div>
-        <ul class="hub-list">${pack.reports.map(linkHtml).join("")}</ul>
-      </section>
-      <section class="hub-panel">
-        <div class="hub-panel-head">Maintenance</div>
-        <ul class="hub-list">${pack.maintenance.map(linkHtml).join("")}</ul>
-      </section>
-      <section class="hub-panel wide">
-        <div class="hub-panel-head">Live pulse</div>
-        <div class="hub-pulse">
-          <div><span class="label">Open quote value</span><strong>${money(quoteTotal())}</strong></div>
-          <div><span class="label">Open PO value</span><strong>${money(poTotal())}</strong></div>
-          <div><span class="label">SKUs ≤ ROP</span><strong>${working.products.filter((p) => p.onHand <= p.reorderPoint).length}</strong></div>
-          <div><span class="label">Sales orders</span><strong>${working.orders.length}</strong></div>
-        </div>
-      </section>`;
+      <div class="hub-col">
+        ${panel("Entry Screens", `<ul class="hub-list">${pack.entry.map(linkHtml).join("")}</ul>`)}
+        ${panel("Reports", `<ul class="hub-list">${pack.reports.map(linkHtml).join("")}</ul>`)}
+        ${panel("Maintenance", `<ul class="hub-list">${pack.maintenance.map(linkHtml).join("")}</ul>`)}
+      </div>
+      <div class="hub-col">
+        ${panel(
+          "M1 Business Analysis",
+          `<div class="hub-explorer"><label>${pack.explorer}</label><input type="search" placeholder="Start Search" data-explorer /></div>
+           <ul class="hub-list">${pack.analysis.map(linkHtml).join("")}</ul>`
+        )}
+        ${panel("Custom Reports", `<ul class="hub-list">${(pack.customReports || []).map(linkHtml).join("")}</ul>`)}
+        ${panel("Close", `<ul class="hub-list">${(pack.close || []).map(linkHtml).join("")}</ul>`)}
+      </div>`;
   }
 
   /* —— PO —— */
@@ -1088,6 +1221,13 @@
     document.getElementById("treeSearch").oninput = () => renderChrome();
 
     document.getElementById("app").addEventListener("click", (e) => {
+      const filterBtn = e.target.closest("[data-tree-filter]");
+      if (filterBtn) {
+        treeFilter = filterBtn.dataset.treeFilter;
+        localStorage.setItem("rushmore-tree-filter-v1", treeFilter);
+        return render();
+      }
+
       const goBtn = e.target.closest("[data-go]");
       if (goBtn) return go(goBtn.dataset.go);
 
@@ -1134,6 +1274,8 @@
       }
     });
 
+    /* Land on Sales Order Management hub (matches M1 screenshot) */
+    localStorage.setItem(HUB_KEY, hub);
     showView("hub");
     render();
   }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Rushmore Business OS — Purchasing</title>
+  <title>Rushmore Business OS — M1 Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -32,26 +32,24 @@
       </div>
     </header>
 
-    <aside class="icon-rail" id="iconRail" aria-label="Shortcuts"></aside>
+    <aside class="icon-rail" aria-label="My Shortcuts">
+      <div class="icon-rail-scroll" id="iconRail"></div>
+      <div class="icon-rail-foot">My Shortcuts</div>
+    </aside>
 
     <aside class="tree-pane">
       <div class="tree-search">
         <input type="search" id="treeSearch" placeholder="Start Search" autocomplete="off" />
       </div>
       <nav class="tree" id="moduleTree" aria-label="Modules"></nav>
-      <p class="tree-blurb" id="roleBlurb"></p>
+      <div class="tree-filters" id="treeFilters" role="tablist" aria-label="Module filter"></div>
     </aside>
 
     <main class="stage">
       <div id="toast" class="toast" hidden></div>
 
       <section id="view-hub" class="view is-active" data-view="hub">
-        <header class="view-head">
-          <h1 id="hubTitle">Purchasing Management</h1>
-          <p id="hubSubtitle">Entry · Reports · Maintenance · Business Analysis</p>
-        </header>
-        <div id="statusStrip" class="status-strip"></div>
-        <div id="hubGrid" class="hub-grid"></div>
+        <div id="hubGrid" class="hub-grid" aria-label="Management hub"></div>
       </section>
 
       <section id="view-po-entry" class="view" data-view="po-entry" hidden>
