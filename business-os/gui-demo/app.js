@@ -1310,10 +1310,16 @@
           return `<button type="button" class="po-tree-node ${poTab === t ? "is-active" : ""}" data-po-tab="${t}">${labels[t]}</button>${extra}`;
         })
         .join("")}
-      <div class="po-msg">
-        <div class="po-msg-tabs"><span>0 Requirements</span><span>0 Warnings</span><span>1 Messages</span></div>
-        <p>Order ID '${po.poNo}' · supplier ${po.supplierId} · ${po.orderDate}</p>
-      </div>`;
+      <details class="po-guide">
+        <summary>
+          <span>0 req</span>
+          <span>0 warn</span>
+          <span>1 msg</span>
+        </summary>
+        <div class="po-msg">
+          <p>Order ID '${po.poNo}' · supplier ${po.supplierId} · ${po.orderDate}</p>
+        </div>
+      </details>`;
 
     const field = (label, control, span = false) =>
       `<div class="field ${span ? "field-span" : ""} ${locked ? "is-locked" : ""}"><label>${label}</label>${control}</div>`;
@@ -2051,14 +2057,16 @@
             ${t !== "lines" && t !== "attachments" ? `<button type="button" class="po-tree-node" data-action="ship-new-${t}">&lt;New&gt;</button>` : ""}`;
         })
         .join("")}
-      <div class="po-msg">
-        <div class="po-msg-tabs">
-          <span class="${reqs.length ? "is-hot" : ""}">${reqs.length} Requirements</span>
-          <span>0 Warnings</span>
-          <span>0 Messages</span>
+      <details class="po-guide"${reqs.length ? " open" : ""}>
+        <summary>
+          <span class="${reqs.length ? "is-hot" : ""}">${reqs.length} req</span>
+          <span>0 warn</span>
+          <span>0 msg</span>
+        </summary>
+        <div class="po-msg">
+          ${reqs.map((r) => `<p class="req-link" data-action="focus-ship-field" data-field="${r.field}">${r.text}</p>`).join("") || `<p>Shipment '${ship.shipmentId}' · ${ship.status}</p>`}
         </div>
-        ${reqs.map((r) => `<p class="req-link" data-action="focus-ship-field" data-field="${r.field}">${r.text}</p>`).join("") || `<p>Shipment '${ship.shipmentId}' · ${ship.status}</p>`}
-      </div>`;
+      </details>`;
 
     const field = (label, control, span = false) =>
       `<div class="field ${span ? "field-span" : ""} ${locked ? "is-locked" : ""}"><label>${label}</label>${control}</div>`;

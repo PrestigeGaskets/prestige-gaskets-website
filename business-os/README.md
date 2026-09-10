@@ -55,10 +55,10 @@ All/Sales/Production/Financial filters, and hub panels
 Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports.
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
-plus a bottom dock (Hub / Orders / **Despatch** / PO / More). On Despatch, phone
-layout collapses the ribbon/toolbar button walls, shows shipment lines as cards,
-keeps **Add From Order** + **Post DN** in a sticky bar, and opens Add From Order
-as a full-screen sheet. Desktop layout unchanged.
+plus a bottom dock (Hub / Orders / **Despatch** / PO / More). Phone chrome is
+compact (role + Edit/Post on one row); entry ribbons scroll away instead of
+sticking over the form; requirements/guides collapse; Despatch uses line cards
+and a slim sticky **Add From Order** / **Post DN** bar. Desktop layout unchanged.
 **Sales** (with **Edit** on) has Finance-equivalent product cost/sell rights, PO
 accuracy/lookup fields, quote confirm (14-day live window) → SO ready-to-print, and
 collect/ship **via** white-label procurement providers. **Shipping** issues delivery

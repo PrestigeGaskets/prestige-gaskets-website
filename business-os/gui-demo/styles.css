@@ -54,7 +54,18 @@ button, input, select, textarea { font: inherit; }
   border-bottom: 1px solid var(--line);
 }
 
-.brand { display: flex; align-items: baseline; gap: 0.5rem; }
+.brand { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.brand .mobile-context {
+  display: none;
+  width: 100%;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #444;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+.session-role-label { margin-right: 0.15rem; }
 .brand-name {
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -300,16 +311,21 @@ button, input, select, textarea { font: inherit; }
 }
 
 .toast {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  margin-bottom: 0.55rem;
+  position: fixed;
+  left: 50%;
+  top: max(0.65rem, var(--safe-t));
+  transform: translateX(-50%);
+  z-index: 90;
+  width: min(28rem, calc(100vw - 1.25rem));
+  margin: 0;
   padding: 0.5rem 0.65rem;
   background: #e4eee9;
   border: 1px solid #9bb5aa;
   color: var(--accent);
   font-size: 0.85rem;
   font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+  pointer-events: none;
 }
 
 .view[hidden] { display: none !important; }
@@ -766,72 +782,199 @@ table.data input {
     overflow: hidden;
   }
 
+  /* Compact app chrome — leave room for the form */
   .titlebar {
     grid-column: 1;
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 40;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.4rem;
-    padding: 0.45rem 0.55rem;
-    padding-top: max(0.45rem, var(--safe-t));
+    gap: 0.28rem;
+    padding: 0.28rem 0.45rem;
+    padding-top: max(0.28rem, var(--safe-t));
   }
 
   .titlebar-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.45rem;
+    gap: 0.35rem;
   }
   .titlebar-main .btn {
-    min-width: var(--touch);
-    min-height: var(--touch);
-    font-size: 1.15rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    font-size: 1.05rem;
     padding: 0;
   }
   .titlebar-main .brand {
     flex: 1;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+    gap: 0.05rem;
     text-align: center;
   }
-
-  .mobile-context {
-    display: block !important;
-    margin: 0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #333;
-    text-align: center;
-    letter-spacing: 0.01em;
+  .brand-product { display: none; }
+  .brand .mobile-context {
+    display: block;
+    font-size: 0.66rem;
+    line-height: 1.15;
   }
 
   .session {
     width: 100%;
-    gap: 0.35rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) auto;
+    gap: 0.28rem;
+    align-items: center;
   }
-  .session-role { flex: 1 1 auto; }
+  .session-role {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .session-role-label { display: none; }
   .session-role select {
-    min-height: var(--touch);
-    width: 100%;
-    max-width: 11rem;
+    flex: 1;
+    min-width: 0;
+    min-height: 2.35rem;
+    width: auto;
+    max-width: none;
+    font-size: 0.85rem;
   }
   .pill {
-    min-height: 2.2rem;
+    display: none; /* keep chrome short; surface dirty state below */
+  }
+  .pill.is-dirty {
     display: inline-flex;
+    grid-column: 1 / -1;
+    min-height: 1.45rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.62rem;
     align-items: center;
   }
   .toolbar {
-    width: 100%;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: auto auto auto;
     gap: 0.28rem;
+    width: auto;
   }
   .toolbar .btn {
+    min-width: 3.6rem;
+    min-height: 2.35rem;
+    padding: 0 0.45rem;
+    font-size: 0.8rem;
+  }
+  .toolbar-more {
+    display: block;
+    position: relative;
+  }
+  .toolbar-more:not([open]) > .toolbar-more-body { display: none !important; }
+  .toolbar-more-body {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.2rem);
+    z-index: 60;
+  }
+
+  /* Ribbons must NOT stick — they were covering the form on scroll */
+  .po-ribbon {
+    position: static !important;
+    top: auto !important;
+  }
+
+  /* Guide / requirements collapse to one summary row */
+  .po-guide {
+    flex: 1 1 100%;
     width: 100%;
-    min-height: var(--touch);
-    padding: 0 0.2rem;
+    order: 30;
+    border: 1px solid var(--line-soft);
+    background: #f7f8fa;
+  }
+  .po-guide:not([open]) > *:not(summary) {
+    display: none !important;
+  }
+  .po-guide > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.55rem;
+    align-items: center;
+    min-height: 2rem;
+    max-height: 2.35rem;
+    overflow: hidden;
+    padding: 0.2rem 0.55rem;
     font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .po-guide > summary::-webkit-details-marker { display: none; }
+  .po-guide > summary .is-hot { color: #b42318; }
+  .po-guide[open] > summary {
+    max-height: none;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .po-guide .po-msg {
+    max-height: 5.5rem;
+    overflow: auto;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.55rem 0.45rem;
+  }
+  .po-guide .req-link {
+    min-height: 2.2rem;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed var(--line-soft);
+  }
+  .po-guide .req-link:last-child { border-bottom: 0; }
+
+  /* Ribbon denser grid so New + pickers share rows */
+  .po-ribbon {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.3rem;
+    align-items: end;
+  }
+  .po-ribbon > .btn.btn-primary {
+    min-height: 2.35rem;
+    min-width: 3.5rem;
+    padding: 0 0.55rem;
+  }
+  .po-ribbon > .po-picker {
+    min-width: 0;
+  }
+  .po-ribbon > .po-picker select {
+    width: 100%;
+    min-height: 2.35rem;
+    font-size: 0.82rem;
+  }
+  .po-ribbon > .ribbon-more {
+    grid-column: 1 / -1;
+  }
+  .po-ribbon > .ribbon-more > summary {
+    min-height: 2.1rem;
+    font-size: 0.75rem;
+  }
+
+  /* Entry trees: single-row scroll chips; hide redundant active label */
+  .po-tree-active { display: none; }
+  .po-tree {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.3rem !important;
+    padding: 0.3rem !important;
+  }
+  .po-tree-node {
+    flex: 0 0 auto !important;
+    min-height: 2.2rem !important;
+    padding: 0.25rem 0.65rem !important;
+    font-size: 0.75rem !important;
   }
 
   .nav-backdrop {
@@ -979,9 +1122,7 @@ table.data input {
   .dock-btn:hover { background: rgba(255, 255, 255, 0.12); }
 
   .po-ribbon {
-    position: sticky;
-    top: 0;
-    z-index: 3;
+    position: static;
     gap: 0.35rem;
   }
   .po-ribbon .btn { min-height: var(--touch); flex: 1 1 auto; }
@@ -998,22 +1139,24 @@ table.data input {
   .po-workspace { grid-template-columns: 1fr; gap: 0.45rem; min-height: 0; }
   .po-tree {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.3rem;
     align-items: center;
-    padding: 0.4rem;
+    padding: 0.3rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  .po-tree-root,
-  .po-tree-active,
+  .po-tree-root { display: none; }
+  .po-tree-active { display: none; }
   .po-msg { width: 100%; }
   .po-tree-node {
     width: auto;
-    flex: 1 1 auto;
-    min-height: var(--touch);
-    padding: 0.45rem 0.55rem;
+    flex: 0 0 auto;
+    min-height: 2.2rem;
+    padding: 0.25rem 0.65rem;
     background: #fff;
     border: 1px solid var(--line-soft);
-    font-size: 0.78rem;
+    font-size: 0.75rem;
   }
   .po-form {
     max-height: none;
@@ -1177,18 +1320,28 @@ table.data input {
 
   .session-role select { max-width: none; }
 
-  /* Ribbon: keep pickers + New; tuck the rest */
+  /* Ribbon: keep pickers + New; tuck the rest — scrolls away with form */
   .po-ribbon {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    padding: 0.45rem;
-    position: sticky;
-    top: 0;
-    z-index: 5;
+    gap: 0.3rem;
+    padding: 0.35rem;
+    position: static;
     background: #ebebeb;
   }
   .po-ribbon > .btn.ribbon-secondary { display: none; }
+  .po-ribbon > .btn.btn-primary {
+    flex: 0 0 auto;
+    min-width: 4.5rem;
+    min-height: 2.35rem;
+  }
+  .po-ribbon > .po-picker {
+    flex: 1 1 42%;
+    min-width: 0;
+  }
+  .po-ribbon > .po-picker select { min-height: 2.35rem; font-size: 0.9rem; }
+  .ribbon-more > summary { min-height: 2.2rem; font-size: 0.75rem; }
+
   .ribbon-more {
     display: block;
     width: 100%;
@@ -1209,6 +1362,7 @@ table.data input {
   }
   .ribbon-more > summary::-webkit-details-marker { display: none; }
   .ribbon-more[open] > summary { background: #e8eef3; }
+  .ribbon-more:not([open]) > .ribbon-more-body { display: none !important; }
   .ribbon-more-body {
     display: flex;
     flex-wrap: wrap;
@@ -1227,18 +1381,14 @@ table.data input {
     border-bottom: 1px solid var(--line-soft);
   }
   #view-shipment .po-tree-root { display: none; }
-  #view-shipment .po-tree-active {
-    width: 100%;
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
+  #view-shipment .po-tree-active { display: none; }
   #view-shipment .po-tree-node {
-    flex: 1 1 auto;
-    min-height: var(--touch);
+    flex: 0 0 auto;
+    min-height: 2.2rem;
     border-radius: 999px;
     border: 1px solid var(--line);
     background: #fff;
-    padding: 0.35rem 0.7rem;
+    padding: 0.25rem 0.7rem;
   }
   #view-shipment .po-tree-node.is-active {
     background: #1f4b6e;
@@ -1256,10 +1406,10 @@ table.data input {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(3.55rem + var(--safe-b));
+    bottom: calc(3.35rem + var(--safe-b));
     z-index: 40;
-    gap: 0.4rem;
-    padding: 0.45rem 0.55rem;
+    gap: 0.35rem;
+    padding: 0.35rem 0.5rem;
     background: rgba(255,255,255,0.97);
     border-top: 1px solid var(--line);
     box-shadow: 0 -6px 18px rgba(0,0,0,0.12);
@@ -1267,14 +1417,18 @@ table.data input {
   }
   .ship-phone-bar .btn {
     flex: 1;
-    min-height: 48px;
-    font-size: 0.92rem;
+    min-height: 2.65rem;
+    font-size: 0.88rem;
     font-weight: 600;
   }
   .ship-side-actions { display: none !important; }
-  /* Room so last line / empty note isn't hidden under the fixed bar */
-  #view-shipment .po-form {
-    padding-bottom: calc(4.75rem + var(--safe-b));
+  /* Keep form content clear of fixed action bar + dock */
+  #view-shipment .po-form,
+  #view-po-entry .po-form {
+    padding-bottom: calc(5.25rem + var(--safe-b));
+  }
+  .stage {
+    padding-bottom: calc(5.5rem + var(--safe-b)) !important;
   }
 
   /* Compact chrome on phone */
@@ -1296,10 +1450,7 @@ table.data input {
   #view-shipment .po-tree .po-tree-node[data-action^="ship-new-"] {
     display: none;
   }
-  #view-shipment .po-msg {
-    max-height: 4.5rem;
-    overflow: auto;
-  }
+  #view-shipment .po-msg { max-height: none; }
 
   /* Line cards instead of wide table */
   .ship-detail-layout .table-wrap { display: none; }
