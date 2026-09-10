@@ -1,28 +1,26 @@
 #pragma once
 
-#include "CustomerRepository.h"
 #include "Dashboard.h"
-#include "OrderRepository.h"
-#include "ProductCatalog.h"
-#include "QuoteService.h"
+#include "IRepositories.h"
+#include "IServices.h"
 
 namespace bos {
 
-class DashboardService {
+class DashboardService : public IDashboardService {
 public:
-    DashboardService(CustomerRepository& customers,
-                     ProductCatalog& products,
-                     QuoteService& quotes,
-                     OrderRepository& orders);
+    DashboardService(ICustomerRepository& customers,
+                     IProductCatalog& products,
+                     IQuoteService& quotes,
+                     IOrderRepository& orders);
 
-    DashboardSnapshot build() const;
-    void print() const;
+    DashboardSnapshot build() const override;
+    void print() const override;
 
 private:
-    CustomerRepository& customers_;
-    ProductCatalog& products_;
-    QuoteService& quotes_;
-    OrderRepository& orders_;
+    ICustomerRepository& customers_;
+    IProductCatalog& products_;
+    IQuoteService& quotes_;
+    IOrderRepository& orders_;
 };
 
 }  // namespace bos

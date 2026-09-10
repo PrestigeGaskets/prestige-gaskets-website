@@ -5,7 +5,7 @@
 
 namespace bos {
 
-QuoteService::QuoteService(QuoteRepository& quotes) : quotes_(quotes) {}
+QuoteService::QuoteService(IQuoteRepository& quotes) : quotes_(quotes) {}
 
 std::map<std::string, double> QuoteService::totalsByQuote() const {
     std::map<std::string, double> totals;

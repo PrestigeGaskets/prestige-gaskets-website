@@ -9,7 +9,6 @@
 namespace bos {
 
 // Scaffold only — future loader for SMB-Operating-System.xlsx
-// (parity with _verify_aec5.py sheet/table reads).
 class ExcelStore : public IDataStore {
 public:
     explicit ExcelStore(std::string workbookPath)
@@ -32,6 +31,30 @@ public:
         return {};
     }
     std::vector<std::string> loadList(const std::string& /*listName*/) override {
+        fail();
+        return {};
+    }
+    std::vector<CustomerAccount> loadCustomerAccounts() override {
+        fail();
+        return {};
+    }
+    std::vector<Invoice> loadInvoices() override {
+        fail();
+        return {};
+    }
+    std::vector<Tag> loadTags() override {
+        fail();
+        return {};
+    }
+    std::vector<ProductTag> loadProductTags() override {
+        fail();
+        return {};
+    }
+    std::vector<Supplier> loadSuppliers() override {
+        fail();
+        return {};
+    }
+    std::vector<ProductSupplier> loadProductSuppliers() override {
         fail();
         return {};
     }

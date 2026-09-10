@@ -16,6 +16,12 @@ python3 -m http.server 8765 --directory gui-demo
 Or open `gui-demo/index.html` directly. Nav views match the C++ commands:
 Dashboard, Quotes, Products, Customers, Orders — same seed data and totals.
 
+Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
+Edits are role-gated and write to a working copy only (master stays sealed).
+Sales can **add customers**; Finance can **add products/orders** and **define custom fields**.
+See the Fields view for the full permission network.
+Mobile layouts wrap field grids / entity cards / session chrome at ≤860px / ≤420px.
+
 ## Build the `.exe` (Visual Studio)
 
 1. Open `BusinessOS.sln`
@@ -33,3 +39,8 @@ printf 'quit\n' | ./build/BusinessOS
 ## Class plan
 
 See [docs/CLASS_INTERACTION_PLAN.md](docs/CLASS_INTERACTION_PLAN.md).
+
+Abstract ports (`IDataStore`, `I*Repository`, `I*Service`, `IRolePolicy`,
+`IWorkspaceSession`, `ICommand`, `IUserInterface`) sit behind concrete
+implementations. `Application` is the composition root — swap `ConsoleUi` or
+the store without rewriting services.
