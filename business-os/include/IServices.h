@@ -2,9 +2,11 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "Dashboard.h"
 #include "Product.h"
+#include "Relations.h"
 
 namespace bos {
 
@@ -30,6 +32,14 @@ class IDashboardService {
 public:
     virtual ~IDashboardService() = default;
     virtual DashboardSnapshot build() const = 0;
+    virtual void print() const = 0;
+};
+
+class IRelationService {
+public:
+    virtual ~IRelationService() = default;
+    virtual std::vector<RelationEdge> catalog() const = 0;
+    virtual std::vector<std::string> validate() const = 0;
     virtual void print() const = 0;
 };
 

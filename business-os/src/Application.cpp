@@ -9,6 +9,7 @@
 #include "QuoteRepository.h"
 #include "QuoteService.h"
 #include "RoleHierarchy.h"
+#include "RelationService.h"
 #include "WorkingCopyStore.h"
 #include "WorkspaceSession.h"
 
@@ -33,6 +34,7 @@ void Application::wire() {
     inventory_ = std::make_unique<InventoryService>(*products_);
     dashboard_ =
         std::make_unique<DashboardService>(*customers_, *products_, *quoteService_, *orders_);
+    relations_ = std::make_unique<RelationService>(store);
     ui_ = std::make_unique<ConsoleUi>(*dashboard_, *quoteService_, *inventory_, *customers_,
                                      *orders_);
 
@@ -46,11 +48,15 @@ bool Application::handleCommand(const std::string& cmd) {
     }
     if (cmd == "help" || cmd == "?") {
         ui_->showToast(
-            "dashboard|quotes|products|customers|orders|edit|post|undo|redo|discard|role|status");
+            "dashboard|quotes|products|customers|orders|relations|edit|post|undo|redo|discard|role|status");
         return true;
     }
     if (cmd == "dashboard") {
         ui_->showDashboard();
+        return true;
+    }
+    if (cmd == "relations") {
+        relations_->print();
         return true;
     }
     if (cmd == "quotes") {

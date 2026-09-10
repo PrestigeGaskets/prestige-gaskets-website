@@ -21,7 +21,7 @@ void ConsoleUi::showBanner() {
               << "  BusinessOS.exe composition root\n"
               << "========================================\n"
               << "Commands: dashboard | quotes | products | customers | orders |\n"
-              << "          edit | post | undo | redo | discard | role | status | help | quit\n\n";
+              << "          relations | edit | post | undo | redo | discard | role | status | help | quit\n\n";
 }
 
 void ConsoleUi::showToast(const std::string& message) {
@@ -48,8 +48,13 @@ void ConsoleUi::showCustomers() {
 void ConsoleUi::showOrders() {
     std::cout << "--- ORDERS ---\n";
     for (const auto& o : orders_.all()) {
-        std::cout << "  " << o.orderNo << " cust=" << o.customerId << " status=" << o.status
-                  << " value=" << o.value << '\n';
+        std::cout << "  " << o.orderNo << " cust=" << o.customerId
+                  << " quote=" << (o.quoteNo.empty() ? "-" : o.quoteNo)
+                  << " status=" << o.status << " value=" << o.value << '\n';
+        for (const auto& line : o.lines) {
+            std::cout << "      L" << line.line << " " << line.sku << " qty=" << line.qty
+                      << " price=" << line.price << " total=" << line.lineTotal() << '\n';
+        }
     }
     std::cout << '\n';
 }

@@ -41,6 +41,7 @@
         <button type="button" class="nav-item" data-view="products">Products</button>
         <button type="button" class="nav-item" data-view="customers">Customers</button>
         <button type="button" class="nav-item" data-view="orders">Orders</button>
+        <button type="button" class="nav-item" data-view="relations">Relations</button>
         <button type="button" class="nav-item" data-view="fields">Fields</button>
       </nav>
       <div class="rail-meta">
@@ -128,9 +129,17 @@
       <section id="view-orders" class="view" data-view-panel="orders" hidden>
         <header class="view-head">
           <h1>Orders</h1>
-          <p>Finance can add orders & edit value/status · working copy only</p>
+          <p>1:N lines · optional 1:1 quote conversion · Finance can add</p>
         </header>
         <div id="orders-root" class="card-stack"></div>
+      </section>
+
+      <section id="view-relations" class="view" data-view-panel="relations" hidden>
+        <header class="view-head">
+          <h1>Relations</h1>
+          <p>Master 1:1 · 1:N · M:N graph (sealed with master)</p>
+        </header>
+        <div id="relations-root" class="card-stack"></div>
       </section>
 
       <section id="view-fields" class="view" data-view-panel="fields" hidden>

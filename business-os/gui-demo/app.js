@@ -8,17 +8,30 @@
  * browser preview; it is intentionally procedural, not a second hierarchy.
  */
 
-const STORAGE_KEY = "rushmore-bos-working-v3";
+const STORAGE_KEY = "rushmore-bos-working-v4";
 const ROLE_KEY = "rushmore-bos-role-v1";
 const CURRENCY = "GBP";
 const LOCALE = "en-GB";
 
+/**
+ * Master tables + cardinalities (mirrors C++ DemoSeed / RelationService):
+ * 1:1  Customer↔CustomerAccount, Order↔Invoice, Quote↔Order (when quoteNo set)
+ * 1:N  Customer→Quotes/Orders, Quote→QuoteLines, Order→OrderLines
+ * M:N  Product↔Tag (productTags), Product↔Supplier (productSuppliers),
+ *      Quote↔Product (quoteLines), Order↔Product (orderLines)
+ */
 const MASTER = deepFreeze({
   customers: [
     { id: "C001", name: "Acme Fab", email: "buyer@acme.example", postcode: "B1 1AA", status: "Active", extras: {} },
     { id: "C002", name: "Northline", email: "ops@northline.example", postcode: "M1 2AB", status: "Active", extras: {} },
     { id: "C003", name: "Summit Seal", email: "purchasing@summit.example", postcode: "EH1 3EG", status: "Inactive", extras: {} },
     { id: "C004", name: "Prestige Pilot", email: "pilot@prestige.example", postcode: "SW1A 1AA", status: "Active", extras: {} },
+  ],
+  accounts: [
+    { customerId: "C001", accountCode: "ACC-C001", creditLimit: 5000, paymentTerms: "Net-30" },
+    { customerId: "C002", accountCode: "ACC-C002", creditLimit: 12000, paymentTerms: "Net-45" },
+    { customerId: "C003", accountCode: "ACC-C003", creditLimit: 2500, paymentTerms: "Net-15" },
+    { customerId: "C004", accountCode: "ACC-C004", creditLimit: 20000, paymentTerms: "Net-30" },
   ],
   products: [
     { sku: "P1001", description: "Flat gasket A", onHand: 120, reorderPoint: 40, leadDays: 7, cost: 2.5, sell: 4.75, extras: {} },
@@ -27,6 +40,31 @@ const MASTER = deepFreeze({
     { sku: "P1004", description: "Sleeve D", onHand: 55, reorderPoint: 20, leadDays: 10, cost: 4.0, sell: 7.5, extras: {} },
     { sku: "P1005", description: "Washer E", onHand: 200, reorderPoint: 50, leadDays: 3, cost: 0.4, sell: 0.95, extras: {} },
     { sku: "P1006", description: "Spacer F", onHand: 12, reorderPoint: 15, leadDays: 8, cost: 1.8, sell: 3.25, extras: {} },
+  ],
+  tags: [
+    { id: "T-SEAL", name: "Sealing" },
+    { id: "T-FAST", name: "Fastener" },
+    { id: "T-STOCK", name: "Stocked" },
+  ],
+  productTags: [
+    { sku: "P1001", tagId: "T-SEAL" },
+    { sku: "P1001", tagId: "T-STOCK" },
+    { sku: "P1002", tagId: "T-SEAL" },
+    { sku: "P1005", tagId: "T-FAST" },
+    { sku: "P1005", tagId: "T-STOCK" },
+    { sku: "P1006", tagId: "T-FAST" },
+  ],
+  suppliers: [
+    { id: "S-01", name: "Midlands Rubber", postcode: "B1 2AA" },
+    { id: "S-02", name: "Clyde Components", postcode: "G1 1AA" },
+  ],
+  productSuppliers: [
+    { sku: "P1001", supplierId: "S-01", leadDays: 7, unitCost: 2.4 },
+    { sku: "P1001", supplierId: "S-02", leadDays: 10, unitCost: 2.55 },
+    { sku: "P1002", supplierId: "S-01", leadDays: 14, unitCost: 3.0 },
+    { sku: "P1003", supplierId: "S-02", leadDays: 5, unitCost: 1.1 },
+    { sku: "P1006", supplierId: "S-01", leadDays: 8, unitCost: 1.7 },
+    { sku: "P1006", supplierId: "S-02", leadDays: 12, unitCost: 1.75 },
   ],
   quotes: [
     {
@@ -51,8 +89,32 @@ const MASTER = deepFreeze({
     },
   ],
   orders: [
-    { orderNo: "O-500", quoteNo: "Q-099", customerId: "C002", status: "Shipped", value: 312.5, extras: {} },
-    { orderNo: "O-501", quoteNo: "", customerId: "C004", status: "Open", value: 88.0, extras: {} },
+    {
+      orderNo: "O-500",
+      quoteNo: "Q-100",
+      customerId: "C004",
+      status: "Shipped",
+      extras: {},
+      lines: [
+        { line: 1, sku: "P1001", qty: 10, price: 4.75 },
+        { line: 2, sku: "P1002", qty: 5, price: 5.9 },
+      ],
+    },
+    {
+      orderNo: "O-501",
+      quoteNo: "",
+      customerId: "C002",
+      status: "Open",
+      extras: {},
+      lines: [
+        { line: 1, sku: "P1005", qty: 80, price: 0.95 },
+        { line: 2, sku: "P1006", qty: 10, price: 3.25 },
+      ],
+    },
+  ],
+  invoices: [
+    { invoiceNo: "INV-500", orderNo: "O-500", status: "Paid", amount: 77.0 },
+    { invoiceNo: "INV-501", orderNo: "O-501", status: "Draft", amount: 108.5 },
   ],
   customFields: [], // { entity, key, label, type } — Finance adds here
 });
@@ -328,8 +390,11 @@ function summarizeChanges() {
       changes.push({ entity: "orders", id: o.orderNo, detail: "New order" });
       continue;
     }
-    for (const key of ["status", "value", "quoteNo", "customerId"]) {
+    for (const key of ["status", "quoteNo", "customerId"]) {
       if (isDirty(m[key], o[key])) changes.push({ entity: "orders", id: o.orderNo, detail: `${key}: ${m[key]} → ${o[key]}` });
+    }
+    if (JSON.stringify(m.lines || []) !== JSON.stringify(o.lines || [])) {
+      changes.push({ entity: "orders", id: o.orderNo, detail: "Line items changed" });
     }
   }
   if (JSON.stringify(working.customFields) !== JSON.stringify(masterNorm.customFields)) {
@@ -358,10 +423,23 @@ function clone(data) {
 function normalizeWorking(data) {
   const next = clone(data);
   if (!Array.isArray(next.customFields)) next.customFields = [];
+  if (!Array.isArray(next.accounts)) next.accounts = clone(MASTER.accounts);
+  if (!Array.isArray(next.invoices)) next.invoices = clone(MASTER.invoices);
+  if (!Array.isArray(next.tags)) next.tags = clone(MASTER.tags);
+  if (!Array.isArray(next.productTags)) next.productTags = clone(MASTER.productTags);
+  if (!Array.isArray(next.suppliers)) next.suppliers = clone(MASTER.suppliers);
+  if (!Array.isArray(next.productSuppliers)) next.productSuppliers = clone(MASTER.productSuppliers);
   for (const c of next.customers) if (!c.extras) c.extras = {};
   for (const p of next.products) if (!p.extras) p.extras = {};
-  for (const q of next.quotes) if (!q.extras) q.extras = {};
-  for (const o of next.orders) if (!o.extras) o.extras = {};
+  for (const q of next.quotes) {
+    if (!q.extras) q.extras = {};
+    if (!Array.isArray(q.lines)) q.lines = [];
+  }
+  for (const o of next.orders) {
+    if (!o.extras) o.extras = {};
+    if (!Array.isArray(o.lines)) o.lines = [];
+    o.value = o.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0);
+  }
   return next;
 }
 
@@ -661,8 +739,9 @@ function addOrder() {
       quoteNo: "",
       customerId: working.customers[0]?.id || "",
       status: "Open",
-      value: 0,
       extras: {},
+      lines: [],
+      value: 0,
     });
   })) return;
   showView("orders");
@@ -1051,6 +1130,10 @@ function renderCustomers() {
   bindPaths(root);
 }
 
+function orderValue(o) {
+  return (o.lines || []).reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0);
+}
+
 function renderOrders() {
   const root = document.getElementById("orders-root");
   root.innerHTML =
@@ -1059,26 +1142,31 @@ function renderOrders() {
       .map((o, i) => {
         const m = masterOrder(o.orderNo);
         const statusLocked = !roleCanEdit("orders.status");
-        const valueLocked = !roleCanEdit("orders.value");
         const quoteLocked = !roleCanEdit("orders.quoteNo");
         const custLocked = !roleCanEdit("orders.customerId");
         const custOptions = working.customers
           .map((c) => `<option value="${c.id}" ${c.id === o.customerId ? "selected" : ""}>${c.name}</option>`)
           .join("");
+        const lines = (o.lines || [])
+          .map(
+            (line) =>
+              `<li class="mono">${line.sku} × ${line.qty} @ ${money(line.price)} = ${money(line.qty * line.price)}</li>`
+          )
+          .join("");
         return `
       <article class="entity-card">
         <div class="entity-head">
           <h2 class="mono">${o.orderNo}</h2>
-          <span class="entity-meta">${customerName(o.customerId)}</span>
+          <span class="entity-meta">${customerName(o.customerId)} · ${money(orderValue(o))}</span>
           ${m ? "" : '<span class="badge badge-warn">Working only</span>'}
         </div>
         <div class="field-grid">
           <div class="${fieldClass(isDirty(m?.quoteNo, o.quoteNo), quoteLocked)}">
-            <label>Quote</label>
+            <label>Quote (1:1 when set)</label>
             <input data-path="orders.${i}.quoteNo" value="${o.quoteNo}" ${quoteLocked ? "disabled" : ""} />
           </div>
           <div class="${fieldClass(isDirty(m?.customerId, o.customerId), custLocked)}">
-            <label>Customer</label>
+            <label>Customer (N:1)</label>
             <select data-path="orders.${i}.customerId" ${custLocked ? "disabled" : ""}>${custOptions}</select>
           </div>
           <div class="${fieldClass(isDirty(m?.status, o.status), statusLocked)}">
@@ -1087,18 +1175,63 @@ function renderOrders() {
               ${ORDER_STATUSES.map((s) => `<option ${s === o.status ? "selected" : ""}>${s}</option>`).join("")}
             </select>
           </div>
-          <div class="${fieldClass(isDirty(m?.value, o.value), valueLocked)}">
-            <label>Value (£)</label>
-            <input type="number" min="0" step="0.01" data-path="orders.${i}.value" value="${o.value}" ${valueLocked ? "disabled" : ""} />
-          </div>
           ${renderExtras("orders", i, o, m?.extras)}
         </div>
+        <ul class="line-list" aria-label="Order lines (M:N to products)">${lines || "<li>No lines</li>"}</ul>
       </article>`;
       })
       .join("");
 
   bindActions(root);
   bindPaths(root);
+}
+
+function renderRelations() {
+  const root = document.getElementById("relations-root");
+  if (!root) return;
+  const accountRows = (MASTER.accounts || [])
+    .map((a) => `<tr><td class="mono">${a.customerId}</td><td class="mono">${a.accountCode}</td><td>${money(a.creditLimit)}</td><td>${a.paymentTerms}</td></tr>`)
+    .join("");
+  const invoiceRows = (MASTER.invoices || [])
+    .map((inv) => `<tr><td class="mono">${inv.invoiceNo}</td><td class="mono">${inv.orderNo}</td><td>${inv.status}</td><td>${money(inv.amount)}</td></tr>`)
+    .join("");
+  const tagRows = (MASTER.productTags || [])
+    .map((pt) => {
+      const tag = MASTER.tags.find((t) => t.id === pt.tagId);
+      return `<tr><td class="mono">${pt.sku}</td><td class="mono">${pt.tagId}</td><td>${tag?.name || ""}</td></tr>`;
+    })
+    .join("");
+  const supplyRows = (MASTER.productSuppliers || [])
+    .map((ps) => {
+      const s = MASTER.suppliers.find((x) => x.id === ps.supplierId);
+      return `<tr><td class="mono">${ps.sku}</td><td>${s?.name || ps.supplierId}</td><td>${ps.leadDays}d</td><td>${money(ps.unitCost)}</td></tr>`;
+    })
+    .join("");
+  root.innerHTML = `
+    <div class="relation-block">
+      <h2>Cardinalities</h2>
+      <ul class="relation-catalog">
+        <li><strong>1:1</strong> Customer ↔ Account · Order ↔ Invoice · Quote ↔ Order (when quoteNo set)</li>
+        <li><strong>1:N</strong> Customer → Quotes / Orders · Quote → Lines · Order → Lines</li>
+        <li><strong>M:N</strong> Product ↔ Tag · Product ↔ Supplier · Quote/Order ↔ Product via lines</li>
+      </ul>
+    </div>
+    <div class="relation-block">
+      <h2>1:1 CustomerAccount</h2>
+      <table class="data-table"><thead><tr><th>Customer</th><th>Account</th><th>Credit</th><th>Terms</th></tr></thead><tbody>${accountRows}</tbody></table>
+    </div>
+    <div class="relation-block">
+      <h2>1:1 Invoice</h2>
+      <table class="data-table"><thead><tr><th>Invoice</th><th>Order</th><th>Status</th><th>Amount</th></tr></thead><tbody>${invoiceRows}</tbody></table>
+    </div>
+    <div class="relation-block">
+      <h2>M:N ProductTag</h2>
+      <table class="data-table"><thead><tr><th>SKU</th><th>Tag</th><th>Name</th></tr></thead><tbody>${tagRows}</tbody></table>
+    </div>
+    <div class="relation-block">
+      <h2>M:N ProductSupplier</h2>
+      <table class="data-table"><thead><tr><th>SKU</th><th>Supplier</th><th>Lead</th><th>Cost</th></tr></thead><tbody>${supplyRows}</tbody></table>
+    </div>`;
 }
 
 function renderFields() {
@@ -1203,6 +1336,7 @@ function renderAll() {
   renderProducts();
   renderCustomers();
   renderOrders();
+  renderRelations();
   renderFields();
 }
 

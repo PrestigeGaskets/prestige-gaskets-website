@@ -111,6 +111,24 @@ main()
    master/working-copy + edit/post/undo.
 7. **ICommand** units every working-copy mutation for undo/redo.
 
+## Master table relationships
+
+| Cardinality | From → To | Via |
+|---|---|---|
+| **1:1** | Customer ↔ CustomerAccount | `CustomerAccount.customerId` (unique) |
+| **1:1** | Order ↔ Invoice | `Invoice.orderNo` (unique) |
+| **1:1** | Quote ↔ Order (optional) | `Order.quoteNo` unique when set |
+| **1:N** | Customer → Quote / Order | `customerId` |
+| **1:N** | Quote → QuoteLine | `Quote.lines` |
+| **1:N** | Order → OrderLine | `Order.lines` |
+| **M:N** | Product ↔ Tag | `ProductTag` junction |
+| **M:N** | Product ↔ Supplier | `ProductSupplier` junction |
+| **M:N** | Quote ↔ Product | `QuoteLine` association |
+| **M:N** | Order ↔ Product | `OrderLine` association |
+
+`RelationService` (`relations` CLI / Relations GUI view) prints this catalog and
+validates FK integrity on the working store.
+
 ## Suggested build / next increments
 
 1. **Now:** polymorphic C++ scaffold + console smoke + HTML GUI demo.

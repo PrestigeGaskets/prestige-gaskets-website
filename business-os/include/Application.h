@@ -33,6 +33,7 @@ private:
     std::unique_ptr<IQuoteService> quoteService_;
     std::unique_ptr<IInventoryService> inventory_;
     std::unique_ptr<IDashboardService> dashboard_;
+    std::unique_ptr<IRelationService> relations_;
     std::unique_ptr<IUserInterface> ui_;
 
     // Non-owning: lifetime owned by session_ concrete. Used only at composition root.
