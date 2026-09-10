@@ -12,10 +12,15 @@
 <body>
   <div id="app" class="shell">
     <header class="titlebar">
-      <div class="brand">
-        <span class="brand-name">RUSHMORE</span>
-        <span class="brand-product">Business OS</span>
+      <div class="titlebar-main">
+        <button type="button" class="btn mobile-only" id="btnModules" aria-controls="treePane" aria-expanded="false" title="Modules">☰</button>
+        <div class="brand">
+          <span class="brand-name">RUSHMORE</span>
+          <span class="brand-product">Business OS</span>
+        </div>
+        <button type="button" class="btn mobile-only" id="btnShortcuts" aria-controls="iconRailPane" aria-expanded="false" title="My Shortcuts">⚡</button>
       </div>
+      <p class="mobile-context mobile-only" id="mobileContext">Sales Order Management</p>
       <div class="session">
         <label class="session-role">
           Role
@@ -32,12 +37,22 @@
       </div>
     </header>
 
-    <aside class="icon-rail" aria-label="My Shortcuts">
+    <div class="nav-backdrop" id="navBackdrop" hidden></div>
+
+    <aside class="icon-rail" id="iconRailPane" aria-label="My Shortcuts">
+      <div class="drawer-head mobile-only">
+        <strong>My Shortcuts</strong>
+        <button type="button" class="btn" data-close-nav aria-label="Close shortcuts">Close</button>
+      </div>
       <div class="icon-rail-scroll" id="iconRail"></div>
       <div class="icon-rail-foot">My Shortcuts</div>
     </aside>
 
-    <aside class="tree-pane">
+    <aside class="tree-pane" id="treePane">
+      <div class="drawer-head mobile-only">
+        <strong>Modules</strong>
+        <button type="button" class="btn" data-close-nav aria-label="Close modules">Close</button>
+      </div>
       <div class="tree-search">
         <input type="search" id="treeSearch" placeholder="Start Search" autocomplete="off" />
       </div>
@@ -101,6 +116,24 @@
         <div id="fieldsRoot" class="stack"></div>
       </section>
     </main>
+
+    <nav class="mobile-dock mobile-only" aria-label="Primary mobile navigation">
+      <button type="button" class="dock-btn" id="dockHub" data-dock="hub">
+        <span class="dock-ico">▦</span><span>Hub</span>
+      </button>
+      <button type="button" class="dock-btn" data-go="orders" data-dock="orders">
+        <span class="dock-ico">📦</span><span>Orders</span>
+      </button>
+      <button type="button" class="dock-btn" data-go="po-entry" data-dock="po-entry">
+        <span class="dock-ico">🛒</span><span>PO</span>
+      </button>
+      <button type="button" class="dock-btn" data-go="quotes" data-dock="quotes">
+        <span class="dock-ico">📝</span><span>Quotes</span>
+      </button>
+      <button type="button" class="dock-btn" id="dockMore" data-open-shortcuts>
+        <span class="dock-ico">⚡</span><span>More</span>
+      </button>
+    </nav>
   </div>
   <script src="app.js"></script>
 </body>
