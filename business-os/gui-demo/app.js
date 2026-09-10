@@ -1753,6 +1753,16 @@
       });
       ackInput.addEventListener("change", () => { addFromOrderAck = ackInput.value.trim(); });
     }
+    root.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        if (action === "afo-close") return closeAddFromOrder();
+        if (action === "afo-lookup") return lookupAddFromOrder();
+        if (action === "afo-commit") return commitAddFromOrder();
+      });
+    });
   }
 
   function addShipmentLinesFromOrder() {
