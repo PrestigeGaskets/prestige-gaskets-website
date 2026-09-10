@@ -15,23 +15,28 @@ std::vector<RelationEdge> RelationService::catalog() const {
          "Exactly one account per customer"},
         {"1:1", "Order", "Invoice", "Invoice.orderNo", "Exactly one invoice per order"},
         {"1:1", "Quote", "Order", "Order.quoteNo (unique when set)",
-         "Optional quote→order conversion"},
+         "Quote received → Sales Order number generated"},
         {"1:N", "Customer", "Quote", "Quote.customerId", "Customer has many quotes"},
-        {"1:N", "Customer", "Order", "Order.customerId", "Customer has many orders"},
+        {"1:N", "Customer", "Order", "Order.customerId", "Customer has many sales orders"},
         {"1:N", "Quote", "QuoteLine", "Quote.lines[] / QuoteLine.quoteNo",
          "Quote header owns lines"},
         {"1:N", "Order", "OrderLine", "Order.lines[] / OrderLine.orderNo",
-         "Order header owns lines"},
+         "Sales order header owns lines"},
         {"1:N", "Supplier", "PurchaseOrder", "PurchaseOrder.supplierId",
          "Supplier has many purchase orders"},
         {"1:N", "PurchaseOrder", "PoLine", "PurchaseOrder.lines[] / PoLine.poNo",
          "PO header owns lines"},
+        {"1:N", "PurchaseOrder", "GoodsReceipt", "GoodsReceipt.poNo",
+         "PO can have many GRNs (partial receipts)"},
+        {"1:N", "GoodsReceipt", "GrnLine", "GoodsReceipt.lines[] / GrnLine.grnNo",
+         "GRN header owns received lines"},
         {"M:N", "Product", "Tag", "ProductTag", "Junction ProductTag(sku, tagId)"},
         {"M:N", "Product", "Supplier", "ProductSupplier",
          "Junction ProductSupplier(sku, supplierId)"},
         {"M:N", "Quote", "Product", "QuoteLine", "Association entity QuoteLine"},
         {"M:N", "Order", "Product", "OrderLine", "Association entity OrderLine"},
         {"M:N", "PurchaseOrder", "Product", "PoLine", "Association entity PoLine"},
+        {"M:N", "GoodsReceipt", "Product", "GrnLine", "Association entity GrnLine → OH update"},
     };
 }
 
@@ -145,6 +150,29 @@ std::vector<std::string> RelationService::validate() const {
             if (!skus.count(line.sku)) {
                 issues.push_back("PoLine " + po.poNo + "/" + std::to_string(line.line) +
                                  " orphan sku=" + line.sku);
+            }
+        }
+    }
+
+    std::unordered_set<std::string> poNos;
+    for (const auto& po : store_.loadPurchaseOrders()) {
+        poNos.insert(po.poNo);
+    }
+    for (const auto& grn : store_.loadGoodsReceipts()) {
+        if (!poNos.count(grn.poNo)) {
+            issues.push_back("GoodsReceipt " + grn.grnNo + " orphan poNo=" + grn.poNo);
+        }
+        if (!supplierIds.count(grn.supplierId) && !grn.supplierId.empty()) {
+            issues.push_back("GoodsReceipt " + grn.grnNo +
+                             " orphan supplierId=" + grn.supplierId);
+        }
+        for (const auto& line : grn.lines) {
+            if (!skus.count(line.sku)) {
+                issues.push_back("GrnLine " + grn.grnNo + "/" + std::to_string(line.line) +
+                                 " orphan sku=" + line.sku);
+            }
+            if (!poNos.count(line.poNo)) {
+                issues.push_back("GrnLine " + grn.grnNo + " orphan poNo=" + line.poNo);
             }
         }
     }

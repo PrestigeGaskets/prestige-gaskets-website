@@ -7,6 +7,7 @@
 
 #include "Customer.h"
 #include "CustomerAccount.h"
+#include "GoodsReceipt.h"
 #include "Order.h"
 #include "Product.h"
 #include "PurchaseOrder.h"
@@ -21,6 +22,7 @@ struct DemoSeed {
     std::vector<Quote> quotes;
     std::vector<Order> orders;
     std::vector<PurchaseOrder> purchaseOrders;
+    std::vector<GoodsReceipt> goodsReceipts;
     std::vector<CustomerAccount> accounts;
     std::vector<Invoice> invoices;
     std::vector<Tag> tags;

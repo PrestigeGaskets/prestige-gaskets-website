@@ -182,11 +182,15 @@ DemoSeed makeDemoSeed() {
     }
     s.purchaseOrders.push_back(po2);
 
+    // Example posted GRN against a prior receipt (none on seed POs — empty until intake).
+    s.goodsReceipts = {};
+
     s.lists["QuoteStatus"] = {"Open", "Sent", "Won", "Lost"};
     s.lists["OrderStatus"] = {"Open", "Picked", "Shipped", "Closed"};
     s.lists["CustomerStatus"] = {"Active", "Inactive"};
     s.lists["InvoiceStatus"] = {"Draft", "Issued", "Paid"};
-    s.lists["PoStatus"] = {"Draft", "Pending Approval", "Approved", "Closed"};
+    s.lists["PoStatus"] = {"Draft", "Pending Approval", "Approved", "Closed", "Received"};
+    s.lists["GrnStatus"] = {"Draft", "Posted"};
     s.lists["PaymentTerms"] = {"30 DAYS EOM", "Net-30", "Net-45", "Net-15"};
     s.lists["ShipMethod"] = {"CARRIER", "COLLECT", "COURIER"};
     s.lists["Buyer"] = {"JAMES CRAVEN", "A. BUYER"};

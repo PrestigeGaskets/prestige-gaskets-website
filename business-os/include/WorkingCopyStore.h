@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "IDataStore.h"
@@ -17,6 +18,7 @@ public:
     std::vector<Quote> loadQuotes() override;
     std::vector<Order> loadOrders() override;
     std::vector<PurchaseOrder> loadPurchaseOrders() override;
+    std::vector<GoodsReceipt> loadGoodsReceipts() override;
     std::vector<std::string> loadList(const std::string& listName) override;
 
     std::vector<CustomerAccount> loadCustomerAccounts() override;
@@ -34,6 +36,7 @@ private:
     std::vector<Quote> quotes_;
     std::vector<Order> orders_;
     std::vector<PurchaseOrder> purchaseOrders_;
+    std::vector<GoodsReceipt> goodsReceipts_;
     std::vector<CustomerAccount> accounts_;
     std::vector<Invoice> invoices_;
     std::vector<Tag> tags_;
@@ -55,6 +58,7 @@ public:
     std::vector<Quote> loadQuotes() override;
     std::vector<Order> loadOrders() override;
     std::vector<PurchaseOrder> loadPurchaseOrders() override;
+    std::vector<GoodsReceipt> loadGoodsReceipts() override;
     std::vector<std::string> loadList(const std::string& listName) override;
 
     std::vector<CustomerAccount> loadCustomerAccounts() override;
@@ -70,12 +74,21 @@ public:
     void updateOrderField(const std::string& orderNo, const std::string& field, const std::string& value);
     void updatePoField(const std::string& poNo, const std::string& field, const std::string& value);
 
+    /// Quote received → generate Sales Order number (SO-…), copy lines, Won + draft invoice.
+    std::string convertQuoteToSalesOrder(const std::string& quoteNo);
+    /// Goods received against PO → generate GRN, bump Product.onHand. Empty qtys = full remaining.
+    std::string receiveGoodsAgainstPo(const std::string& poNo,
+                                      const std::vector<std::pair<int, double>>& qtys,
+                                      const std::string& receivedBy);
+
     struct Snapshot {
         std::vector<Customer> customers;
         std::vector<Product> products;
         std::vector<Quote> quotes;
         std::vector<Order> orders;
         std::vector<PurchaseOrder> purchaseOrders;
+        std::vector<GoodsReceipt> goodsReceipts;
+        std::vector<Invoice> invoices;
         bool dirty = false;
     };
     Snapshot capture() const;
@@ -88,9 +101,14 @@ private:
     std::vector<Quote> quotes_;
     std::vector<Order> orders_;
     std::vector<PurchaseOrder> purchaseOrders_;
+    std::vector<GoodsReceipt> goodsReceipts_;
+    std::vector<Invoice> invoices_;
     bool dirty_ = false;
 
     void cloneFromMaster();
+    std::string nextSalesOrderNo() const;
+    std::string nextGrnNo() const;
+    std::string nextInvoiceNo(const std::string& orderNo) const;
 };
 
 }  // namespace bos

@@ -3,6 +3,7 @@
 #include "ConsoleUi.h"
 #include "CustomerRepository.h"
 #include "DashboardService.h"
+#include "IntakeService.h"
 #include "InventoryService.h"
 #include "OrderRepository.h"
 #include "ProductCatalog.h"
@@ -15,6 +16,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
+#include <vector>
 
 namespace bos {
 
@@ -35,6 +38,7 @@ void Application::wire() {
     dashboard_ =
         std::make_unique<DashboardService>(*customers_, *products_, *quoteService_, *orders_);
     relations_ = std::make_unique<RelationService>(store);
+    intake_ = std::make_unique<IntakeService>(*workingCopy_);
     ui_ = std::make_unique<ConsoleUi>(*dashboard_, *quoteService_, *inventory_, *customers_,
                                      *orders_);
 
@@ -48,14 +52,15 @@ bool Application::handleCommand(const std::string& cmd) {
     }
     if (cmd == "help" || cmd == "?") {
         ui_->showToast(
-            "dashboard|quotes|products|customers|orders|relations|edit|post|undo|redo|discard|role|status");
+            "dashboard|quotes|products|customers|orders|relations|intake|"
+            "accept-quote Q-101|receive-po 70286|edit|post|undo|redo|discard|role|status");
         return true;
     }
     if (cmd == "dashboard") {
         ui_->showDashboard();
         return true;
     }
-    if (cmd == "relations") {
+    if (cmd == "relations" || cmd == "intake") {
         relations_->print();
         return true;
     }
@@ -113,10 +118,9 @@ bool Application::handleCommand(const std::string& cmd) {
         if (!roles_->canEdit(activeRole_, "products.onHand") &&
             !roles_->canEdit(activeRole_, "customers.name") &&
             !roles_->canEdit(activeRole_, "*")) {
-            // Still allow entering edit mode for roles with any add rights, or Admin/Manager.
             bool anyAdd = false;
-            for (const auto& entity :
-                 {"customers", "products", "quotes", "orders", "customFields", "*"}) {
+            for (const auto& entity : {"customers", "products", "quotes", "orders",
+                                       "purchaseOrders", "goodsReceipts", "customFields", "*"}) {
                 if (roles_->canAdd(activeRole_, entity)) {
                     anyAdd = true;
                     break;
@@ -171,7 +175,56 @@ bool Application::handleCommand(const std::string& cmd) {
         return true;
     }
 
-    // Demo polymorphic command: "set OH P1002 22"
+    if (cmd.rfind("accept-quote ", 0) == 0) {
+        if (!session_->isEditMode()) {
+            ui_->showToast("Enter edit mode first (edit).");
+            return true;
+        }
+        if (!roles_->canAdd(activeRole_, "orders") && !roles_->canAdd(activeRole_, "*")) {
+            ui_->showToast("Role " + activeRole_ + " cannot create sales orders.");
+            return true;
+        }
+        const std::string quoteNo = cmd.substr(13);
+        try {
+            std::string soNo;
+            session_->runMutation("accept-quote " + quoteNo, [&]() {
+                soNo = intake_->acceptQuoteToSalesOrder(quoteNo);
+            });
+            quotes_->reload();
+            orders_->reload();
+            ui_->showToast("Quote " + quoteNo + " → Sales Order " + soNo +
+                           " (invoice drafted; tables linked by orderNo/quoteNo).");
+        } catch (const std::exception& ex) {
+            ui_->showToast(std::string("accept-quote failed: ") + ex.what());
+        }
+        return true;
+    }
+
+    if (cmd.rfind("receive-po ", 0) == 0) {
+        if (!session_->isEditMode()) {
+            ui_->showToast("Enter edit mode first (edit).");
+            return true;
+        }
+        if (!roles_->canAdd(activeRole_, "goodsReceipts") && !roles_->canAdd(activeRole_, "*")) {
+            ui_->showToast("Role " + activeRole_ + " cannot post GRNs.");
+            return true;
+        }
+        const std::string poNo = cmd.substr(11);
+        try {
+            std::string grnNo;
+            session_->runMutation("receive-po " + poNo, [&]() {
+                grnNo = intake_->receivePurchaseOrder(poNo, {}, activeRole_);
+            });
+            products_->reload();
+            inventory_->refreshReorderFlags();
+            ui_->showToast("PO " + poNo + " → GRN " + grnNo +
+                           " posted (Product.onHand updated via GrnLine.sku).");
+        } catch (const std::exception& ex) {
+            ui_->showToast(std::string("receive-po failed: ") + ex.what());
+        }
+        return true;
+    }
+
     if (cmd.rfind("set OH ", 0) == 0) {
         if (!session_->isEditMode()) {
             ui_->showToast("Enter edit mode first (edit).");

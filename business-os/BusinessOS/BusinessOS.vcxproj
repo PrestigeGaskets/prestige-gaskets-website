@@ -82,6 +82,7 @@
     <ClInclude Include="..\include\DashboardService.h" />
     <ClInclude Include="..\include\DemoSeed.h" />
     <ClInclude Include="..\include\ExcelStore.h" />
+    <ClInclude Include="..\include\GoodsReceipt.h" />
     <ClInclude Include="..\include\ICommand.h" />
     <ClInclude Include="..\include\IDataStore.h" />
     <ClInclude Include="..\include\IRepositories.h" />
@@ -90,6 +91,7 @@
     <ClInclude Include="..\include\IUserInterface.h" />
     <ClInclude Include="..\include\IWorkspaceSession.h" />
     <ClInclude Include="..\include\InMemoryStore.h" />
+    <ClInclude Include="..\include\IntakeService.h" />
     <ClInclude Include="..\include\InventoryService.h" />
     <ClInclude Include="..\include\ListCatalog.h" />
     <ClInclude Include="..\include\Order.h" />

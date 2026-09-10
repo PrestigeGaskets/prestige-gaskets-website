@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Dashboard.h"
@@ -43,4 +44,20 @@ public:
     virtual void print() const = 0;
 };
 
+/// End-to-end intake: Quote → Sales Order number; PO → GRN number + stock.
+class IIntakeService {
+public:
+    virtual ~IIntakeService() = default;
+    /// Accept a received customer quote → generate Sales Order number, copy lines,
+    /// mark quote Won, draft invoice. Returns new orderNo (SO-…).
+    virtual std::string acceptQuoteToSalesOrder(const std::string& quoteNo) = 0;
+    /// Book goods against a PO → generate GRN number, update Product.onHand.
+    /// qtys: pairs of (poLine, qtyReceived). Empty = receive full remaining.
+    virtual std::string receivePurchaseOrder(
+        const std::string& poNo,
+        const std::vector<std::pair<int, double>>& qtys,
+        const std::string& receivedBy) = 0;
+};
+
 }  // namespace bos
+

@@ -450,6 +450,56 @@ button, input, select, textarea { font: inherit; }
 .mono { font-family: var(--mono); font-size: 0.88em; }
 .note { color: var(--muted); font-size: 0.82rem; }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.form-grid.compact { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.form-grid input,
+.form-grid select,
+.card .data input {
+  min-height: 2rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  background: #fff;
+}
+.form-grid input:disabled,
+.form-grid select:disabled,
+.card .data input:disabled {
+  background: #f3f5f7;
+  color: var(--ink);
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+.intake-steps {
+  margin: 0.35rem 0 0.85rem 1.1rem;
+  padding: 0;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.intake-steps li + li { margin-top: 0.35rem; }
+
+@media (max-width: 860px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

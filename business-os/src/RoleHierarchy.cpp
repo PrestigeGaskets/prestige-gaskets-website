@@ -9,17 +9,17 @@ RoleHierarchy::RoleHierarchy() {
         {"Viewer", {}, "Read-only across the workbook twin.", {}, {}},
         {"Sales",
          {"Viewer"},
-         "Own customers, quotes, and quote lines.",
+         "Own customers/quotes; accept received quotes → Sales Order number.",
          {"customers.name", "customers.email", "customers.postcode", "customers.status",
           "customers.notes", "quotes.customerId", "quotes.status", "quoteLines.qty",
-          "quoteLines.price", "quoteLines.sku"},
-         {"customers", "quotes", "quoteLines"}},
+          "quoteLines.price", "quoteLines.sku", "orders.status"},
+         {"customers", "quotes", "quoteLines", "orders"}},
         {"Inventory",
          {"Viewer"},
-         "Own product stock and reorder points.",
+         "Own product stock; post GRNs that update on-hand.",
          {"products.onHand", "products.reorderPoint", "products.leadDays", "products.cost",
           "products.sell", "products.description", "products.category"},
-         {"products"}},
+         {"products", "goodsReceipts"}},
         {"Finance",
          {"Viewer"},
          "Own products, orders, and custom field definitions.",
@@ -28,12 +28,12 @@ RoleHierarchy::RoleHierarchy() {
          {"products", "orders", "customFields"}},
         {"Purchasing",
          {"Viewer"},
-         "Own purchase orders and PO lines.",
+         "Own POs and goods receipt (GRN) against supplier orders.",
          {"purchaseOrders.status", "purchaseOrders.buyer", "purchaseOrders.paymentTerms",
           "purchaseOrders.dueDate", "purchaseOrders.shipMethod", "purchaseOrders.comments",
-          "purchaseOrders.currency", "purchaseOrders.readyToPrint", "purchaseOrders.landedCost",
-          "purchaseOrders.customRate"},
-         {"purchaseOrders", "poLines"}},
+          "purchaseOrders.currency", "purchaseOrders.readyToPrint", "purchaseOrders.supplierId",
+          "purchaseOrders.lines.qty", "purchaseOrders.lines.unitCost", "purchaseOrders.lines.sku"},
+         {"purchaseOrders", "poLines", "goodsReceipts"}},
         {"Manager",
          {"Sales", "Inventory", "Finance", "Purchasing"},
          "Inherits Sales + Inventory + Finance + Purchasing.",
@@ -81,7 +81,6 @@ bool RoleHierarchy::canEdit(const std::string& roleName, const std::string& fiel
     if (allowed.count("*") || allowed.count(fieldKey)) {
         return true;
     }
-    // custom.* wildcard
     if (fieldKey.rfind("custom.", 0) == 0 && allowed.count("custom.*")) {
         return true;
     }

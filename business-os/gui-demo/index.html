@@ -87,12 +87,20 @@
       </section>
 
       <section id="view-quotes" class="view" data-view="quotes" hidden>
-        <header class="view-head"><h1>Quotes</h1><p>Sales quotes · GBP</p></header>
+        <header class="view-head row">
+          <div>
+            <h1>Quotes</h1>
+            <p>Accept received quotes → generate Sales Order number</p>
+          </div>
+        </header>
         <div id="quotesRoot" class="stack"></div>
       </section>
 
       <section id="view-orders" class="view" data-view="orders" hidden>
-        <header class="view-head"><h1>Sales Orders</h1><p>Customer orders · GBP</p></header>
+        <header class="view-head">
+          <h1>Sales Orders</h1>
+          <p>orderNo = Sales Order number · links Quote / Lines / Invoice</p>
+        </header>
         <div id="ordersRoot" class="stack"></div>
       </section>
 
@@ -104,6 +112,24 @@
       <section id="view-customers" class="view" data-view="customers" hidden>
         <header class="view-head"><h1>Customers</h1><p>UK postcode · GBP</p></header>
         <div id="customersRoot" class="stack"></div>
+      </section>
+
+      <section id="view-receipt" class="view" data-view="receipt" hidden>
+        <header class="view-head row">
+          <div>
+            <h1>Receipt Entry (GRN)</h1>
+            <p>Goods received against PO · generates GRN number · updates OH</p>
+          </div>
+        </header>
+        <div id="receiptRoot" class="stack"></div>
+      </section>
+
+      <section id="view-intake" class="view" data-view="intake" hidden>
+        <header class="view-head">
+          <h1>End-to-end intake</h1>
+          <p>Sales Order number · GRN number · table links</p>
+        </header>
+        <div id="intakeRoot" class="stack"></div>
       </section>
 
       <section id="view-relations" class="view" data-view="relations" hidden>
