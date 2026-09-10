@@ -2046,6 +2046,7 @@
           <button type="button" class="btn" data-action="ship-close-view" title="Close">Close</button>
         </div>
       </details>`;
+    ribbon.querySelectorAll("details.ribbon-more").forEach((d) => { d.open = false; });
 
     tree.innerHTML = `
       <div class="po-tree-root">Shipments</div>
@@ -2239,6 +2240,7 @@
       ? `${detail}${headerForm}${linkNote}`
       : `${compact}${detail}${headerForm}${linkNote}`;
 
+    form.querySelectorAll("details.ribbon-more").forEach((d) => { d.open = false; });
     bindPaths(form);
     const sel = document.getElementById("shipSelect");
     if (sel) sel.onchange = (e) => { shipId = e.target.value; render(); };
