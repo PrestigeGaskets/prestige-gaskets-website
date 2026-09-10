@@ -18,6 +18,7 @@ public:
     std::vector<Order> loadOrders() override;
     std::vector<PurchaseOrder> loadPurchaseOrders() override;
     std::vector<GoodsReceipt> loadGoodsReceipts() override;
+    std::vector<Shipment> loadShipments() override;
     std::vector<std::string> loadList(const std::string& listName) override;
 
     std::vector<CustomerAccount> loadCustomerAccounts() override;
@@ -36,6 +37,7 @@ private:
     std::vector<Order> orders_;
     std::vector<PurchaseOrder> purchaseOrders_;
     std::vector<GoodsReceipt> goodsReceipts_;
+    std::vector<Shipment> shipments_;
     std::vector<CustomerAccount> accounts_;
     std::vector<Invoice> invoices_;
     std::vector<Tag> tags_;

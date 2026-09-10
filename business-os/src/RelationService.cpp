@@ -30,6 +30,11 @@ std::vector<RelationEdge> RelationService::catalog() const {
          "PO can have many GRNs (partial receipts)"},
         {"1:N", "GoodsReceipt", "GrnLine", "GoodsReceipt.lines[] / GrnLine.grnNo",
          "GRN header owns received lines"},
+        {"1:N", "Customer", "Shipment", "Shipment.customerId", "Customer has many shipments"},
+        {"1:N", "Shipment", "ShipmentLine", "Shipment.lines[] / ShipmentLine.shipmentId",
+         "Shipment header owns lines"},
+        {"1:N", "Order", "ShipmentLine", "ShipmentLine.orderNo (optional)",
+         "Sales order lines may ship across many shipments"},
         {"M:N", "Product", "Tag", "ProductTag", "Junction ProductTag(sku, tagId)"},
         {"M:N", "Product", "Supplier", "ProductSupplier",
          "Junction ProductSupplier(sku, supplierId)"},
@@ -37,6 +42,7 @@ std::vector<RelationEdge> RelationService::catalog() const {
         {"M:N", "Order", "Product", "OrderLine", "Association entity OrderLine"},
         {"M:N", "PurchaseOrder", "Product", "PoLine", "Association entity PoLine"},
         {"M:N", "GoodsReceipt", "Product", "GrnLine", "Association entity GrnLine → OH update"},
+        {"M:N", "Shipment", "Product", "ShipmentLine", "Association entity ShipmentLine"},
     };
 }
 
@@ -173,6 +179,23 @@ std::vector<std::string> RelationService::validate() const {
             }
             if (!poNos.count(line.poNo)) {
                 issues.push_back("GrnLine " + grn.grnNo + " orphan poNo=" + line.poNo);
+            }
+        }
+    }
+
+    for (const auto& ship : store_.loadShipments()) {
+        if (!ship.customerId.empty() && !customerIds.count(ship.customerId)) {
+            issues.push_back("Shipment " + ship.shipmentId +
+                             " orphan customerId=" + ship.customerId);
+        }
+        for (const auto& line : ship.lines) {
+            if (!skus.count(line.sku)) {
+                issues.push_back("ShipmentLine " + ship.shipmentId + "/" +
+                                 std::to_string(line.line) + " orphan sku=" + line.sku);
+            }
+            if (!line.orderNo.empty() && !orderNos.count(line.orderNo)) {
+                issues.push_back("ShipmentLine " + ship.shipmentId + "/" +
+                                 std::to_string(line.line) + " orphan orderNo=" + line.orderNo);
             }
         }
     }

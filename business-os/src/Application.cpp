@@ -120,7 +120,8 @@ bool Application::handleCommand(const std::string& cmd) {
             !roles_->canEdit(activeRole_, "*")) {
             bool anyAdd = false;
             for (const auto& entity : {"customers", "products", "quotes", "orders",
-                                       "purchaseOrders", "goodsReceipts", "customFields", "*"}) {
+                                       "purchaseOrders", "goodsReceipts", "shipments",
+                                       "customFields", "*"}) {
                 if (roles_->canAdd(activeRole_, entity)) {
                     anyAdd = true;
                     break;
