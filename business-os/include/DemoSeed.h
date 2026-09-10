@@ -9,17 +9,18 @@
 #include "CustomerAccount.h"
 #include "Order.h"
 #include "Product.h"
+#include "PurchaseOrder.h"
 #include "Quote.h"
 #include "Relations.h"
 
 namespace bos {
 
-/// Shared workbook-shaped demo seed used by InMemoryStore and MasterStore.
 struct DemoSeed {
     std::vector<Customer> customers;
     std::vector<Product> products;
     std::vector<Quote> quotes;
     std::vector<Order> orders;
+    std::vector<PurchaseOrder> purchaseOrders;
     std::vector<CustomerAccount> accounts;
     std::vector<Invoice> invoices;
     std::vector<Tag> tags;

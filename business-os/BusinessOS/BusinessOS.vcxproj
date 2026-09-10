@@ -97,6 +97,7 @@
     <ClInclude Include="..\include\OrderRepository.h" />
     <ClInclude Include="..\include\Product.h" />
     <ClInclude Include="..\include\ProductCatalog.h" />
+    <ClInclude Include="..\include\PurchaseOrder.h" />
     <ClInclude Include="..\include\Quote.h" />
     <ClInclude Include="..\include\QuoteRepository.h" />
     <ClInclude Include="..\include\QuoteService.h" />

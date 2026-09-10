@@ -12,6 +12,7 @@ void InMemoryStore::seedDemoData() {
     products_ = s.products;
     quotes_ = s.quotes;
     orders_ = s.orders;
+    purchaseOrders_ = s.purchaseOrders;
     accounts_ = s.accounts;
     invoices_ = s.invoices;
     tags_ = s.tags;
@@ -25,6 +26,7 @@ std::vector<Customer> InMemoryStore::loadCustomers() { return customers_; }
 std::vector<Product> InMemoryStore::loadProducts() { return products_; }
 std::vector<Quote> InMemoryStore::loadQuotes() { return quotes_; }
 std::vector<Order> InMemoryStore::loadOrders() { return orders_; }
+std::vector<PurchaseOrder> InMemoryStore::loadPurchaseOrders() { return purchaseOrders_; }
 
 std::vector<std::string> InMemoryStore::loadList(const std::string& listName) {
     const auto it = lists_.find(listName);

@@ -15,6 +15,7 @@ void MasterStore::seedDemoData() {
     products_ = s.products;
     quotes_ = s.quotes;
     orders_ = s.orders;
+    purchaseOrders_ = s.purchaseOrders;
     accounts_ = s.accounts;
     invoices_ = s.invoices;
     tags_ = s.tags;
@@ -28,6 +29,7 @@ std::vector<Customer> MasterStore::loadCustomers() { return customers_; }
 std::vector<Product> MasterStore::loadProducts() { return products_; }
 std::vector<Quote> MasterStore::loadQuotes() { return quotes_; }
 std::vector<Order> MasterStore::loadOrders() { return orders_; }
+std::vector<PurchaseOrder> MasterStore::loadPurchaseOrders() { return purchaseOrders_; }
 
 std::vector<std::string> MasterStore::loadList(const std::string& listName) {
     const auto it = lists_.find(listName);
@@ -51,6 +53,7 @@ void WorkingCopyStore::cloneFromMaster() {
     products_ = master_.loadProducts();
     quotes_ = master_.loadQuotes();
     orders_ = master_.loadOrders();
+    purchaseOrders_ = master_.loadPurchaseOrders();
     dirty_ = false;
 }
 
@@ -60,6 +63,7 @@ std::vector<Customer> WorkingCopyStore::loadCustomers() { return customers_; }
 std::vector<Product> WorkingCopyStore::loadProducts() { return products_; }
 std::vector<Quote> WorkingCopyStore::loadQuotes() { return quotes_; }
 std::vector<Order> WorkingCopyStore::loadOrders() { return orders_; }
+std::vector<PurchaseOrder> WorkingCopyStore::loadPurchaseOrders() { return purchaseOrders_; }
 
 std::vector<std::string> WorkingCopyStore::loadList(const std::string& listName) {
     return master_.loadList(listName);
@@ -77,7 +81,7 @@ std::vector<ProductSupplier> WorkingCopyStore::loadProductSuppliers() {
 }
 
 WorkingCopyStore::Snapshot WorkingCopyStore::capture() const {
-    return Snapshot{customers_, products_, quotes_, orders_, dirty_};
+    return Snapshot{customers_, products_, quotes_, orders_, purchaseOrders_, dirty_};
 }
 
 void WorkingCopyStore::restore(const Snapshot& snap) {
@@ -85,6 +89,7 @@ void WorkingCopyStore::restore(const Snapshot& snap) {
     products_ = snap.products;
     quotes_ = snap.quotes;
     orders_ = snap.orders;
+    purchaseOrders_ = snap.purchaseOrders;
     dirty_ = snap.dirty;
 }
 
@@ -182,6 +187,40 @@ void WorkingCopyStore::updateOrderField(const std::string& orderNo,
         it->value = std::stod(value);
     } else {
         throw std::runtime_error("Unsupported order field: " + field);
+    }
+    dirty_ = true;
+}
+
+void WorkingCopyStore::updatePoField(const std::string& poNo,
+                                     const std::string& field,
+                                     const std::string& value) {
+    auto it = std::find_if(purchaseOrders_.begin(), purchaseOrders_.end(),
+                           [&](const PurchaseOrder& po) { return po.poNo == poNo; });
+    if (it == purchaseOrders_.end()) {
+        throw std::runtime_error("Unknown purchase order: " + poNo);
+    }
+    if (field == "status") {
+        it->status = value;
+    } else if (field == "buyer") {
+        it->buyer = value;
+    } else if (field == "paymentTerms") {
+        it->paymentTerms = value;
+    } else if (field == "dueDate") {
+        it->dueDate = value;
+    } else if (field == "shipMethod") {
+        it->shipMethod = value;
+    } else if (field == "comments") {
+        it->comments = value;
+    } else if (field == "currency") {
+        it->currency = value;
+    } else if (field == "readyToPrint") {
+        it->readyToPrint = (value == "true");
+    } else if (field == "landedCost") {
+        it->landedCost = (value == "true");
+    } else if (field == "customRate") {
+        it->customRate = (value == "true");
+    } else {
+        throw std::runtime_error("Unsupported purchase order field: " + field);
     }
     dirty_ = true;
 }
