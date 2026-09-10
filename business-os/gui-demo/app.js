@@ -813,7 +813,17 @@
     let cur = working;
     for (let i = 0; i < parts.length - 1; i += 1) cur = cur[parts[i]];
     const key = parts[parts.length - 1];
-    mutate(`Edit ${path}`, () => { cur[key] = value; });
+    mutate(`Edit ${path}`, () => {
+      cur[key] = value;
+      if (key === "shipMethod" && (parts[0] === "quotes" || parts[0] === "orders")) {
+        if (value === "COLLECT") {
+          cur.via = "";
+          if (parts[0] === "orders") cur.shipPaymentType = "COLLECT";
+        } else if (parts[0] === "orders" && cur.shipPaymentType === "COLLECT") {
+          cur.shipPaymentType = "PREPAID";
+        }
+      }
+    });
     render();
   }
 
@@ -1962,7 +1972,8 @@
   function isQuoteLive(q) {
     if (!["Open", "Sent", "Confirmed"].includes(q.status)) return false;
     const rem = quoteDaysRemaining(q);
-    return rem == null || rem >= 0;
+    if (rem == null) return false; // require a parseable quotedDate
+    return rem >= 0;
   }
 
   function providerName(id) {
@@ -2015,7 +2026,8 @@
     if (!mutate(`Confirm quote ${quoteNo}`, () => {
       q.status = "Confirmed";
       if (!q.shipMethod) q.shipMethod = "CARRIER";
-      if (q.shipMethod !== "COLLECT" && !q.via && (working.procurementProviders || [])[0]) {
+      if (q.shipMethod === "COLLECT") q.via = "";
+      else if (!q.via && (working.procurementProviders || [])[0]) {
         q.via = working.procurementProviders[0].id;
       }
     })) return;

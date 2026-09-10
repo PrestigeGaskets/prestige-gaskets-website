@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <ctime>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -24,6 +26,54 @@ int extractTrailingNumber(const std::string& id) {
     } catch (...) {
         return 0;
     }
+}
+
+bool parseGbDate(const std::string& text, std::tm& out) {
+    int d = 0;
+    int m = 0;
+    int y = 0;
+    char slash1 = 0;
+    char slash2 = 0;
+    std::istringstream iss(text);
+    if (!(iss >> d >> slash1 >> m >> slash2 >> y) || slash1 != '/' || slash2 != '/') {
+        return false;
+    }
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 1970) {
+        return false;
+    }
+    out = {};
+    out.tm_mday = d;
+    out.tm_mon = m - 1;
+    out.tm_year = y - 1900;
+    return true;
+}
+
+bool quoteStillLive(const Quote& q) {
+    if (q.status != "Open" && q.status != "Sent" && q.status != "Confirmed") {
+        return false;
+    }
+    std::tm quoted{};
+    if (!parseGbDate(q.quotedDate, quoted)) {
+        return false;
+    }
+    const int validDays = q.validDays > 0 ? q.validDays : 14;
+    std::time_t start = std::mktime(&quoted);
+    if (start == -1) {
+        return false;
+    }
+    const std::time_t end = start + static_cast<std::time_t>(validDays) * 24 * 60 * 60;
+    const std::time_t now = std::time(nullptr);
+    std::tm localNow{};
+#if defined(_WIN32)
+    localtime_s(&localNow, &now);
+#else
+    localtime_r(&now, &localNow);
+#endif
+    localNow.tm_hour = 0;
+    localNow.tm_min = 0;
+    localNow.tm_sec = 0;
+    const std::time_t today = std::mktime(&localNow);
+    return today != -1 && today <= end;
 }
 
 }  // namespace
@@ -299,6 +349,9 @@ std::string WorkingCopyStore::convertQuoteToSalesOrder(const std::string& quoteN
     if (qit->status != "Confirmed" && qit->status != "Won") {
         throw std::runtime_error("Quote must be Confirmed before Sales Order conversion: " +
                                  quoteNo);
+    }
+    if (qit->status == "Confirmed" && !quoteStillLive(*qit)) {
+        throw std::runtime_error("Quote expired (live window elapsed): " + quoteNo);
     }
     for (const auto& o : orders_) {
         if (o.quoteNo == quoteNo) {
