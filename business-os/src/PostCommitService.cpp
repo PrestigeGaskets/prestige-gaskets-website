@@ -79,7 +79,20 @@ void PostCommitService::stagePostShipment(const std::string& shipmentId,
     entry.type = "post-shipment";
     entry.stagedAt = nowIso();
     entry.shipmentId = shipmentId;
-    entry.detail = "Stage ship " + shipmentId + " → OH on Post";
+    entry.detail = "Stage ship " + shipmentId + " → DN + OH on Post";
+    actions_.stage(std::move(entry));
+}
+
+void PostCommitService::stageUnpostShipment(const std::string& shipmentId,
+                                            const std::string& actor) {
+    ActionEntry entry;
+    entry.id = nextActionId();
+    entry.day = todayLocal();
+    entry.actor = actor;
+    entry.type = "unpost-shipment";
+    entry.stagedAt = nowIso();
+    entry.shipmentId = shipmentId;
+    entry.detail = "Stage unpost DN " + shipmentId + " → restore OH on Post";
     actions_.stage(std::move(entry));
 }
 
@@ -115,7 +128,12 @@ PostCommitResult PostCommitService::commit(const std::string& actor) {
             session_.runMutation("post shipment " + staged.shipmentId, [&]() {
                 intake_.postShipment(staged.shipmentId);
             });
-            live.detail = "Ship " + staged.shipmentId + " posted · OH issued";
+            live.detail = "Ship " + staged.shipmentId + " posted · DN + OH issued";
+        } else if (staged.type == "unpost-shipment") {
+            session_.runMutation("unpost shipment " + staged.shipmentId, [&]() {
+                intake_.unpostShipment(staged.shipmentId);
+            });
+            live.detail = "Unpost " + staged.shipmentId + " · DN cleared · OH restored";
         }
 
         actions_.appendPosted(live);

@@ -56,7 +56,7 @@ bool Application::handleCommand(const std::string& cmd) {
     if (cmd == "help" || cmd == "?") {
         ui_->showToast(
             "dashboard|quotes|products|customers|orders|relations|intake|"
-            "accept-quote Q-101|receive-po 70286|post-shipment 275525|"
+            "accept-quote Q-101|receive-po 70286|post-shipment 275525|unpost-shipment 275525|"
             "edit|post|undo|redo|discard|role|status|actions");
         return true;
     }
@@ -243,6 +243,23 @@ bool Application::handleCommand(const std::string& cmd) {
         const std::string shipmentId = cmd.substr(14);
         postCommit_->stagePostShipment(shipmentId, activeRole_);
         ui_->showToast("Shipment " + shipmentId + " staged — run post to issue stock.");
+        return true;
+    }
+
+    if (cmd.rfind("unpost-shipment ", 0) == 0) {
+        if (!session_->isEditMode()) {
+            ui_->showToast("Enter edit mode first (edit).");
+            return true;
+        }
+        if (!roles_->canAdd(activeRole_, "shipments") &&
+            !roles_->canEdit(activeRole_, "shipments.status") &&
+            !roles_->canAdd(activeRole_, "*")) {
+            ui_->showToast("Role " + activeRole_ + " cannot unpost shipments.");
+            return true;
+        }
+        const std::string shipmentId = cmd.substr(16);
+        postCommit_->stageUnpostShipment(shipmentId, activeRole_);
+        ui_->showToast("Unpost " + shipmentId + " staged — run post to restore stock.");
         return true;
     }
 

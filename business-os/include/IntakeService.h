@@ -28,6 +28,10 @@ public:
         working_.postShipment(shipmentId);
     }
 
+    void unpostShipment(const std::string& shipmentId) override {
+        working_.unpostShipment(shipmentId);
+    }
+
 private:
     IWorkingCopyMutations& working_;
 };

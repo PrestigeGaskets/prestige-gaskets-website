@@ -73,6 +73,8 @@ struct Shipment {
     bool printPackingSlip = false;
     bool printLabels = false;
     std::string standardMessage;
+    bool deliveryNoteIssued = false;
+    std::string deliveryNoteNo;  // e.g. DN-275525
 
     // Status
     std::string status;  // Draft | Open | Shipped | Posted | Closed

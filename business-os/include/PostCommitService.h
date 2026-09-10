@@ -18,6 +18,7 @@ public:
     void stageAcceptQuote(const std::string& quoteNo, const std::string& actor) override;
     void stageReceivePo(const std::string& poNo, const std::string& actor) override;
     void stagePostShipment(const std::string& shipmentId, const std::string& actor) override;
+    void stageUnpostShipment(const std::string& shipmentId, const std::string& actor) override;
 
     PostCommitResult commit(const std::string& actor) override;
 

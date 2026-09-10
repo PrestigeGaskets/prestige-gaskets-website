@@ -87,6 +87,8 @@ public:
                                       const std::string& receivedBy) override;
     /// Post shipment → issue on-hand for lines, mark orders Shipped, status Posted.
     void postShipment(const std::string& shipmentId) override;
+    /// Unpost shipment / delivery note → restore on-hand, reopen shipment.
+    void unpostShipment(const std::string& shipmentId) override;
 
     struct Snapshot {
         std::vector<Customer> customers;

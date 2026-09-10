@@ -57,8 +57,10 @@ public:
         const std::string& poNo,
         const std::vector<std::pair<int, double>>& qtys,
         const std::string& receivedBy) = 0;
-    /// Post a staged shipment → issue Product.onHand, mark lines complete.
+    /// Post a staged shipment → issue Product.onHand, mark lines complete, issue DN.
     virtual void postShipment(const std::string& shipmentId) = 0;
+    /// Unpost a posted shipment / delivery note → restore Product.onHand.
+    virtual void unpostShipment(const std::string& shipmentId) = 0;
 };
 
 /// Result of committing staged actions (+ optional working-copy edits).
@@ -76,6 +78,8 @@ public:
     virtual void stageReceivePo(const std::string& poNo, const std::string& actor) = 0;
     virtual void stagePostShipment(const std::string& shipmentId,
                                    const std::string& actor) = 0;
+    virtual void stageUnpostShipment(const std::string& shipmentId,
+                                     const std::string& actor) = 0;
 
     /// Finalize pending intake, write action repo for actor/day, clear pending.
     virtual PostCommitResult commit(const std::string& actor) = 0;

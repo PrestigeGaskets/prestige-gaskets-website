@@ -18,6 +18,7 @@ public:
         const std::vector<std::pair<int, double>>& qtys,
         const std::string& receivedBy) = 0;
     virtual void postShipment(const std::string& shipmentId) = 0;
+    virtual void unpostShipment(const std::string& shipmentId) = 0;
     virtual void updateProductField(const std::string& sku,
                                     const std::string& field,
                                     double value) = 0;
