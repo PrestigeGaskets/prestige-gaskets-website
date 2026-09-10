@@ -536,6 +536,9 @@
   let shipId = "275525";
   let shipTab = "lines";
   let shipPlant = "J A HARRISON (MANCHESTER)";
+  let addFromOrderOpen = false;
+  let addFromOrderAck = "";
+  let addFromOrderLineMarks = {}; // lineNo -> bool
   let undoStack = [];
   let redoStack = [];
   let posted = loadJson(POSTED_KEY, null);
@@ -1536,15 +1539,237 @@
     toast(`Shipment ${id} added.`);
   }
 
+  function findOrderByAck(ack) {
+    const key = String(ack || "").trim().toUpperCase();
+    if (!key) return null;
+    return working.orders.find((o) => String(o.orderNo).toUpperCase() === key)
+      || working.orders.find((o) => String(o.orderNo).toUpperCase().endsWith(key.replace(/^O-?/, "")))
+      || null;
+  }
+
+  function qtyAlreadyShipped(orderNo, sku) {
+    let n = 0;
+    for (const s of working.shipments) {
+      if (s.status === "Draft") continue;
+      for (const l of s.lines || []) {
+        if (l.orderNo === orderNo && l.sku === sku) n += Number(l.qtyShipped || 0);
+      }
+    }
+    return n;
+  }
+
+  function openAddFromOrder() {
+    if (!canAdd("shipmentLines") && !editMode) {
+      return toast("Turn on Edit to add from order (despatch).");
+    }
+    if (!canAdd("shipmentLines") && !canEdit("shipments.lines.sku")) {
+      return toast("Role cannot add shipment lines.");
+    }
+    if (!editMode) return toast("Turn on Edit first.");
+    addFromOrderOpen = true;
+    if (!addFromOrderAck) {
+      const open = working.orders.find((o) => o.status === "Open" || o.status === "Picked");
+      addFromOrderAck = open?.orderNo || working.orders[0]?.orderNo || "";
+    }
+    const ord = findOrderByAck(addFromOrderAck);
+    addFromOrderLineMarks = {};
+    if (ord) {
+      for (const l of ord.lines || []) addFromOrderLineMarks[l.line] = true;
+    }
+    shipTab = "lines";
+    render();
+  }
+
+  function closeAddFromOrder() {
+    addFromOrderOpen = false;
+    render();
+  }
+
+  function lookupAddFromOrder() {
+    const input = document.getElementById("afoAckInput");
+    if (input) addFromOrderAck = input.value.trim();
+    const ord = findOrderByAck(addFromOrderAck);
+    if (!ord) {
+      addFromOrderLineMarks = {};
+      toast(`No sales acknowledgement matching "${addFromOrderAck || "—"}".`);
+      return render();
+    }
+    addFromOrderAck = ord.orderNo;
+    addFromOrderLineMarks = {};
+    for (const l of ord.lines || []) addFromOrderLineMarks[l.line] = true;
+    toast(`Loaded acknowledgement ${ord.orderNo}.`);
+    render();
+  }
+
+  function renderAddFromOrderPanel() {
+    const root = document.getElementById("addFromOrderPanel");
+    if (!root) return;
+    if (!addFromOrderOpen) {
+      root.hidden = true;
+      root.innerHTML = "";
+      return;
+    }
+    root.hidden = false;
+    const ord = findOrderByAck(addFromOrderAck);
+    const oi = ord ? working.orders.findIndex((o) => o.orderNo === ord.orderNo) : -1;
+    const inv = ord ? working.invoices.find((i) => i.orderNo === ord.orderNo) : null;
+    const value = ord ? sumLines(ord.lines, "price") : 0;
+    const openLines = ord ? (ord.lines || []).length : 0;
+    const remainQty = ord
+      ? (ord.lines || []).reduce((s, l) => s + Math.max(0, Number(l.qty) - qtyAlreadyShipped(ord.orderNo, l.sku)), 0)
+      : 0;
+
+    const statusDis = !editMode || oi < 0 || !canEdit("orders.status");
+    const custDis = !editMode || oi < 0 || !canEdit("orders.customerId");
+    const printDis = !editMode || oi < 0 || !canEdit("orders.readyToPrint");
+    const methodDis = !editMode || oi < 0 || !canEdit("orders.shipMethod");
+    const viaDis = !editMode || oi < 0 || !canEdit("orders.via") || (ord && ord.shipMethod === "COLLECT");
+    const payDis = !editMode || oi < 0 || !canEdit("orders.shipPaymentType");
+    const canCommit = editMode && ord && (canAdd("shipmentLines") || canEdit("shipments.lines.sku"));
+
+    const suggestions = working.orders
+      .filter((o) => o.status === "Open" || o.status === "Picked" || o.status === "Shipped" || o.readyToPrint)
+      .map((o) => `<option value="${o.orderNo}"></option>`)
+      .join("");
+
+    const stats = ord ? `
+      <div class="afo-stats" aria-label="Order stats">
+        <div class="afo-stat"><span class="k">Acknowledgement</span><span class="v mono">${ord.orderNo}</span></div>
+        <div class="afo-stat"><span class="k">Customer</span><span class="v">${customerName(ord.customerId)}</span></div>
+        <div class="afo-stat"><span class="k">Status</span><span class="v">${ord.status}${ord.readyToPrint ? " · ready to print" : ""}</span></div>
+        <div class="afo-stat"><span class="k">Order value</span><span class="v">${money(value)}</span></div>
+        <div class="afo-stat"><span class="k">Lines</span><span class="v">${openLines}</span></div>
+        <div class="afo-stat"><span class="k">Qty still open</span><span class="v">${remainQty}</span></div>
+        <div class="afo-stat"><span class="k">Fulfilment</span><span class="v">${ord.shipMethod || "—"}${ord.via ? ` via ${providerName(ord.via)}` : ""}</span></div>
+        <div class="afo-stat"><span class="k">Invoice</span><span class="v mono">${inv ? `${inv.invoiceNo} · ${inv.status}` : "—"}</span></div>
+      </div>` : `<p class="note">Enter a sales acknowledgement number (e.g. O-501) and Lookup to load order stats for despatch.</p>`;
+
+    const editFields = ord && oi >= 0 ? `
+      <div class="po-section"><div class="po-section-head">Order fields (role-gated)</div>
+        <div class="field-grid" style="padding:0.55rem">
+          <div class="field ${statusDis ? "is-locked" : ""}"><label>Status</label>
+            <select data-path="orders.${oi}.status" ${statusDis ? "disabled" : ""}>
+              ${ORDER_STATUSES.map((s) => `<option value="${s}" ${ord.status === s ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field ${custDis ? "is-locked" : ""}"><label>Customer</label>
+            <select data-path="orders.${oi}.customerId" ${custDis ? "disabled" : ""}>
+              ${working.customers.map((c) => `<option value="${c.id}" ${c.id === ord.customerId ? "selected" : ""}>${c.name}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field ${printDis ? "is-locked" : ""}"><label>Ready to Print?</label>
+            <input type="checkbox" data-path="orders.${oi}.readyToPrint" ${ord.readyToPrint ? "checked" : ""} ${printDis ? "disabled" : ""} />
+          </div>
+          <div class="field ${methodDis ? "is-locked" : ""}"><label>Collect / ship</label>
+            <select data-path="orders.${oi}.shipMethod" ${methodDis ? "disabled" : ""}>
+              ${SHIP_METHODS.map((s) => `<option value="${s}" ${ord.shipMethod === s ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field ${viaDis ? "is-locked" : ""}"><label>Via (white-label)</label>
+            <select data-path="orders.${oi}.via" ${viaDis ? "disabled" : ""}>${providerOptions(ord.via || "")}</select>
+          </div>
+          <div class="field ${payDis ? "is-locked" : ""}"><label>Ship payment</label>
+            <select data-path="orders.${oi}.shipPaymentType" ${payDis ? "disabled" : ""}>
+              ${SHIP_PAYMENT_TYPES.map((s) => `<option value="${s}" ${ord.shipPaymentType === s ? "selected" : ""}>${s}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <p class="note" style="padding:0 0.55rem 0.55rem">Editable when your role allows · Sales / Shipping / Manager / Admin. Viewer sees stats only.</p>
+      </div>` : "";
+
+    const lineRows = ord ? (ord.lines || []).map((l, li) => {
+      const shipped = qtyAlreadyShipped(ord.orderNo, l.sku);
+      const remain = Math.max(0, Number(l.qty) - shipped);
+      const prod = working.products.find((p) => p.sku === l.sku);
+      const qtyDis = !editMode || !canEdit("orders.lines.qty");
+      const skuDis = !editMode || !canEdit("orders.lines.sku");
+      const priceDis = !editMode || !canEdit("orders.lines.price");
+      const marked = addFromOrderLineMarks[l.line] !== false && remain > 0;
+      return `<tr>
+        <td><input type="checkbox" data-afo-line="${l.line}" ${marked ? "checked" : ""} ${remain <= 0 ? "disabled" : ""} /></td>
+        <td>${l.line}</td>
+        <td><input class="mono" data-path="orders.${oi}.lines.${li}.sku" value="${l.sku}" ${skuDis ? "disabled" : ""} /></td>
+        <td>${prod?.description || ""}</td>
+        <td><input type="number" min="0" data-path="orders.${oi}.lines.${li}.qty" value="${l.qty}" ${qtyDis ? "disabled" : ""} /></td>
+        <td>${shipped}</td>
+        <td>${remain}</td>
+        <td>${prod ? prod.onHand : "—"}</td>
+        <td><input type="number" min="0" step="0.01" data-path="orders.${oi}.lines.${li}.price" value="${l.price}" ${priceDis ? "disabled" : ""} /></td>
+        <td>${money(l.qty * l.price)}</td>
+      </tr>`;
+    }).join("") : "";
+
+    const linesBlock = ord ? `
+      <div class="po-section"><div class="po-section-head">Lines to despatch</div>
+        <div class="table-wrap" style="padding:0.45rem">
+          <table class="data ship-lines"><thead><tr>
+            <th></th><th>Line</th><th>SKU</th><th>Description</th><th>Ordered</th><th>Shipped</th><th>Remain</th><th>OH</th><th>Price</th><th>Ext</th>
+          </tr></thead><tbody>${lineRows || `<tr><td colspan="10">No lines on acknowledgement</td></tr>`}</tbody></table>
+        </div>
+      </div>` : "";
+
+    root.innerHTML = `
+      <div class="afo-dialog" role="dialog" aria-modal="true" aria-labelledby="afoTitle">
+        <div class="afo-head">
+          <h2 id="afoTitle">Add From Order · Despatch</h2>
+          <button type="button" class="btn" data-action="afo-close">Close</button>
+        </div>
+        <div class="afo-body">
+          <div class="afo-lookup-row">
+            <div>
+              <label for="afoAckInput">Sales acknowledgement No</label>
+              <div class="lookup-wrap">
+                <input id="afoAckInput" list="afoAckList" class="mono" value="${addFromOrderAck}" placeholder="e.g. O-501" autocomplete="off" />
+                <button type="button" class="lookup-btn" data-action="afo-lookup" title="Lookup">⌕</button>
+              </div>
+              <datalist id="afoAckList">${suggestions}</datalist>
+            </div>
+            <button type="button" class="btn btn-primary" data-action="afo-lookup">Lookup</button>
+          </div>
+          ${stats}
+          ${editFields}
+          ${linesBlock}
+          <div class="afo-actions">
+            <button type="button" class="btn" data-action="afo-close">Cancel</button>
+            <button type="button" class="btn btn-primary" data-action="afo-commit" ${canCommit ? "" : "disabled"}>Add selected lines to shipment</button>
+          </div>
+        </div>
+      </div>`;
+
+    const body = root.querySelector(".afo-body");
+    if (body) bindPaths(body);
+    root.querySelectorAll("[data-afo-line]").forEach((el) => {
+      el.addEventListener("change", () => {
+        addFromOrderLineMarks[Number(el.dataset.afoLine)] = el.checked;
+      });
+    });
+    const ackInput = document.getElementById("afoAckInput");
+    if (ackInput) {
+      ackInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          lookupAddFromOrder();
+        }
+      });
+      ackInput.addEventListener("change", () => { addFromOrderAck = ackInput.value.trim(); });
+    }
+  }
+
   function addShipmentLinesFromOrder() {
+    openAddFromOrder();
+  }
+
+  function commitAddFromOrder() {
     if (!canAdd("shipmentLines") && !canEdit("shipments.lines.sku")) {
       return toast("Role cannot add shipment lines.");
     }
     const ship = currentShipment();
     if (!ship) return;
-    const openOrders = working.orders.filter((o) => o.status === "Open" || o.status === "Picked" || o.status === "Shipped");
-    const pick = openOrders[0] || working.orders[0];
-    if (!pick || !pick.lines?.length) return toast("No sales order lines to add.");
+    const pick = findOrderByAck(addFromOrderAck);
+    if (!pick || !pick.lines?.length) return toast("Lookup a sales acknowledgement first.");
+    const selected = (pick.lines || []).filter((l) => addFromOrderLineMarks[l.line] !== false);
+    const toAdd = selected.filter((l) => Math.max(0, Number(l.qty) - qtyAlreadyShipped(pick.orderNo, l.sku)) > 0);
+    if (!toAdd.length) return toast("No remaining qty on selected lines.");
     if (!mutate(`Add from order ${pick.orderNo} → ${ship.shipmentId}`, () => {
       if (!ship.customerId) ship.customerId = pick.customerId;
       if (!ship.shipOrganisation) ship.shipOrganisation = pick.customerId;
@@ -1562,17 +1787,19 @@
         }
       }
       let lineNo = ship.lines.reduce((m, l) => Math.max(m, l.line), 0);
-      for (const ol of pick.lines) {
+      for (const ol of toAdd) {
+        const remain = Math.max(0, Number(ol.qty) - qtyAlreadyShipped(pick.orderNo, ol.sku));
+        if (remain <= 0) continue;
         lineNo += 1;
         ship.lines.push({
           line: lineNo,
           sku: ol.sku,
           revision: "",
           warehouseBin: "",
-          deliveryQty: ol.qty,
-          openQty: ol.qty,
+          deliveryQty: remain,
+          openQty: remain,
           jobQtyShipped: 0,
-          qtyShipped: ol.qty,
+          qtyShipped: remain,
           shipComplete: false,
           invoiceComplete: false,
           deliveryDate: ship.shipDate,
@@ -1583,9 +1810,11 @@
       }
       if (ship.status === "Draft") ship.status = "Open";
     })) return;
-    toast(`Lines added from Sales Order ${pick.orderNo}${pick.shipMethod ? ` · ${pick.shipMethod}` : ""}${pick.via ? ` via ${pick.via}` : ""}.`);
+    addFromOrderOpen = false;
+    toast(`Despatch lines from acknowledgement ${pick.orderNo}${pick.shipMethod ? ` · ${pick.shipMethod}` : ""}${pick.via ? ` via ${pick.via}` : ""}.`);
     render();
   }
+
 
   function postShipment() {
     const ship = currentShipment();
@@ -2669,6 +2898,7 @@
 
   function render() {
     renderChrome();
+    renderAddFromOrderPanel();
     updatePill();
     syncButtons();
     if (view === "hub") renderHub();
@@ -2820,7 +3050,10 @@
       if (action === "ship-memos") { shipTab = "lines"; toast("Memos shown under shipment notes / tree."); return render(); }
       if (action === "ship-close-view") return setHub("shipping");
       if (action === "ship-lookup") return toast("Use the Customer ID dropdown — Contact Management owns the master list.");
-      if (action === "ship-add-from-order") return addShipmentLinesFromOrder();
+      if (action === "ship-add-from-order") return openAddFromOrder();
+      if (action === "afo-close") return closeAddFromOrder();
+      if (action === "afo-lookup") return lookupAddFromOrder();
+      if (action === "afo-commit") return commitAddFromOrder();
       if (action === "ship-add-line") {
         if (!canAdd("shipmentLines")) return toast("Role cannot add lines.");
         const ship = currentShipment();

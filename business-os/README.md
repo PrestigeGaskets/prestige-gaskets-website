@@ -28,7 +28,8 @@ SO with collect / ship **via** white-label providers. **Shipping** can Issue DN,
 Post (OH out), and **Unpost DN** (OH restore).
 
 Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
-ribbon actions, Requirements pane, **Add From Order**, and detail **Post**
+ribbon actions, Requirements pane, **Add From Order** (despatch lookup by sales
+acknowledgement No → order stats + role-gated editable fields), and detail **Post**
 (stages until toolbar **Post** issues OH).
 
 Open **PO Entry** for order `70286` / supplier `CITY0002`.
