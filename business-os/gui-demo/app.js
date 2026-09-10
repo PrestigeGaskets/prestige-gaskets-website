@@ -548,14 +548,25 @@ function updateCopyPill() {
   if (!pill) return;
   const dirty = workingDiffersFromMaster();
   const unposted = differsFromPosted();
+  const compact = window.matchMedia("(max-width: 860px)").matches;
   if (!dirty) {
-    pill.textContent = postedSnapshot ? "Working · matches master · posted" : "Working · matches master";
+    pill.textContent = postedSnapshot
+      ? compact
+        ? "Clean · posted"
+        : "Working · matches master · posted"
+      : compact
+        ? "Clean · master"
+        : "Working · matches master";
     pill.classList.add("is-clean");
   } else if (unposted) {
-    pill.textContent = `Working · ${countPendingChanges()} change(s) · unposted`;
+    pill.textContent = compact
+      ? `${countPendingChanges()} Δ · unposted`
+      : `Working · ${countPendingChanges()} change(s) · unposted`;
     pill.classList.remove("is-clean");
   } else {
-    pill.textContent = `Working · ${countPendingChanges()} change(s) · posted`;
+    pill.textContent = compact
+      ? `${countPendingChanges()} Δ · posted`
+      : `Working · ${countPendingChanges()} change(s) · posted`;
     pill.classList.remove("is-clean");
   }
   syncCommandButtons();
@@ -858,13 +869,13 @@ function renderDashboard() {
   const strip = document.getElementById("status-strip");
   if (strip) {
     const postedLabel = postedSnapshot
-      ? `Last post ${new Date(postedSnapshot.at).toLocaleString(LOCALE)}`
-      : "Never posted";
+      ? `Posted ${new Date(postedSnapshot.at).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })}`
+      : "No posts";
     strip.innerHTML = `
-      <span class="status-chip ${editMode ? "is-live" : ""}">${editMode ? "EDIT MODE" : "READ ONLY"}</span>
+      <span class="status-chip ${editMode ? "is-live" : ""}">${editMode ? "EDIT" : "VIEW"}</span>
       <span class="status-chip">${activeRole}</span>
       <span class="status-chip ${pending.length ? "is-warn" : "is-ok"}">${pending.length} pending</span>
-      <span class="status-chip">${undoStack.length} undo · ${redoStack.length} redo</span>
+      <span class="status-chip">↶${undoStack.length} ↷${redoStack.length}</span>
       <span class="status-chip">${postedLabel}</span>`;
   }
 
