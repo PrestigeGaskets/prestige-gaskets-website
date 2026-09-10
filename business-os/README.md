@@ -13,7 +13,7 @@ python3 -m http.server 8765 --directory gui-demo
 # → http://127.0.0.1:8765/
 ```
 
-Or open `gui-demo/index.html` directly. The home hub follows an M1-style
+Or open `gui-demo/index.html` directly. The home hub is a **role-aware tile dashboard** (master tables + “Your role” actions + classic M1 panels). Badges reflect the role matrix (view / edit / add). The classic M1-style
 **Sales Order / Purchasing Management** layout (Entry / Reports / Maintenance /
 M1 Business Analysis / Custom Reports). Hub and module-tree links are **live only**
 (no toast placeholders).

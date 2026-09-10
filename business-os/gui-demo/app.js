@@ -529,6 +529,9 @@
     treeFilter = "All";
     localStorage.setItem("rushmore-tree-filter-v1", treeFilter);
   }
+  let dashTab = localStorage.getItem("rushmore-dash-tab-v1") || "tables";
+  if (!["tables", "role", "classic"].includes(dashTab)) dashTab = "tables";
+  let dashQuery = "";
   let view = "hub";
   let editMode = sessionStorage.getItem(EDIT_KEY) === "1";
   let poNo = "70286";
@@ -667,6 +670,47 @@
   function canAdd(entity) {
     const set = roleBag("canAdd");
     return set.has("*") || set.has(entity);
+  }
+
+  function canTouchPrefix(prefix) {
+    if (!prefix) return false;
+    const set = roleBag("canEdit");
+    if (set.has("*")) return true;
+    for (const f of set) {
+      if (f === prefix || f.startsWith(`${prefix}.`)) return true;
+    }
+    return false;
+  }
+
+  function dashIco(name) {
+    const common = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+    const icons = {
+      customers: `<svg ${common}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      quotes: `<svg ${common}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>`,
+      orders: `<svg ${common}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>`,
+      invoices: `<svg ${common}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>`,
+      products: `<svg ${common}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M12 22V12"/><path d="m7.5 4.2 9 5.2"/></svg>`,
+      po: `<svg ${common}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>`,
+      receipt: `<svg ${common}><path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 2 2 3-2 3 2 2-2 3 2V4a2 2 0 0 0-2-2z"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>`,
+      ship: `<svg ${common}><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+      vendors: `<svg ${common}><path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
+      intake: `<svg ${common}><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v8"/><path d="M18 8v8"/><path d="M8 18h8"/></svg>`,
+      fields: `<svg ${common}><circle cx="12" cy="12" r="3"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="m4.2 4.2 1.4 1.4"/><path d="m18.4 18.4 1.4 1.4"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="m4.2 19.8 1.4-1.4"/><path d="m18.4 5.6 1.4-1.4"/></svg>`,
+      bolt: `<svg ${common}><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8z"/></svg>`,
+      check: `<svg ${common}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>`,
+      plus: `<svg ${common}><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>`,
+      hub: `<svg ${common}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
+    };
+    return icons[name] || icons.hub;
+  }
+
+  function tileAccess(tile) {
+    const add = tile.entity ? canAdd(tile.entity) : false;
+    const edit = tile.fieldPrefix ? canTouchPrefix(tile.fieldPrefix) : false;
+    if (add && edit) return { mode: "write", badge: "Add · Edit" };
+    if (add) return { mode: "write", badge: "Can add" };
+    if (edit) return { mode: "write", badge: "Can edit" };
+    return { mode: "view", badge: "View" };
   }
 
   function isDirty() {
@@ -1217,11 +1261,87 @@
     return `<section class="hub-panel"><div class="hub-panel-head">${title}</div>${bodyHtml}</section>`;
   }
 
-  function renderHub() {
+  function masterTiles() {
+    return [
+      { id: "customers", label: "Customers", hint: "Contact master", ico: "customers", view: "customers", entity: "customers", fieldPrefix: "customers", count: () => working.customers.length },
+      { id: "quotes", label: "Quotes", hint: "Estimating", ico: "quotes", view: "quotes", entity: "quotes", fieldPrefix: "quotes", count: () => working.quotes.length },
+      { id: "orders", label: "Sales Orders", hint: "Order master", ico: "orders", view: "orders", entity: "orders", fieldPrefix: "orders", count: () => working.orders.length },
+      { id: "invoices", label: "AR Invoices", hint: "Receivables", ico: "invoices", view: "invoices", entity: null, fieldPrefix: "invoices", count: () => working.invoices.length },
+      { id: "products", label: "Inventory", hint: "Product master", ico: "products", view: "products", entity: "products", fieldPrefix: "products", count: () => working.products.length },
+      { id: "po-entry", label: "PO Entry", hint: "Purchase orders", ico: "po", view: "po-entry", entity: "purchaseOrders", fieldPrefix: "purchaseOrders", count: () => working.purchaseOrders.length },
+      { id: "purchasing", label: "Open POs", hint: "PO list", ico: "po", view: "purchasing", entity: "purchaseOrders", fieldPrefix: "purchaseOrders", count: () => working.purchaseOrders.filter((p) => p.status !== "Closed").length },
+      { id: "receipt", label: "Goods Receipt", hint: "GRN / stock in", ico: "receipt", view: "receipt", entity: "goodsReceipts", fieldPrefix: null, count: () => working.goodsReceipts.length },
+      { id: "shipment", label: "Despatch", hint: "Shipment master", ico: "ship", view: "shipment", entity: "shipments", fieldPrefix: "shipments", count: () => working.shipments.length },
+      { id: "relations", label: "Vendors & Links", hint: "Suppliers / tags", ico: "vendors", view: "relations", entity: null, fieldPrefix: null, count: () => working.suppliers.length },
+      { id: "intake", label: "Intake Map", hint: "Quote → cash", ico: "intake", view: "intake", entity: null, fieldPrefix: null, count: null },
+      { id: "fields", label: "Role Matrix", hint: "What you can do", ico: "fields", view: "fields", entity: null, fieldPrefix: null, count: null },
+    ];
+  }
+
+  function roleActionTiles() {
+    const tiles = [];
+    const push = (t) => tiles.push(t);
+    if (canAdd("customers") || canTouchPrefix("customers")) {
+      push({ id: "act-customers", label: "Maintain Contacts", hint: canAdd("customers") ? "Add & edit customers" : "Edit customer fields", ico: "customers", view: "customers", badge: tileAccess({ entity: "customers", fieldPrefix: "customers" }).badge });
+    }
+    if (canAdd("quotes") || canTouchPrefix("quotes")) {
+      push({ id: "act-quotes", label: "Quote Entry", hint: "Create / confirm quotes", ico: "quotes", view: "quotes", badge: tileAccess({ entity: "quotes", fieldPrefix: "quotes" }).badge });
+    }
+    if (canAdd("orders") || canTouchPrefix("orders")) {
+      push({ id: "act-orders", label: "Sales Orders", hint: "Order entry & status", ico: "orders", view: "orders", badge: tileAccess({ entity: "orders", fieldPrefix: "orders" }).badge });
+    }
+    if (canAdd("purchaseOrders") || canTouchPrefix("purchaseOrders")) {
+      push({ id: "act-po", label: "Raise PO", hint: "Purchasing entry", ico: "po", view: "po-entry", badge: tileAccess({ entity: "purchaseOrders", fieldPrefix: "purchaseOrders" }).badge });
+    }
+    if (canAdd("goodsReceipts")) {
+      push({ id: "act-grn", label: "Receive GRN", hint: "Post goods receipt", ico: "receipt", view: "receipt", badge: "Can add" });
+    }
+    if (canAdd("products") || canTouchPrefix("products")) {
+      push({ id: "act-stock", label: "Inventory", hint: "Stock & costs", ico: "products", view: "products", badge: tileAccess({ entity: "products", fieldPrefix: "products" }).badge });
+    }
+    if (canAdd("shipments") || canTouchPrefix("shipments")) {
+      push({ id: "act-ship", label: "Despatch Entry", hint: "Ship / DN / post", ico: "ship", view: "shipment", badge: tileAccess({ entity: "shipments", fieldPrefix: "shipments" }).badge });
+    }
+    if (canAdd("shipmentLines")) {
+      push({ id: "act-afo", label: "Add From Order", hint: "Pull SO lines to DN", ico: "bolt", view: "shipment", badge: "Can add lines" });
+    }
+    if (canTouchPrefix("invoices") || role === "Finance" || role === "Manager" || role === "Admin" || role === "Sales") {
+      push({ id: "act-ar", label: "AR Invoices", hint: "Receivables browse", ico: "invoices", view: "invoices", badge: "View" });
+    }
+    push({ id: "act-fields", label: "Role Matrix", hint: ROLES[role]?.blurb || "Permissions", ico: "fields", view: "fields", badge: role });
+    push({ id: "act-intake", label: "Intake Map", hint: "End-to-end trail", ico: "intake", view: "intake", badge: "Map" });
+    // Module hubs
+    [
+      { id: "hub-sales", label: "Sales Hub", hub: "sales", ico: "hub" },
+      { id: "hub-quoting", label: "Quoting Hub", hub: "quoting", ico: "quotes" },
+      { id: "hub-purchasing", label: "Purchasing Hub", hub: "purchasing", ico: "po" },
+      { id: "hub-shipping", label: "Shipping Hub", hub: "shipping", ico: "ship" },
+      { id: "hub-inventory", label: "Inventory Hub", hub: "inventory", ico: "products" },
+    ].forEach((h) => push({ ...h, hint: "Module start page", badge: "Hub" }));
+    return tiles;
+  }
+
+  function dashTileHtml(tile) {
+    const access = tile.badge ? { mode: tile.badge === "View" || tile.badge === "Map" || tile.badge === "Hub" || tile.badge === role ? "view" : "write", badge: tile.badge } : tileAccess(tile);
+    const count = typeof tile.count === "function" ? tile.count() : tile.count;
+    const countHtml = count == null ? "" : `<span class="dash-tile-count">${count}</span>`;
+    let attrs = "";
+    if (tile.view) attrs = `data-view="${tile.view}"`;
+    else if (tile.hub) attrs = `data-hub="${tile.hub}"`;
+    const q = `${tile.label} ${tile.hint || ""} ${access.badge}`.toLowerCase();
+    return `<button type="button" class="dash-tile is-${access.mode}" ${attrs} data-dash-q="${q.replace(/"/g, "")}">
+      <span class="dash-tile-ico">${dashIco(tile.ico)}</span>
+      <span class="dash-tile-label">${tile.label}</span>
+      <span class="dash-tile-badge">${access.badge}</span>
+      ${countHtml}
+    </button>`;
+  }
+
+  function classicHubHtml() {
     const pack = hubPack();
     const custom = (pack.customReports || []).filter(Boolean);
     const close = (pack.close || []).filter(Boolean);
-    document.getElementById("hubGrid").innerHTML = `
+    return `
       <div class="hub-col">
         ${panel("Entry Screens", `<ul class="hub-list">${pack.entry.map(linkHtml).join("")}</ul>`)}
         ${panel("Reports", `<ul class="hub-list">${pack.reports.map(linkHtml).join("")}</ul>`)}
@@ -1236,6 +1356,80 @@
         ${custom.length ? panel("Custom Reports", `<ul class="hub-list">${custom.map(linkHtml).join("")}</ul>`) : ""}
         ${close.length ? panel("Close", `<ul class="hub-list">${close.map(linkHtml).join("")}</ul>`) : ""}
       </div>`;
+  }
+
+  function renderHub() {
+    const q = dashQuery.trim().toLowerCase();
+    const blurb = ROLES[role]?.blurb || "";
+    const tabs = [
+      ["tables", "Master tables"],
+      ["role", "Your role"],
+      ["classic", "Classic hub"],
+    ].map(([id, label]) => `<button type="button" class="dash-tab ${dashTab === id ? "is-active" : ""}" data-dash-tab="${id}">${label}</button>`).join("");
+
+    let body = "";
+    if (dashTab === "classic") {
+      body = `<div class="hub-grid classic-hub">${classicHubHtml()}</div>`;
+    } else {
+      const source = dashTab === "role" ? roleActionTiles() : masterTiles();
+      const tiles = source.filter((t) => {
+        if (!q) return true;
+        const hay = `${t.label} ${t.hint || ""} ${t.badge || ""} ${t.view || ""} ${t.hub || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
+      const grid = tiles.length
+        ? tiles.map(dashTileHtml).join("")
+        : `<p class="dash-empty">No tiles match “${dashQuery}” for ${role}.</p>`;
+      body = `<div class="dash-grid">${grid}</div>`;
+    }
+
+    document.getElementById("hubGrid").innerHTML = `
+      <div class="dash" data-dash-root>
+        <header class="dash-top">
+          <div class="dash-search">
+            <span class="dash-search-ico" aria-hidden="true">${dashIco("hub")}</span>
+            <input type="search" id="dashSearch" placeholder="Search tables, hubs or actions…" value="${dashQuery.replace(/"/g, "&quot;")}" autocomplete="off" />
+          </div>
+          <div class="dash-role" title="${blurb.replace(/"/g, "&quot;")}">
+            <span class="dash-role-name">${role}</span>
+            <span class="dash-role-blurb">${blurb}</span>
+          </div>
+        </header>
+        <nav class="dash-tabs" aria-label="Dashboard sections">${tabs}</nav>
+        <p class="dash-lead">${
+          dashTab === "tables"
+            ? "Master tables — badges show what your role can do (view / edit / add)."
+            : dashTab === "role"
+              ? `Actions available to <strong>${role}</strong> from the role matrix.`
+              : "Classic M1 entry / reports / maintenance panels for this hub."
+        }</p>
+        ${body}
+        <button type="button" class="dash-fab" data-view="fields" title="Open role matrix">${dashIco("fields")}</button>
+      </div>`;
+
+    const search = document.getElementById("dashSearch");
+    if (search) {
+      search.addEventListener("input", (e) => {
+        dashQuery = e.target.value;
+        const root = document.querySelector("[data-dash-root]");
+        if (!root || dashTab === "classic") return;
+        const needle = dashQuery.trim().toLowerCase();
+        root.querySelectorAll(".dash-tile").forEach((el) => {
+          const ok = !needle || (el.dataset.dashQ || "").includes(needle);
+          el.hidden = !ok;
+        });
+        let empty = root.querySelector(".dash-empty");
+        const visible = [...root.querySelectorAll(".dash-tile")].some((el) => !el.hidden);
+        if (!visible) {
+          if (!empty) {
+            empty = document.createElement("p");
+            empty.className = "dash-empty";
+            root.querySelector(".dash-grid")?.appendChild(empty);
+          }
+          empty.textContent = `No tiles match “${dashQuery}” for ${role}.`;
+        } else if (empty) empty.remove();
+      });
+    }
   }
 
   /* —— PO —— */
@@ -3101,6 +3295,13 @@
 
       const goBtn = e.target.closest("[data-go]");
       if (goBtn) return go(goBtn.dataset.go);
+
+      const dashTabBtn = e.target.closest("[data-dash-tab]");
+      if (dashTabBtn) {
+        dashTab = dashTabBtn.dataset.dashTab;
+        localStorage.setItem("rushmore-dash-tab-v1", dashTab);
+        return render();
+      }
 
       const hubBtn = e.target.closest("[data-hub]");
       if (hubBtn) return setHub(hubBtn.dataset.hub);
