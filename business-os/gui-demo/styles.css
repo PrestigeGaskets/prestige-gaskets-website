@@ -1178,3 +1178,463 @@ body {
     flex-direction: column;
   }
 }
+
+/* —— M1 hub look & feel (Purchasing Management) —— */
+.m1-skin {
+  --m1-gray: #6e6e6e;
+  --m1-gray-deep: #4a4a4a;
+  --m1-panel: #f7f4ea;
+  --m1-rail: #5c5c5c;
+  --m1-tree: #ececec;
+  --m1-select: #c5d8f0;
+  --m1-head: #6a6a6a;
+  --font-display: "IBM Plex Sans", sans-serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  background: #b8b8b8;
+  padding: 0;
+  display: block;
+}
+
+.m1-skin .atmosphere { display: none; }
+
+.m1-shell {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  grid-template-columns: 72px 220px 1fr;
+  grid-template-rows: auto 1fr;
+  background: #d8d8d8;
+}
+
+.m1-titlebar {
+  grid-column: 1 / -1;
+  background: linear-gradient(180deg, #f0f0f0, #dcdcdc);
+  border-bottom: 1px solid #9a9a9a;
+}
+
+.m1-skin .brand-mark {
+  color: var(--m1-gray-deep);
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+}
+
+.m1-skin .brand-sub { color: #7a5a20; }
+
+.icon-rail {
+  grid-row: 2;
+  background: var(--m1-rail);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.25rem;
+  overflow: auto;
+  border-right: 1px solid #333;
+}
+
+.icon-rail-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #f2f2f2;
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1.15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.icon-rail-btn .ico { font-size: 1.05rem; }
+.icon-rail-btn.is-active,
+.icon-rail-btn:hover { background: rgba(255,255,255,0.14); }
+
+.tree-pane {
+  grid-row: 2;
+  background: var(--m1-tree);
+  border-right: 1px solid #9a9a9a;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: auto;
+}
+
+.tree-search {
+  display: block;
+  padding: 0.45rem;
+  border-bottom: 1px solid #bdbdbd;
+}
+
+.tree-search input {
+  width: 100%;
+  border: 1px solid #9a9a9a;
+  border-radius: 2px;
+  padding: 0.35rem 0.45rem;
+  font: inherit;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.tree {
+  padding: 0.35rem 0.25rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.tree details { margin: 0.15rem 0; }
+.tree summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #333;
+  padding: 0.25rem 0.35rem;
+}
+
+.tree-leaf {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.28rem 0.45rem 0.28rem 1rem;
+  color: #222;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.tree-leaf.is-selected,
+.tree-leaf:hover { background: var(--m1-select); }
+
+.tree-pane .rail-meta {
+  margin-top: auto;
+  padding: 0.65rem;
+  font-size: 0.72rem;
+  color: #555;
+  border-top: 1px solid #cfcfcf;
+}
+
+.m1-stage {
+  background: var(--m1-panel);
+  padding: 0.75rem;
+}
+
+.hub-head h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #333;
+  font-family: var(--font-display);
+}
+
+.hub-head p {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.hub-panel {
+  background: #f3f0e4;
+  border: 1px solid #9a9a9a;
+  min-height: 8rem;
+}
+
+.hub-panel-analysis {
+  grid-row: 1 / 3;
+  grid-column: 2;
+}
+
+.hub-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.hub-panel-head {
+  background: var(--m1-head);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid #555;
+}
+
+.hub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.25rem;
+}
+
+.hub-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  padding: 0.28rem 0.4rem;
+  cursor: pointer;
+  color: #1a1a1a;
+  border-radius: 2px;
+}
+
+.hub-link:hover { background: rgba(0,0,0,0.06); }
+.hub-ico { width: 1.2rem; text-align: center; opacity: 0.85; }
+
+.hub-explorer {
+  padding: 0.45rem;
+  border-bottom: 1px solid #cfcfcf;
+}
+
+.hub-explorer input {
+  width: 100%;
+  border: 1px solid #9a9a9a;
+  border-radius: 2px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  background: #fff;
+}
+
+.hub-pulse {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.65rem;
+}
+
+.hub-pulse .label {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+
+.hub-pulse strong {
+  font-size: 1.05rem;
+  color: #222;
+}
+
+/* PO Entry workspace */
+.po-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem;
+  background: #e8e8e8;
+  border: 1px solid #9a9a9a;
+  margin-bottom: 0.55rem;
+}
+
+.po-picker {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.po-picker select {
+  font: inherit;
+  min-height: 2rem;
+  border: 1px solid #9a9a9a;
+  background: #fff;
+  padding: 0.2rem 0.4rem;
+}
+
+.po-workspace {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0.55rem;
+  min-height: 60vh;
+}
+
+.po-tree {
+  background: #f0f0f0;
+  border: 1px solid #9a9a9a;
+  padding: 0.45rem;
+  font-size: 0.8rem;
+}
+
+.po-tree-root { font-weight: 700; margin-bottom: 0.35rem; }
+.po-tree-active {
+  background: var(--m1-select);
+  padding: 0.3rem 0.4rem;
+  margin-bottom: 0.35rem;
+  border-radius: 2px;
+}
+
+.po-tree-node {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  padding: 0.3rem 0.4rem 0.3rem 0.85rem;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.po-tree-node.is-active,
+.po-tree-node:hover { background: #dde8f6; }
+
+.po-msg-pane {
+  margin-top: 0.75rem;
+  border-top: 1px solid #cfcfcf;
+  padding-top: 0.45rem;
+  font-size: 0.72rem;
+  color: #444;
+}
+
+.po-msg-tabs {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.po-form {
+  background: #f7f4ea;
+  border: 1px solid #9a9a9a;
+  padding: 0.35rem;
+  overflow: auto;
+  max-height: calc(100dvh - 11rem);
+}
+
+.po-section {
+  border: 1px solid #b5b5b5;
+  margin-bottom: 0.45rem;
+  background: #faf7ee;
+}
+
+.po-section-head {
+  background: #6e6e6e;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.28rem 0.5rem;
+}
+
+.po-section .field-grid {
+  padding: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.po-section .field-span { grid-column: 1 / -1; }
+.po-section textarea {
+  width: 100%;
+  min-height: 4rem;
+  font: inherit;
+  border: 1px solid #9a9a9a;
+  padding: 0.35rem;
+  background: #fff;
+}
+
+.addr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.55rem;
+}
+
+.addr-col {
+  border: 1px dashed #bdbdbd;
+  padding: 0.45rem;
+  font-size: 0.8rem;
+  background: #fff;
+}
+
+.addr-col h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+
+.addr-col p { margin: 0.1rem 0; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .m1-shell {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    overflow: visible;
+  }
+
+  .icon-rail {
+    grid-row: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .icon-rail-btn {
+    flex: 1 1 4.5rem;
+    min-width: 4.2rem;
+  }
+
+  .tree-pane {
+    grid-row: auto;
+    max-height: 14rem;
+  }
+
+  .hub-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hub-panel-analysis {
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .hub-pulse {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .po-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .po-section .field-grid,
+  .addr-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .po-form { max-height: none; }
+}

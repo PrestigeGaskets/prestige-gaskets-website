@@ -6,14 +6,12 @@
   <title>Rushmore Business OS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <div class="atmosphere" aria-hidden="true"></div>
-
-  <div class="app-shell" role="application" aria-label="Rushmore Business OS">
-    <header class="titlebar">
+<body class="m1-skin">
+  <div class="app-shell m1-shell" role="application" aria-label="Rushmore Business OS">
+    <header class="titlebar m1-titlebar">
       <div class="brand-inline">
         <p class="brand-mark">RUSHMORE</p>
         <p class="brand-sub">Business OS</p>
@@ -34,71 +32,96 @@
       </div>
     </header>
 
-    <aside class="rail" aria-label="Primary">
-      <nav class="nav" id="primary-nav">
-        <button type="button" class="nav-item is-active" data-view="dashboard">Dashboard</button>
-        <button type="button" class="nav-item" data-view="quotes">Quotes</button>
-        <button type="button" class="nav-item" data-view="products">Products</button>
-        <button type="button" class="nav-item" data-view="customers">Customers</button>
-        <button type="button" class="nav-item" data-view="orders">Orders</button>
-        <button type="button" class="nav-item" data-view="relations">Relations</button>
-        <button type="button" class="nav-item" data-view="fields">Fields</button>
-      </nav>
-      <div class="rail-meta">
-        <p id="role-blurb"></p>
-        <p class="rail-foot">Master stays sealed · writes hit working copy only</p>
-      </div>
+    <!-- M1-style icon shortcut rail -->
+    <aside class="icon-rail" aria-label="Shortcuts">
+      <button type="button" class="icon-rail-btn" data-hub-link="quotes" title="Quote Entry"><span class="ico">✎</span><span>Quote Entry</span></button>
+      <button type="button" class="icon-rail-btn" data-hub-link="orders" title="Sales Order Entry"><span class="ico">☰</span><span>Sales Order</span></button>
+      <button type="button" class="icon-rail-btn is-active" data-hub-link="po-entry" title="PO Entry"><span class="ico">📋</span><span>PO Entry</span></button>
+      <button type="button" class="icon-rail-btn" data-hub-link="products" title="Inventory"><span class="ico">▦</span><span>Inventory</span></button>
+      <button type="button" class="icon-rail-btn" data-hub-link="customers" title="Customers"><span class="ico">☺</span><span>Customers</span></button>
+      <button type="button" class="icon-rail-btn" data-hub-link="relations" title="Relations"><span class="ico">⇄</span><span>Relations</span></button>
+      <button type="button" class="icon-rail-btn" data-hub-link="fields" title="Fields"><span class="ico">⚙</span><span>Fields</span></button>
     </aside>
 
-    <main class="stage">
+    <!-- Hierarchical tree -->
+    <aside class="tree-pane" aria-label="Module tree">
+      <label class="tree-search">
+        <span class="visually-hidden">Start search</span>
+        <input type="search" id="tree-search" placeholder="Start Search" />
+      </label>
+      <nav class="tree" id="module-tree">
+        <details open>
+          <summary>My Start Page</summary>
+          <button type="button" class="tree-leaf" data-hub="home">Home Hub</button>
+        </details>
+        <details open>
+          <summary>Sales</summary>
+          <button type="button" class="tree-leaf" data-hub="sales">Sales Order Management</button>
+          <button type="button" class="tree-leaf" data-view="quotes">Quote Entry</button>
+          <button type="button" class="tree-leaf" data-view="orders">Sales Order Entry</button>
+          <button type="button" class="tree-leaf" data-view="customers">Customers</button>
+        </details>
+        <details open>
+          <summary>Production</summary>
+          <button type="button" class="tree-leaf is-selected" data-hub="purchasing">Purchasing Management</button>
+          <button type="button" class="tree-leaf" data-view="po-entry">PO Entry</button>
+          <button type="button" class="tree-leaf" data-view="purchasing">Open Purchase Orders</button>
+          <button type="button" class="tree-leaf" data-view="products">Inventory</button>
+        </details>
+        <details>
+          <summary>Financial</summary>
+          <button type="button" class="tree-leaf" data-view="orders">AR / Sales Orders</button>
+          <button type="button" class="tree-leaf" data-hub="purchasing">AP / Purchasing</button>
+        </details>
+        <details>
+          <summary>Tools</summary>
+          <button type="button" class="tree-leaf" data-view="relations">Relations</button>
+          <button type="button" class="tree-leaf" data-view="fields">Field Network</button>
+        </details>
+      </nav>
+      <p class="rail-meta" id="role-blurb"></p>
+    </aside>
+
+    <main class="stage m1-stage">
       <p class="toast" id="toast" hidden></p>
 
+      <!-- M1 hub dashboard -->
       <section id="view-dashboard" class="view is-active" data-view-panel="dashboard">
+        <header class="hub-head">
+          <h1 id="hub-title">Purchasing Management</h1>
+          <p id="dash-status">Entry · Reports · Maintenance · Business Analysis</p>
+        </header>
+        <div class="status-strip" id="status-strip"></div>
+        <div class="hub-grid" id="hub-grid"></div>
+      </section>
+
+      <section id="view-purchasing" class="view" data-view-panel="purchasing" hidden>
         <header class="view-head view-head-row">
           <div>
-            <h1>Dashboard</h1>
-            <p id="dash-status">Command centre for the working copy.</p>
+            <h1>Open Purchase Orders</h1>
+            <p>Supplier POs · working copy only</p>
           </div>
-          <div class="cmd-bar dash-cmd-bar" role="toolbar" aria-label="Dashboard commands">
-            <button type="button" class="cmd-btn" data-cmd="edit">Edit</button>
-            <button type="button" class="cmd-btn cmd-primary" data-cmd="post">Post</button>
-            <button type="button" class="cmd-btn" data-cmd="undo">Undo</button>
-            <button type="button" class="cmd-btn" data-cmd="redo">Redo</button>
-            <button type="button" class="cmd-btn cmd-danger" data-cmd="discard">Discard</button>
-          </div>
+          <button type="button" class="cmd-btn cmd-primary" data-action="new-po">New PO</button>
         </header>
+        <div id="purchasing-root" class="card-stack"></div>
+      </section>
 
-        <div class="status-strip" id="status-strip"></div>
-        <div class="metric-strip" id="metric-strip"></div>
-
-        <div class="split">
-          <div class="panel">
-            <h2>Open quote value</h2>
-            <p class="hero-figure" id="grand-total">£0.00</p>
-            <p class="panel-note">QuoteLines qty × price · GBP</p>
-          </div>
-          <div class="panel">
-            <h2>Reorder watch</h2>
-            <ul class="watch-list" id="reorder-watch"></ul>
-          </div>
-        </div>
-
-        <div class="dash-grid">
-          <article class="panel dash-panel">
-            <h2>Quick actions</h2>
-            <div class="quick-actions" id="quick-actions"></div>
-          </article>
-          <article class="panel dash-panel">
-            <h2>Pending vs master</h2>
-            <ul class="change-list" id="change-list"></ul>
-          </article>
-          <article class="panel dash-panel dash-panel-wide">
-            <div class="panel-head-row">
-              <h2>Activity</h2>
-              <button type="button" class="ghost-btn" id="btn-clear-activity">Clear</button>
-            </div>
-            <ul class="activity-list" id="activity-list"></ul>
-          </article>
+      <section id="view-po-entry" class="view" data-view-panel="po-entry" hidden>
+        <header class="po-ribbon" role="toolbar" aria-label="PO actions">
+          <button type="button" class="cmd-btn" data-action="new-po">New</button>
+          <button type="button" class="cmd-btn" data-action="save-po">Save</button>
+          <button type="button" class="cmd-btn" data-action="prev-po">Prev</button>
+          <button type="button" class="cmd-btn" data-action="next-po">Next</button>
+          <button type="button" class="cmd-btn" data-action="print-po">Print</button>
+          <button type="button" class="cmd-btn" data-action="request-approval">Request Approval</button>
+          <label class="po-picker">
+            <span>Order ID</span>
+            <select id="po-select" aria-label="Purchase order"></select>
+          </label>
+        </header>
+        <div class="po-workspace">
+          <aside class="po-tree" id="po-tree" aria-label="PO children"></aside>
+          <div class="po-form" id="po-form"></div>
         </div>
       </section>
 
@@ -128,8 +151,8 @@
 
       <section id="view-orders" class="view" data-view-panel="orders" hidden>
         <header class="view-head">
-          <h1>Orders</h1>
-          <p>1:N lines · optional 1:1 quote conversion · Finance can add</p>
+          <h1>Sales Orders</h1>
+          <p>1:N lines · optional 1:1 quote conversion</p>
         </header>
         <div id="orders-root" class="card-stack"></div>
       </section>
@@ -137,7 +160,7 @@
       <section id="view-relations" class="view" data-view-panel="relations" hidden>
         <header class="view-head">
           <h1>Relations</h1>
-          <p>Master 1:1 · 1:N · M:N graph (sealed with master)</p>
+          <p>Master 1:1 · 1:N · M:N graph</p>
         </header>
         <div id="relations-root" class="card-stack"></div>
       </section>
@@ -145,7 +168,7 @@
       <section id="view-fields" class="view" data-view-panel="fields" hidden>
         <header class="view-head">
           <h1>Field network</h1>
-          <p>Role permissions + Finance custom fields (never written to master)</p>
+          <p>Role permissions + Finance custom fields</p>
         </header>
         <div id="fields-root" class="card-stack"></div>
       </section>
