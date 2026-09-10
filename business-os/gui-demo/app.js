@@ -293,9 +293,33 @@
     Viewer: { inherits: [], blurb: "Read-only.", canEdit: [], canAdd: [] },
     Sales: {
       inherits: ["Viewer"],
-      blurb: "Customers & quotes; accept quote → Sales Order number.",
-      canEdit: ["customers.name", "customers.email", "customers.postcode", "customers.status", "quotes.status", "quotes.customerId", "quotes.lines.qty", "quotes.lines.price", "quotes.lines.sku", "orders.status"],
-      canAdd: ["customers", "quotes", "quoteLines", "orders"],
+      blurb: "Customers, quotes, sales orders & customer shipments (working copy).",
+      canEdit: [
+        // Customer master (sales-owned contact fields)
+        "customers.name", "customers.email", "customers.postcode", "customers.status",
+        // Quotes + lines
+        "quotes.status", "quotes.customerId",
+        "quotes.lines.qty", "quotes.lines.price", "quotes.lines.sku",
+        // Sales orders + lines
+        "orders.status", "orders.customerId", "orders.quoteNo",
+        "orders.lines.qty", "orders.lines.price", "orders.lines.sku",
+        // Sell price (list) — not cost
+        "products.sell", "products.description",
+        // Customer shipment prep (not freight/cost posting)
+        "shipments.status", "shipments.customerId", "shipments.shipDate",
+        "shipments.shipOrganisation", "shipments.shipLocation",
+        "shipments.shippingContact", "shipments.arContact",
+        "shipments.shipMethodId", "shipments.shipPaymentType", "shipments.trackingNumber",
+        "shipments.shippingComments", "shipments.printPackingSlip", "shipments.printLabels",
+        "shipments.standardMessage",
+        "shipments.customerAddress.name", "shipments.customerAddress.line1",
+        "shipments.customerAddress.line2", "shipments.customerAddress.city",
+        "shipments.customerAddress.postcode", "shipments.customerAddress.phone",
+        "shipments.customerAddress.fax",
+        "shipments.lines.sku", "shipments.lines.qtyShipped", "shipments.lines.deliveryQty",
+        "shipments.lines.orderNo", "shipments.lines.marked",
+      ],
+      canAdd: ["customers", "quotes", "quoteLines", "orders", "orderLines", "shipments", "shipmentLines"],
     },
     Inventory: {
       inherits: ["Viewer"],
@@ -1758,11 +1782,12 @@
           </div>
           <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
           <tbody>${q.lines.map((l, li) => {
+            const skuDis = !editMode || !canEdit("quotes.lines.sku");
             const qtyDis = !editMode || !canEdit("quotes.lines.qty");
             const priceDis = !editMode || !canEdit("quotes.lines.price");
             return `<tr>
               <td>${l.line}</td>
-              <td class="mono">${l.sku}</td>
+              <td><input class="mono" value="${l.sku}" data-path="quotes.${qi}.lines.${li}.sku" ${skuDis ? "disabled" : ""} /></td>
               <td><input type="number" min="0" step="1" value="${l.qty}" data-path="quotes.${qi}.lines.${li}.qty" ${qtyDis ? "disabled" : ""} /></td>
               <td><input type="number" min="0" step="0.01" value="${l.price}" data-path="quotes.${qi}.lines.${li}.price" ${priceDis ? "disabled" : ""} /></td>
               <td>${money(l.qty * l.price)}</td>
@@ -1785,11 +1810,13 @@
       .map((o, oi) => {
         const inv = working.invoices.find((i) => i.orderNo === o.orderNo);
         const statusDis = !editMode || !canEdit("orders.status");
+        const custDis = !editMode || !canEdit("orders.customerId");
+        const quoteDis = !editMode || !canEdit("orders.quoteNo");
         return `
         <article class="card">
           <div class="card-head">
             <h2 class="mono">${o.orderNo}</h2>
-            <span class="meta">Sales Order · ${customerName(o.customerId)} · quote ${o.quoteNo || "—"} · ${money(sumLines(o.lines, "price"))}</span>
+            <span class="meta">Sales Order · ${money(sumLines(o.lines, "price"))}</span>
           </div>
           <div class="form-grid compact">
             <label>Status
@@ -1797,10 +1824,29 @@
                 ${ORDER_STATUSES.map((s) => `<option value="${s}" ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}
               </select>
             </label>
+            <label>Customer
+              <select data-path="orders.${oi}.customerId" ${custDis ? "disabled" : ""}>
+                ${working.customers.map((c) => `<option value="${c.id}" ${o.customerId === c.id ? "selected" : ""}>${c.name}</option>`).join("")}
+              </select>
+            </label>
+            <label>Quote No
+              <input data-path="orders.${oi}.quoteNo" value="${o.quoteNo || ""}" ${quoteDis ? "disabled" : ""} />
+            </label>
             <label>Invoice <span class="meta mono">${inv ? `${inv.invoiceNo} · ${inv.status}` : "—"}</span></label>
           </div>
-          <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th></tr></thead>
-          <tbody>${o.lines.map((l) => `<tr><td>${l.line}</td><td class="mono">${l.sku}</td><td>${l.qty}</td><td>${money(l.price)}</td></tr>`).join("")}</tbody></table>
+          <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+          <tbody>${o.lines.map((l, li) => {
+            const skuDis = !editMode || !canEdit("orders.lines.sku");
+            const qtyDis = !editMode || !canEdit("orders.lines.qty");
+            const priceDis = !editMode || !canEdit("orders.lines.price");
+            return `<tr>
+              <td>${l.line}</td>
+              <td><input class="mono" data-path="orders.${oi}.lines.${li}.sku" value="${l.sku}" ${skuDis ? "disabled" : ""} /></td>
+              <td><input type="number" min="0" step="1" data-path="orders.${oi}.lines.${li}.qty" value="${l.qty}" ${qtyDis ? "disabled" : ""} /></td>
+              <td><input type="number" min="0" step="0.01" data-path="orders.${oi}.lines.${li}.price" value="${l.price}" ${priceDis ? "disabled" : ""} /></td>
+              <td>${money(l.qty * l.price)}</td>
+            </tr>`;
+          }).join("")}</tbody></table>
           <p class="note">Linking keys: <span class="mono">orderNo=${o.orderNo}</span>${o.quoteNo ? ` · <span class="mono">quoteNo=${o.quoteNo}</span>` : ""} · <span class="mono">customerId=${o.customerId}</span></p>
         </article>`;
       })
