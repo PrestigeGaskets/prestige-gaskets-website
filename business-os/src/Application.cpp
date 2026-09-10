@@ -89,7 +89,7 @@ bool Application::handleCommand(const std::string& cmd) {
     if (cmd == "help" || cmd == "?") {
         ui_->showToast(
             "dashboard|quotes|products|customers|orders|relations|intake|"
-            "accept-quote Q-101|receive-po 70286|post-shipment 275525|"
+            "accept-quote Q-101|receive-po 70286|post-shipment 275525|unpost-shipment 275525|"
             "edit|post|undo|redo|discard|role|status|actions");
         return true;
     }
@@ -220,7 +220,12 @@ bool Application::handleCommand(const std::string& cmd) {
                     session_->runMutation("post shipment " + staged.shipmentId, [&]() {
                         intake_->postShipment(staged.shipmentId);
                     });
-                    live.detail = "Ship " + staged.shipmentId + " posted · OH issued";
+                    live.detail = "Ship " + staged.shipmentId + " posted · DN + OH issued";
+                } else if (staged.type == "unpost-shipment") {
+                    session_->runMutation("unpost shipment " + staged.shipmentId, [&]() {
+                        intake_->unpostShipment(staged.shipmentId);
+                    });
+                    live.detail = "Unpost " + staged.shipmentId + " · DN cleared · OH restored";
                 }
 
                 actions_.appendPosted(live);
@@ -362,9 +367,34 @@ bool Application::handleCommand(const std::string& cmd) {
         entry.type = "post-shipment";
         entry.stagedAt = nowIso();
         entry.shipmentId = shipmentId;
-        entry.detail = "Stage ship " + shipmentId + " → OH on Post";
+        entry.detail = "Stage ship " + shipmentId + " → DN + OH on Post";
         actions_.stage(entry);
         ui_->showToast("Shipment " + shipmentId + " staged — run post to issue stock.");
+        return true;
+    }
+
+    if (cmd.rfind("unpost-shipment ", 0) == 0) {
+        if (!session_->isEditMode()) {
+            ui_->showToast("Enter edit mode first (edit).");
+            return true;
+        }
+        if (!roles_->canAdd(activeRole_, "shipments") &&
+            !roles_->canEdit(activeRole_, "shipments.status") &&
+            !roles_->canAdd(activeRole_, "*")) {
+            ui_->showToast("Role " + activeRole_ + " cannot unpost shipments.");
+            return true;
+        }
+        const std::string shipmentId = cmd.substr(16);
+        ActionEntry entry;
+        entry.id = nextActionId();
+        entry.day = todayLocal();
+        entry.actor = activeRole_;
+        entry.type = "unpost-shipment";
+        entry.stagedAt = nowIso();
+        entry.shipmentId = shipmentId;
+        entry.detail = "Stage unpost DN " + shipmentId + " → restore OH on Post";
+        actions_.stage(entry);
+        ui_->showToast("Unpost " + shipmentId + " staged — run post to restore stock.");
         return true;
     }
 

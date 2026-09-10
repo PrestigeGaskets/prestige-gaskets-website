@@ -42,9 +42,11 @@ Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
 plus a bottom dock (Hub / Orders / PO / Quotes / More). Desktop layout unchanged.
-**Sales** (with **Edit** on) can read/write customers, quotes, sales-order lines,
-sell price, and customer shipment fields; accept quotes → SO; create shipments.
-Purchasing/Inventory post GRNs. See the Fields view for the full permission network.
+**Sales** (with **Edit** on) has Finance-equivalent product cost/sell rights, PO
+accuracy/lookup fields, quote confirm (14-day live window) → SO ready-to-print, and
+collect/ship **via** white-label procurement providers. **Shipping** issues delivery
+notes with Post / Unpost DN (OH out / restore). See the Fields view for the full
+permission network.
 
 ## Build the `.exe` (Visual Studio)
 
