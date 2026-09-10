@@ -16,6 +16,9 @@ python3 -m http.server 8765 --directory gui-demo
 Or open `gui-demo/index.html` directly. The home hub follows an M1-style
 **Sales Order / Purchasing Management** layout (Entry / Reports / Maintenance /
 M1 Business Analysis / Custom Reports / Close).
+Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
+ribbon actions, Requirements pane, **Add From Order**, and **Post** (issues OH).
+
 Open **PO Entry** for order `70286` / supplier `CITY0002`.
 
 **End-to-end intake** (see [docs/INTAKE_FLOW.md](docs/INTAKE_FLOW.md)):

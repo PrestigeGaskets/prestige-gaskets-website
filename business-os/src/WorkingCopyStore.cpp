@@ -38,6 +38,7 @@ void MasterStore::seedDemoData() {
     orders_ = s.orders;
     purchaseOrders_ = s.purchaseOrders;
     goodsReceipts_ = s.goodsReceipts;
+    shipments_ = s.shipments;
     accounts_ = s.accounts;
     invoices_ = s.invoices;
     tags_ = s.tags;
@@ -53,6 +54,7 @@ std::vector<Quote> MasterStore::loadQuotes() { return quotes_; }
 std::vector<Order> MasterStore::loadOrders() { return orders_; }
 std::vector<PurchaseOrder> MasterStore::loadPurchaseOrders() { return purchaseOrders_; }
 std::vector<GoodsReceipt> MasterStore::loadGoodsReceipts() { return goodsReceipts_; }
+std::vector<Shipment> MasterStore::loadShipments() { return shipments_; }
 
 std::vector<std::string> MasterStore::loadList(const std::string& listName) {
     const auto it = lists_.find(listName);
@@ -78,6 +80,7 @@ void WorkingCopyStore::cloneFromMaster() {
     orders_ = master_.loadOrders();
     purchaseOrders_ = master_.loadPurchaseOrders();
     goodsReceipts_ = master_.loadGoodsReceipts();
+    shipments_ = master_.loadShipments();
     invoices_ = master_.loadInvoices();
     dirty_ = false;
 }
@@ -90,6 +93,7 @@ std::vector<Quote> WorkingCopyStore::loadQuotes() { return quotes_; }
 std::vector<Order> WorkingCopyStore::loadOrders() { return orders_; }
 std::vector<PurchaseOrder> WorkingCopyStore::loadPurchaseOrders() { return purchaseOrders_; }
 std::vector<GoodsReceipt> WorkingCopyStore::loadGoodsReceipts() { return goodsReceipts_; }
+std::vector<Shipment> WorkingCopyStore::loadShipments() { return shipments_; }
 
 std::vector<std::string> WorkingCopyStore::loadList(const std::string& listName) {
     return master_.loadList(listName);
@@ -108,7 +112,7 @@ std::vector<ProductSupplier> WorkingCopyStore::loadProductSuppliers() {
 
 WorkingCopyStore::Snapshot WorkingCopyStore::capture() const {
     return Snapshot{customers_, products_, quotes_, orders_, purchaseOrders_, goodsReceipts_,
-                    invoices_, dirty_};
+                    shipments_, invoices_, dirty_};
 }
 
 void WorkingCopyStore::restore(const Snapshot& snap) {
@@ -118,6 +122,7 @@ void WorkingCopyStore::restore(const Snapshot& snap) {
     orders_ = snap.orders;
     purchaseOrders_ = snap.purchaseOrders;
     goodsReceipts_ = snap.goodsReceipts;
+    shipments_ = snap.shipments;
     invoices_ = snap.invoices;
     dirty_ = snap.dirty;
 }

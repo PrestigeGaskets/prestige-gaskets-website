@@ -185,12 +185,47 @@ DemoSeed makeDemoSeed() {
     // Example posted GRN against a prior receipt (none on seed POs — empty until intake).
     s.goodsReceipts = {};
 
+    // Draft shipment — empty customer to surface required fields in UI.
+    Shipment draftShip;
+    draftShip.shipmentId = "275525";
+    draftShip.shipDate = "10/09/2026";
+    draftShip.status = "Draft";
+    draftShip.currency = "GBP";
+    draftShip.exchangeRate = 1.0;
+    draftShip.customerId = "";
+    draftShip.invLocation = "";
+    draftShip.shipOrganisation = "";
+    draftShip.shipLocation = "";
+    draftShip.arContact = "";
+    draftShip.shippingContact = "";
+    draftShip.customerAddress = {};
+    draftShip.lines = {};
+
+    // Open shipment for Prestige Pilot from order O-500.
+    Shipment openShip;
+    openShip.shipmentId = "275526";
+    openShip.shipDate = "10/09/2026";
+    openShip.status = "Open";
+    openShip.currency = "GBP";
+    openShip.exchangeRate = 1.0;
+    openShip.customerId = "C004";
+    openShip.customerAddress = {"Prestige Pilot", "", "", "", "SW1A 1AA", "", ""};
+    openShip.lines = {
+        {"275526", 1, "P1001", "", "", 10.0, 0.0, 0.0, 10.0, false, false, "10/09/2026", "",
+         "O-500"},
+        {"275526", 2, "P1002", "", "", 5.0, 0.0, 0.0, 5.0, false, false, "10/09/2026", "",
+         "O-500"},
+    };
+    s.shipments = {draftShip, openShip};
+
     s.lists["QuoteStatus"] = {"Open", "Sent", "Won", "Lost"};
     s.lists["OrderStatus"] = {"Open", "Picked", "Shipped", "Closed"};
     s.lists["CustomerStatus"] = {"Active", "Inactive"};
     s.lists["InvoiceStatus"] = {"Draft", "Issued", "Paid"};
     s.lists["PoStatus"] = {"Draft", "Pending Approval", "Approved", "Closed", "Received"};
     s.lists["GrnStatus"] = {"Draft", "Posted"};
+    s.lists["ShipmentStatus"] = {"Draft", "Open", "Shipped", "Posted", "Closed"};
+    s.lists["ShipPaymentType"] = {"Prepaid", "Collect", "Third Party", "Consignee"};
     s.lists["PaymentTerms"] = {"30 DAYS EOM", "Net-30", "Net-45", "Net-15"};
     s.lists["ShipMethod"] = {"CARRIER", "COLLECT", "COURIER"};
     s.lists["Buyer"] = {"JAMES CRAVEN", "A. BUYER"};

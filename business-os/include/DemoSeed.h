@@ -13,6 +13,7 @@
 #include "PurchaseOrder.h"
 #include "Quote.h"
 #include "Relations.h"
+#include "Shipment.h"
 
 namespace bos {
 
@@ -23,6 +24,7 @@ struct DemoSeed {
     std::vector<Order> orders;
     std::vector<PurchaseOrder> purchaseOrders;
     std::vector<GoodsReceipt> goodsReceipts;
+    std::vector<Shipment> shipments;
     std::vector<CustomerAccount> accounts;
     std::vector<Invoice> invoices;
     std::vector<Tag> tags;

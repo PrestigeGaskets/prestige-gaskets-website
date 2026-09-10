@@ -106,6 +106,7 @@
     <ClInclude Include="..\include\RelationService.h" />
     <ClInclude Include="..\include\Relations.h" />
     <ClInclude Include="..\include\RoleHierarchy.h" />
+    <ClInclude Include="..\include\Shipment.h" />
     <ClInclude Include="..\include\SnapshotCommand.h" />
     <ClInclude Include="..\include\WorkingCopyStore.h" />
     <ClInclude Include="..\include\WorkspaceSession.h" />

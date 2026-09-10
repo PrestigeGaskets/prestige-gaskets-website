@@ -125,12 +125,16 @@ main()
 | **1:N** | PurchaseOrder → PoLine / Memo / Attachment | nested children |
 | **1:N** | PurchaseOrder → GoodsReceipt (GRN) | `GoodsReceipt.poNo` |
 | **1:N** | GoodsReceipt → GrnLine | `GoodsReceipt.lines` |
+| **1:N** | Customer → Shipment | `Shipment.customerId` |
+| **1:N** | Shipment → ShipmentLine | `Shipment.lines` |
+| **1:N** | Order → ShipmentLine (optional) | `ShipmentLine.orderNo` |
 | **M:N** | Product ↔ Tag | `ProductTag` junction |
 | **M:N** | Product ↔ Supplier | `ProductSupplier` junction |
 | **M:N** | Quote ↔ Product | `QuoteLine` association |
 | **M:N** | Order ↔ Product | `OrderLine` association |
 | **M:N** | PurchaseOrder ↔ Product | `PoLine` association |
 | **M:N** | GoodsReceipt ↔ Product | `GrnLine` association (updates `Product.onHand`) |
+| **M:N** | Shipment ↔ Product | `ShipmentLine` association |
 
 **Intake:** Sales Order number (`Order.orderNo`) is generated when a customer quote is
 accepted; GRN number (`GoodsReceipt.grnNo`) is generated when goods are received against

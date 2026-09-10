@@ -11,6 +11,7 @@
 #include "PurchaseOrder.h"
 #include "Quote.h"
 #include "Relations.h"
+#include "Shipment.h"
 
 namespace bos {
 
@@ -24,6 +25,7 @@ public:
     virtual std::vector<Order> loadOrders() = 0;
     virtual std::vector<PurchaseOrder> loadPurchaseOrders() = 0;
     virtual std::vector<GoodsReceipt> loadGoodsReceipts() = 0;
+    virtual std::vector<Shipment> loadShipments() = 0;
     virtual std::vector<std::string> loadList(const std::string& listName) = 0;
 
     virtual std::vector<CustomerAccount> loadCustomerAccounts() = 0;
