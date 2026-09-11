@@ -1,0 +1,668 @@
+{
+  "customers": [
+    {
+      "id": "C001",
+      "name": "Acme Fab",
+      "email": "buyer@acme.example",
+      "postcode": "B1 1AA",
+      "status": "Active"
+    },
+    {
+      "id": "C002",
+      "name": "Northline",
+      "email": "ops@northline.example",
+      "postcode": "M1 2AB",
+      "status": "Active"
+    },
+    {
+      "id": "C003",
+      "name": "Summit Seal",
+      "email": "purchasing@summit.example",
+      "postcode": "EH1 3EG",
+      "status": "Inactive"
+    },
+    {
+      "id": "C004",
+      "name": "Prestige Pilot",
+      "email": "pilot@prestige.example",
+      "postcode": "SW1A 1AA",
+      "status": "Active"
+    }
+  ],
+  "accounts": [
+    {
+      "customerId": "C001",
+      "accountCode": "ACC-C001",
+      "creditLimit": 5000,
+      "paymentTerms": "Net-30"
+    },
+    {
+      "customerId": "C002",
+      "accountCode": "ACC-C002",
+      "creditLimit": 12000,
+      "paymentTerms": "Net-45"
+    },
+    {
+      "customerId": "C003",
+      "accountCode": "ACC-C003",
+      "creditLimit": 2500,
+      "paymentTerms": "Net-15"
+    },
+    {
+      "customerId": "C004",
+      "accountCode": "ACC-C004",
+      "creditLimit": 20000,
+      "paymentTerms": "Net-30"
+    }
+  ],
+  "products": [
+    {
+      "sku": "P1001",
+      "description": "Flat gasket A",
+      "onHand": 120,
+      "reorderPoint": 40,
+      "leadDays": 7,
+      "cost": 2.5,
+      "sell": 4.75
+    },
+    {
+      "sku": "P1002",
+      "description": "Cone seal B",
+      "onHand": 18,
+      "reorderPoint": 25,
+      "leadDays": 14,
+      "cost": 3.1,
+      "sell": 5.9
+    },
+    {
+      "sku": "P1003",
+      "description": "Ring C",
+      "onHand": 80,
+      "reorderPoint": 30,
+      "leadDays": 5,
+      "cost": 1.2,
+      "sell": 2.4
+    },
+    {
+      "sku": "P1004",
+      "description": "Sleeve D",
+      "onHand": 55,
+      "reorderPoint": 20,
+      "leadDays": 10,
+      "cost": 4,
+      "sell": 7.5
+    },
+    {
+      "sku": "P1005",
+      "description": "Washer E",
+      "onHand": 200,
+      "reorderPoint": 50,
+      "leadDays": 3,
+      "cost": 0.4,
+      "sell": 0.95
+    },
+    {
+      "sku": "P1006",
+      "description": "Spacer F",
+      "onHand": 12,
+      "reorderPoint": 15,
+      "leadDays": 8,
+      "cost": 1.8,
+      "sell": 3.25
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "CITY0002",
+      "name": "CITY TODAY COURIERS LTD",
+      "postcode": "SK1 2ND",
+      "line1": "UNIT 1 NEWBRIDGE LANE",
+      "line2": "",
+      "city": "STOCKPORT",
+      "phone": "0161 477 9800",
+      "fax": "0161 477 4409"
+    },
+    {
+      "id": "S-01",
+      "name": "Midlands Rubber",
+      "postcode": "B1 2AA",
+      "line1": "12 Forge Way",
+      "line2": "",
+      "city": "Birmingham",
+      "phone": "0121 555 0101",
+      "fax": ""
+    },
+    {
+      "id": "S-02",
+      "name": "Clyde Components",
+      "postcode": "G1 1AA",
+      "line1": "4 Quay Street",
+      "line2": "",
+      "city": "Glasgow",
+      "phone": "0141 555 0202",
+      "fax": ""
+    }
+  ],
+  "productSuppliers": [
+    {
+      "sku": "P1001",
+      "supplierId": "S-01",
+      "leadDays": 7,
+      "unitCost": 2.4
+    },
+    {
+      "sku": "P1001",
+      "supplierId": "CITY0002",
+      "leadDays": 5,
+      "unitCost": 2.45
+    },
+    {
+      "sku": "P1001",
+      "supplierId": "S-02",
+      "leadDays": 10,
+      "unitCost": 2.55
+    },
+    {
+      "sku": "P1002",
+      "supplierId": "S-01",
+      "leadDays": 14,
+      "unitCost": 3
+    },
+    {
+      "sku": "P1002",
+      "supplierId": "CITY0002",
+      "leadDays": 10,
+      "unitCost": 3.05
+    },
+    {
+      "sku": "P1003",
+      "supplierId": "S-02",
+      "leadDays": 5,
+      "unitCost": 1.1
+    },
+    {
+      "sku": "P1006",
+      "supplierId": "S-01",
+      "leadDays": 8,
+      "unitCost": 1.7
+    },
+    {
+      "sku": "P1006",
+      "supplierId": "S-02",
+      "leadDays": 12,
+      "unitCost": 1.75
+    }
+  ],
+  "tags": [
+    {
+      "id": "T-SEAL",
+      "name": "Sealing"
+    },
+    {
+      "id": "T-FAST",
+      "name": "Fastener"
+    },
+    {
+      "id": "T-STOCK",
+      "name": "Stocked"
+    }
+  ],
+  "productTags": [
+    {
+      "sku": "P1001",
+      "tagId": "T-SEAL"
+    },
+    {
+      "sku": "P1001",
+      "tagId": "T-STOCK"
+    },
+    {
+      "sku": "P1002",
+      "tagId": "T-SEAL"
+    },
+    {
+      "sku": "P1005",
+      "tagId": "T-FAST"
+    },
+    {
+      "sku": "P1005",
+      "tagId": "T-STOCK"
+    },
+    {
+      "sku": "P1006",
+      "tagId": "T-FAST"
+    }
+  ],
+  "quotes": [
+    {
+      "quoteNo": "Q-100",
+      "customerId": "C004",
+      "status": "Won",
+      "quotedDate": "20/08/2026",
+      "validDays": 14,
+      "shipMethod": "CARRIER",
+      "via": "WL-CITY",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1001",
+          "qty": 10,
+          "price": 4.75
+        },
+        {
+          "line": 2,
+          "sku": "P1002",
+          "qty": 5,
+          "price": 5.9
+        }
+      ]
+    },
+    {
+      "quoteNo": "Q-101",
+      "customerId": "C001",
+      "status": "Confirmed",
+      "quotedDate": "01/09/2026",
+      "validDays": 14,
+      "shipMethod": "COLLECT",
+      "via": "",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1003",
+          "qty": 40,
+          "price": 2.4
+        },
+        {
+          "line": 2,
+          "sku": "P1005",
+          "qty": 100,
+          "price": 0.95
+        }
+      ]
+    },
+    {
+      "quoteNo": "Q-102",
+      "customerId": "C002",
+      "status": "Sent",
+      "quotedDate": "05/09/2026",
+      "validDays": 14,
+      "shipMethod": "COURIER",
+      "via": "WL-MID",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1006",
+          "qty": 12,
+          "price": 3.25
+        }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "orderNo": "O-500",
+      "quoteNo": "Q-100",
+      "customerId": "C004",
+      "status": "Shipped",
+      "readyToPrint": false,
+      "shipMethod": "CARRIER",
+      "via": "WL-CITY",
+      "shipPaymentType": "PREPAID",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1001",
+          "qty": 10,
+          "price": 4.75
+        },
+        {
+          "line": 2,
+          "sku": "P1002",
+          "qty": 5,
+          "price": 5.9
+        }
+      ]
+    },
+    {
+      "orderNo": "O-501",
+      "quoteNo": "",
+      "customerId": "C002",
+      "status": "Open",
+      "readyToPrint": true,
+      "shipMethod": "COLLECT",
+      "via": "",
+      "shipPaymentType": "COLLECT",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1005",
+          "qty": 80,
+          "price": 0.95
+        },
+        {
+          "line": 2,
+          "sku": "P1006",
+          "qty": 10,
+          "price": 3.25
+        }
+      ]
+    }
+  ],
+  "procurementProviders": [
+    {
+      "id": "WL-CITY",
+      "name": "City Today White-Label",
+      "supplierId": "CITY0002"
+    },
+    {
+      "id": "WL-MID",
+      "name": "Midlands Rubber Procurement Agent",
+      "supplierId": "S-01"
+    },
+    {
+      "id": "WL-CLYDE",
+      "name": "Clyde Components White-Label",
+      "supplierId": "S-02"
+    }
+  ],
+  "invoices": [
+    {
+      "invoiceNo": "INV-500",
+      "orderNo": "O-500",
+      "status": "Paid",
+      "amount": 77
+    },
+    {
+      "invoiceNo": "INV-501",
+      "orderNo": "O-501",
+      "status": "Draft",
+      "amount": 108.5
+    }
+  ],
+  "goodsReceipts": [],
+  "purchaseOrders": [
+    {
+      "poNo": "70286",
+      "supplierId": "CITY0002",
+      "invLocation": "",
+      "purLocation": "",
+      "orgAccountId": "",
+      "dropShipOrgId": "",
+      "dropShipLocation": "",
+      "apContact": "",
+      "purchasingContact": "",
+      "dropShipContact": "",
+      "invAddress": {
+        "name": "CITY TODAY COURIERS LTD",
+        "line1": "UNIT 1 NEWBRIDGE LANE",
+        "line2": "",
+        "city": "STOCKPORT",
+        "postcode": "SK1 2ND",
+        "phone": "0161 477 9800",
+        "fax": "0161 477 4409"
+      },
+      "purAddress": {
+        "name": "CITY TODAY COURIERS LTD",
+        "line1": "UNIT 1 NEWBRIDGE LANE",
+        "line2": "",
+        "city": "STOCKPORT",
+        "postcode": "SK1 2ND",
+        "phone": "0161 477 9800",
+        "fax": "0161 477 4409"
+      },
+      "dropShipAddress": {
+        "name": "",
+        "line1": "",
+        "line2": "",
+        "city": "",
+        "postcode": "",
+        "phone": "",
+        "fax": ""
+      },
+      "paymentTerms": "30 DAYS EOM",
+      "dueDate": "09/09/2026",
+      "shipMethod": "CARRIER",
+      "fob": "",
+      "supplierRating": "",
+      "landedCost": false,
+      "orderDate": "09/09/2026",
+      "buyer": "JAMES CRAVEN",
+      "standardMessage": "Purchasing additional terms and conditions apply.",
+      "comments": "",
+      "readyToPrint": true,
+      "currency": "GBP",
+      "exchangeRate": 1,
+      "customRate": false,
+      "status": "Approved",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1001",
+          "qty": 100,
+          "unitCost": 2.45
+        },
+        {
+          "line": 2,
+          "sku": "P1002",
+          "qty": 40,
+          "unitCost": 3.05
+        }
+      ],
+      "memos": [
+        {
+          "id": 1,
+          "text": "Confirm carrier booking before print."
+        }
+      ],
+      "attachments": [
+        {
+          "id": 1,
+          "fileName": "vendor-quote-city.pdf",
+          "note": "Supplier quote"
+        }
+      ]
+    },
+    {
+      "poNo": "70290",
+      "supplierId": "S-01",
+      "invLocation": "",
+      "purLocation": "",
+      "orgAccountId": "",
+      "dropShipOrgId": "",
+      "dropShipLocation": "",
+      "apContact": "",
+      "purchasingContact": "",
+      "dropShipContact": "",
+      "invAddress": {
+        "name": "Midlands Rubber",
+        "line1": "12 Forge Way",
+        "line2": "",
+        "city": "Birmingham",
+        "postcode": "B1 2AA",
+        "phone": "0121 555 0101",
+        "fax": ""
+      },
+      "purAddress": {
+        "name": "Midlands Rubber",
+        "line1": "12 Forge Way",
+        "line2": "",
+        "city": "Birmingham",
+        "postcode": "B1 2AA",
+        "phone": "0121 555 0101",
+        "fax": ""
+      },
+      "dropShipAddress": {
+        "name": "",
+        "line1": "",
+        "line2": "",
+        "city": "",
+        "postcode": "",
+        "phone": "",
+        "fax": ""
+      },
+      "paymentTerms": "Net-30",
+      "dueDate": "20/09/2026",
+      "shipMethod": "CARRIER",
+      "fob": "",
+      "supplierRating": "",
+      "landedCost": false,
+      "orderDate": "10/09/2026",
+      "buyer": "JAMES CRAVEN",
+      "standardMessage": "Standard purchasing terms.",
+      "comments": "",
+      "readyToPrint": false,
+      "currency": "GBP",
+      "exchangeRate": 1,
+      "customRate": false,
+      "status": "Draft",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1006",
+          "qty": 25,
+          "unitCost": 1.7
+        }
+      ],
+      "memos": [],
+      "attachments": []
+    }
+  ],
+  "shipments": [
+    {
+      "shipmentId": "275525",
+      "shipDate": "10/09/2026",
+      "reversalEntry": false,
+      "customerId": "",
+      "invLocation": "",
+      "shipOrganisation": "",
+      "shipLocation": "",
+      "arContact": "",
+      "shippingContact": "",
+      "creditHold": false,
+      "customerAddress": {
+        "name": "",
+        "line1": "",
+        "line2": "",
+        "city": "",
+        "postcode": "",
+        "phone": "",
+        "fax": ""
+      },
+      "shipMethodId": "CARRIER",
+      "shipPaymentType": "PREPAID",
+      "trackingNumber": "",
+      "currency": "GBP",
+      "exchangeRate": 1,
+      "customRate": false,
+      "freightSubtotal": 0,
+      "taxTotal": 0,
+      "freightTotal": 0,
+      "weightTotal": 0,
+      "shippingComments": "",
+      "printPackingSlip": false,
+      "printLabels": false,
+      "standardMessage": "",
+      "deliveryNoteIssued": false,
+      "deliveryNoteNo": "",
+      "status": "Draft",
+      "lines": [],
+      "memos": [],
+      "attachments": [],
+      "followups": [],
+      "calls": []
+    },
+    {
+      "shipmentId": "275526",
+      "shipDate": "10/09/2026",
+      "reversalEntry": false,
+      "customerId": "C004",
+      "invLocation": "MAIN",
+      "shipOrganisation": "C004",
+      "shipLocation": "MAIN",
+      "arContact": "pilot@prestige.example",
+      "shippingContact": "pilot@prestige.example",
+      "creditHold": false,
+      "customerAddress": {
+        "name": "Prestige Pilot",
+        "line1": "1 Parliament Sq",
+        "line2": "",
+        "city": "London",
+        "postcode": "SW1A 1AA",
+        "phone": "020 7946 0001",
+        "fax": ""
+      },
+      "shipMethodId": "CARRIER",
+      "shipPaymentType": "PREPAID",
+      "trackingNumber": "",
+      "currency": "GBP",
+      "exchangeRate": 1,
+      "customRate": false,
+      "freightSubtotal": 12.5,
+      "taxTotal": 0,
+      "freightTotal": 12.5,
+      "weightTotal": 4.2,
+      "shippingComments": "Deliver to goods-in.",
+      "printPackingSlip": true,
+      "printLabels": false,
+      "standardMessage": "Standard shipping terms.",
+      "deliveryNoteIssued": true,
+      "deliveryNoteNo": "DN-275526",
+      "status": "Open",
+      "lines": [
+        {
+          "line": 1,
+          "sku": "P1001",
+          "revision": "",
+          "warehouseBin": "A-01",
+          "deliveryQty": 10,
+          "openQty": 10,
+          "jobQtyShipped": 0,
+          "qtyShipped": 10,
+          "shipComplete": true,
+          "invoiceComplete": false,
+          "deliveryDate": "10/09/2026",
+          "jobId": "",
+          "orderNo": "O-500",
+          "marked": true
+        },
+        {
+          "line": 2,
+          "sku": "P1002",
+          "revision": "",
+          "warehouseBin": "A-02",
+          "deliveryQty": 5,
+          "openQty": 5,
+          "jobQtyShipped": 0,
+          "qtyShipped": 5,
+          "shipComplete": true,
+          "invoiceComplete": false,
+          "deliveryDate": "10/09/2026",
+          "jobId": "",
+          "orderNo": "O-500",
+          "marked": true
+        }
+      ],
+      "memos": [
+        {
+          "id": 1,
+          "text": "Confirm carrier booking."
+        }
+      ],
+      "attachments": [],
+      "followups": [
+        {
+          "id": 1,
+          "text": "Confirm Prestige Pilot delivery window",
+          "subject": "Delivery window"
+        }
+      ],
+      "calls": [
+        {
+          "id": 1,
+          "text": "Called pilot@prestige.example — OK to ship",
+          "subject": "Pre-ship call"
+        }
+      ]
+    }
+  ]
+}

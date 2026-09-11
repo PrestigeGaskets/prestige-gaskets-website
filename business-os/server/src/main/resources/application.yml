@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: rushmore-server
+  profiles:
+    default: h2
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 8MB
+
+server:
+  port: 8080
+
+rushmore:
+  cors-origins: "*"
+  seed-master: classpath:seed-master.json
+  seed-workforce: classpath:seed-workforce.json
+
+---
+spring:
+  config:
+    activate:
+      on-profile: h2
+  datasource:
+    url: jdbc:h2:file:./data/rushmore;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: jdbc:postgresql://${RUSHMORE_DB_HOST:localhost}:${RUSHMORE_DB_PORT:5432}/${RUSHMORE_DB_NAME:rushmore}
+    username: ${RUSHMORE_DB_USER:rushmore}
+    password: ${RUSHMORE_DB_PASSWORD:rushmore}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    open-in-view: false

@@ -57,7 +57,8 @@ Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports
 **Workforce / projects (server-backed):** session identity, My Workload (assigned
 jobs + department pool pull by **role** after clock-in), time cards, and
 Projects & Daily Scrum — all aimed at **PO / sales-order fulfilment**. No skills
-matrix. See [docs/WORKFORCE_PROJECTS.md](docs/WORKFORCE_PROJECTS.md) and
+matrix. Spring Boot API lives in [`server/`](server/) — see [docs/API.md](docs/API.md),
+[docs/WORKFORCE_PROJECTS.md](docs/WORKFORCE_PROJECTS.md) and
 [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —

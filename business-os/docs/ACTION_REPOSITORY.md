@@ -70,3 +70,9 @@ sales agreements. Department work-pool jobs (see `WORKFORCE_PROJECTS.md`) point
 at the same agreements (`poNo`, `orderNo`, `quoteNo`, `shipmentId`, …). Employees
 pull those jobs when they start a shift; **role** decides who may pull — there
 is no skills / employee_skills table. Full table list: `DATA_MODEL.md`.
+
+## Spring Boot API
+
+When the HTML twin runs against Boot, Post/Reverse/Update and action lookups hit
+the endpoints in [API.md](API.md) (`POST /api/post`, `POST /api/reverse`,
+`GET /api/actions`).
