@@ -26,9 +26,12 @@
 html, body {
   margin: 0;
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   font-family: var(--font);
   color: var(--ink);
   background: #b0b0b0;
+  overscroll-behavior-x: none;
 }
 
 button, input, select, textarea { font: inherit; }
@@ -741,16 +744,28 @@ button, input, select, textarea { font: inherit; }
   color: var(--muted);
   margin-bottom: 0.15rem;
 }
+.field {
+  min-width: 0;
+  max-width: 100%;
+}
 .field input,
 .field select,
 .field textarea {
   width: 100%;
+  max-width: 100%;
   border: 1px solid var(--line);
   background: #fff;
   padding: 0.35rem 0.4rem;
   min-height: 2rem;
 }
-.field textarea { min-height: 4rem; resize: vertical; }
+.field textarea {
+  min-height: 4rem;
+  resize: vertical;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  field-sizing: content;
+}
 .field-span { grid-column: 1 / -1; }
 .field.is-locked input,
 .field.is-locked select,
@@ -932,9 +947,23 @@ table.data input {
   .shell {
     height: 100dvh;
     min-height: 100dvh;
+    width: 100%;
+    max-width: 100%;
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr auto;
     overflow: hidden;
+  }
+
+  /* Closed drawers must not expand document scrollWidth (iOS focus pan). */
+  .shell:not(.is-modules-open) .tree-pane,
+  .shell:not(.is-shortcuts-open) .icon-rail {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .shell.is-modules-open .tree-pane,
+  .shell.is-shortcuts-open .icon-rail {
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .titlebar {
@@ -1119,9 +1148,12 @@ table.data input {
     grid-row: 2;
     grid-column: 1;
     padding: 0.55rem 0.55rem 0.35rem;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    min-width: 0;
     min-height: 0;
+    max-width: 100%;
   }
 
   .hub-grid {
@@ -1209,6 +1241,17 @@ table.data input {
     max-height: none;
     border: 0;
     padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .po-workspace,
+  .po-section,
+  .field-grid,
+  .addr-grid {
+    min-width: 0;
+    max-width: 100%;
   }
   .field-grid,
   .addr-grid { grid-template-columns: 1fr; }
@@ -1216,7 +1259,24 @@ table.data input {
   .field select,
   .field textarea {
     min-height: var(--touch);
-    font-size: 1rem;
+    font-size: 16px; /* iOS: avoid focus zoom that pans the layout */
+  }
+  .field textarea {
+    min-height: calc(var(--touch) * 1.35);
+  }
+
+  /* Typing: free vertical space — dock sits on top of the iOS keyboard otherwise */
+  body.is-field-focus .mobile-dock {
+    transform: translateY(110%);
+    pointer-events: none;
+    transition: transform 0.18s ease;
+  }
+  body.is-field-focus .ship-phone-bar {
+    bottom: max(0.35rem, var(--safe-b));
+  }
+  body.is-field-focus .dash-fab {
+    opacity: 0;
+    pointer-events: none;
   }
 
   body.nav-open { overflow: hidden; }
@@ -1419,7 +1479,7 @@ table.data input {
   #view-shipment .field textarea {
     min-height: 2.35rem;
     padding: 0.35rem 0.45rem;
-    font-size: 0.9rem;
+    font-size: 16px; /* keep ≥16px — smaller sizes trigger iOS focus zoom/pan */
   }
   #view-shipment .ship-phone-bar {
     gap: 0.35rem;
