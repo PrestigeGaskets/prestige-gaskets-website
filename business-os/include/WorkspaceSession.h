@@ -37,7 +37,7 @@ public:
 private:
     MasterStore master_;
     WorkingCopyStore working_;
-    bool editMode_ = false;
+    bool editMode_ = true;  // live forms — Post commits; Reverse restores
     std::unique_ptr<ICommandInvoker> invoker_;
     std::vector<std::string> journal_;
 };

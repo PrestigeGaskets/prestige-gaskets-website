@@ -24,7 +24,7 @@
         <button type="button" class="btn mobile-only" id="btnShortcuts" aria-controls="iconRailPane" aria-expanded="false" title="My Shortcuts" hidden>⚡</button>
       </div>
       <p class="mobile-context mobile-only" id="mobileContext">Sales Order Management</p>
-      <div class="session">
+      <div class="session session-compact">
         <button type="button" class="session-user" id="btnAccount" title="My account">
           <span class="session-user-avatar" data-account-avatar>JC</span>
           <span class="session-user-meta" id="sessionUserMeta">
@@ -32,24 +32,26 @@
             <span class="session-user-id" data-account-id>154981</span>
           </span>
         </button>
-        <label class="session-role session-operator">
-          Signed in
-          <select id="operatorSelect" aria-label="Signed-in operator"></select>
-        </label>
-        <label class="session-role">
-          Role
-          <select id="roleSelect"></select>
-        </label>
-        <span id="copyPill" class="pill">Working · clean</span>
-          <div class="toolbar" role="toolbar" aria-label="Workspace">
-          <button type="button" id="btnEdit" class="btn">Edit</button>
-          <button type="button" id="btnPost" class="btn btn-primary">Post</button>
+        <div class="session-identity" aria-label="Operator and role">
+          <label class="session-role session-operator">
+            <span class="session-label">Signed in</span>
+            <select id="operatorSelect" aria-label="Signed-in operator"></select>
+          </label>
+          <label class="session-role">
+            <span class="session-label">Role</span>
+            <select id="roleSelect" aria-label="Active role"></select>
+          </label>
+          <span id="copyPill" class="pill" title="Live working copy">WORKING · clean</span>
+        </div>
+        <div class="toolbar" role="toolbar" aria-label="Workspace">
+          <button type="button" id="btnPost" class="btn btn-primary" title="Commit staged work and field edits">Post</button>
           <details class="toolbar-more">
             <summary aria-label="More workspace actions">⋯</summary>
             <div class="toolbar-more-body">
+              <button type="button" id="btnUpdate" class="btn" title="Refresh lists from server">Update</button>
               <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
               <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
-              <button type="button" id="btnDiscard" class="btn btn-danger" disabled>Discard</button>
+              <button type="button" id="btnReverse" class="btn btn-danger" disabled title="Restore last posted / server snapshot">Reverse</button>
             </div>
           </details>
         </div>

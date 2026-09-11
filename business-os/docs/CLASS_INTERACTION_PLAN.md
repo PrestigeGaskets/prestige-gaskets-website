@@ -33,11 +33,13 @@ sibling concretes.
 | `ICommand` / `ICommandInvoker` | `SnapshotCommand` / `CommandInvoker` |
 | `IUserInterface` | `ConsoleUi` (future: Win32/Qt shell) |
 
-**Encapsulation:** master data is sealed inside `MasterStore`; user mutations go
-only through `IWorkingCopyMutations` / `WorkingCopyStore` mutators invoked via
-`IWorkspaceSession::runMutation` (Command pattern with undo/redo). Role checks go
-through `IRolePolicy`, not scattered `if (role == …)` in UI code. Stage/Post
-orchestration lives in `IPostCommitService` — Application only routes commands.
+**Encapsulation:** master data is sealed inside `MasterStore`; forms are **live**
+on the working copy (role-gated). **Post** commits staged intake + journal;
+**Reverse** restores the last posted/master snapshot. `update()` reloads lists
+from the store/server. Mutations go through `IWorkingCopyMutations` /
+`WorkingCopyStore` via `IWorkspaceSession::runMutation` (Command + undo/redo).
+Role checks use `IRolePolicy`. Stage/Post orchestration lives in
+`IPostCommitService`.
 
 **Polymorphism:** swap `ConsoleUi` → native GUI without touching services; swap
 `InMemoryStore` / working session → `ExcelStore` without touching repositories;

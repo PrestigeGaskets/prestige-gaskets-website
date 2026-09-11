@@ -23,7 +23,8 @@ void WorkspaceSession::setEditMode(bool on) { editMode_ = on; }
 void WorkspaceSession::discardToMaster() {
     working_.resetToMaster();
     invoker_->clear();
-    editMode_ = false;
+    // Stay live after reverse — forms remain writable (role-gated).
+    editMode_ = true;
 }
 
 void WorkspaceSession::postJournal() {
@@ -31,7 +32,7 @@ void WorkspaceSession::postJournal() {
     entry << "post dirty=" << (working_.isDirty() ? "yes" : "no");
     journal_.push_back(entry.str());
     invoker_->clear();
-    editMode_ = false;
+    editMode_ = true;  // remain live after Post
 }
 
 bool WorkspaceSession::undo() { return invoker_->undo(); }
@@ -44,7 +45,7 @@ void WorkspaceSession::runMutation(const std::string& label, std::function<void(
 
 std::string WorkspaceSession::statusSummary() const {
     std::ostringstream os;
-    os << (editMode_ ? "EDIT" : "VIEW") << " | " << (working_.isDirty() ? "dirty" : "clean")
+    os << "LIVE" << " | " << (working_.isDirty() ? "dirty" : "clean")
        << " | journal=" << journal_.size();
     return os.str();
 }

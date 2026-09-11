@@ -9,7 +9,7 @@
 namespace bos {
 
 // Workspace session: working-copy overlay over an immutable master.
-// Encapsulates edit/post/discard without exposing store internals.
+// Forms are live (role-gated). Post commits; Reverse restores last snapshot.
 class IWorkspaceSession {
 public:
     virtual ~IWorkspaceSession() = default;
