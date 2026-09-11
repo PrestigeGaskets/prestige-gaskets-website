@@ -1719,9 +1719,11 @@
 
   function dashTileHtml(tile) {
     const access = tile.badge ? { mode: tile.badge === "View" || tile.badge === "Map" || tile.badge === "Hub" || tile.badge === role ? "view" : "write", badge: tile.badge } : tileAccess(tile);
-    const gated = !!(tile.entity || tile.fieldPrefix);
+    // Lock only write-gated ops modules (Inventory / PO / GRN / Despatch) when role has no add/edit.
+    // Browse tiles (e.g. AR Invoices) stay clickable as View.
+    const writeGated = new Set(["products", "purchaseOrders", "shipments", "goodsReceipts"]);
     const hasWrite = (tile.entity && canAdd(tile.entity)) || (tile.fieldPrefix && canTouchPrefix(tile.fieldPrefix));
-    const locked = gated && !hasWrite && access.mode === "view" && !tile.badge;
+    const locked = !!(tile.entity && writeGated.has(tile.entity) && !hasWrite);
     const count = typeof tile.count === "function" ? tile.count() : tile.count;
     const countHtml = count == null ? "" : `<span class="dash-tile-count">${count}</span>`;
     let attrs = "";
