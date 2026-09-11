@@ -1,0 +1,432 @@
+{
+  "departments": [
+    {
+      "id": "D-PUR",
+      "name": "Purchasing",
+      "code": "PUR"
+    },
+    {
+      "id": "D-SAL",
+      "name": "Sales",
+      "code": "SAL"
+    },
+    {
+      "id": "D-SHP",
+      "name": "Shipping",
+      "code": "SHP"
+    },
+    {
+      "id": "D-INV",
+      "name": "Inventory",
+      "code": "INV"
+    },
+    {
+      "id": "D-FIN",
+      "name": "Finance",
+      "code": "FIN"
+    },
+    {
+      "id": "D-PMO",
+      "name": "Project Office",
+      "code": "PMO"
+    }
+  ],
+  "employees": [
+    {
+      "id": "154981",
+      "username": "jcraven",
+      "name": "James Craven",
+      "role": "Purchasing",
+      "departmentId": "D-PUR",
+      "title": "Buyer"
+    },
+    {
+      "id": "162204",
+      "username": "abuyer",
+      "name": "A. Buyer",
+      "role": "Sales",
+      "departmentId": "D-SAL",
+      "title": "Sales executive"
+    },
+    {
+      "id": "170110",
+      "username": "shipdesk",
+      "name": "Shipping Desk",
+      "role": "Shipping",
+      "departmentId": "D-SHP",
+      "title": "Despatch clerk"
+    },
+    {
+      "id": "180055",
+      "username": "stockctl",
+      "name": "Stock Control",
+      "role": "Inventory",
+      "departmentId": "D-INV",
+      "title": "Stock controller"
+    },
+    {
+      "id": "190301",
+      "username": "finance",
+      "name": "Finance Office",
+      "role": "Finance",
+      "departmentId": "D-FIN",
+      "title": "AR clerk"
+    },
+    {
+      "id": "200001",
+      "username": "manager",
+      "name": "Site Manager",
+      "role": "Manager",
+      "departmentId": "D-PMO",
+      "title": "Project manager"
+    },
+    {
+      "id": "210007",
+      "username": "admin",
+      "name": "System Admin",
+      "role": "Admin",
+      "departmentId": "D-PMO",
+      "title": "Scrum master"
+    },
+    {
+      "id": "100001",
+      "username": "viewer",
+      "name": "Read Only",
+      "role": "Viewer",
+      "departmentId": "D-PMO",
+      "title": "Observer"
+    }
+  ],
+  "projects": [
+    {
+      "id": "PRJ-GASKET-Q3",
+      "name": "Q3 gasket fulfilment",
+      "goal": "Fulfil open sales orders and linked supplier POs for Prestige Pilot via daily scrum pulls",
+      "status": "Active",
+      "projectManagerId": "200001",
+      "scrumMasterId": "210007",
+      "approach": "pull",
+      "departmentIds": [
+        "D-PUR",
+        "D-SHP",
+        "D-SAL",
+        "D-INV"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "MS-1",
+      "projectId": "PRJ-GASKET-Q3",
+      "name": "Confirm live quotes → SO ready-to-print",
+      "dueDate": "18/09/2026",
+      "status": "In progress",
+      "sort": 1
+    },
+    {
+      "id": "MS-2",
+      "projectId": "PRJ-GASKET-Q3",
+      "name": "Raise replenishment POs for ROP breaches",
+      "dueDate": "22/09/2026",
+      "status": "Open",
+      "sort": 2
+    },
+    {
+      "id": "MS-3",
+      "projectId": "PRJ-GASKET-Q3",
+      "name": "Issue DN + post OH for O-500",
+      "dueDate": "25/09/2026",
+      "status": "Open",
+      "sort": 3
+    }
+  ],
+  "scrumRules": {
+    "dailyScrumMinutes": 15,
+    "buildsToward": "milestones",
+    "pullRequiresClockedIn": true,
+    "assignmentOverridesPool": true,
+    "wipLimit": 3,
+    "note": "Daily scrum confirms yesterday / today / blockers toward PO & sales-order fulfilment. PM & scrum master set approach (pull vs assign). On clock-in, pull from the department pool — role decides eligibility."
+  },
+  "dailyScrum": {
+    "date": "11/09/2026",
+    "projectId": "PRJ-GASKET-Q3",
+    "facilitatedById": "210007",
+    "agenda": [
+      "What did we complete toward MS-1 (quote → SO)?",
+      "What PO / SO fulfilment will we pull today after clock-in?",
+      "Blockers on materials / carriers / agreement terms?"
+    ],
+    "notes": "Focus despatch pull for O-500 and buyer follow-up on CITY0002 PO 70286."
+  },
+  "jobs": [
+    {
+      "id": "JOB-70286-BUY",
+      "title": "Chase PO 70286 approval / receipt window",
+      "departmentId": "D-PUR",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-2",
+      "allowedRoles": [
+        "Purchasing",
+        "Manager",
+        "Admin"
+      ],
+      "criteria": {
+        "poNo": "70286",
+        "priority": "High"
+      },
+      "link": {
+        "view": "po-entry",
+        "label": "Open PO Entry",
+        "poNo": "70286"
+      },
+      "status": "Ready",
+      "estimatedHours": 1.5
+    },
+    {
+      "id": "JOB-Q-9001",
+      "title": "Confirm quote Q-9001 (14-day window) → SO",
+      "departmentId": "D-SAL",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-1",
+      "allowedRoles": [
+        "Sales",
+        "Manager",
+        "Admin"
+      ],
+      "criteria": {
+        "quoteNo": "Q-9001",
+        "priority": "High"
+      },
+      "link": {
+        "view": "quotes",
+        "label": "Open Quotes",
+        "quoteNo": "Q-9001"
+      },
+      "status": "Ready",
+      "estimatedHours": 0.75
+    },
+    {
+      "id": "JOB-DN-275526",
+      "title": "Pick / pack shipment 275526 from O-500",
+      "departmentId": "D-SHP",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-3",
+      "allowedRoles": [
+        "Shipping",
+        "Manager",
+        "Admin"
+      ],
+      "criteria": {
+        "shipmentId": "275526",
+        "orderNo": "O-500",
+        "priority": "High"
+      },
+      "link": {
+        "view": "shipment",
+        "label": "Open Shipment Entry",
+        "shipmentId": "275526"
+      },
+      "status": "Ready",
+      "estimatedHours": 2
+    },
+    {
+      "id": "JOB-ROP-P1002",
+      "title": "Review ROP breach · P1002 → raise PO demand",
+      "departmentId": "D-INV",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-2",
+      "allowedRoles": [
+        "Inventory",
+        "Purchasing",
+        "Manager",
+        "Admin"
+      ],
+      "criteria": {
+        "sku": "P1002",
+        "priority": "Medium"
+      },
+      "link": {
+        "view": "products",
+        "label": "Open Inventory",
+        "sku": "P1002"
+      },
+      "status": "Ready",
+      "estimatedHours": 0.5
+    },
+    {
+      "id": "JOB-AR-INV1",
+      "title": "Chase AR for Prestige Pilot invoice (fulfilled SO)",
+      "departmentId": "D-FIN",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-1",
+      "allowedRoles": [
+        "Finance",
+        "Manager",
+        "Admin"
+      ],
+      "criteria": {
+        "customerId": "C004",
+        "priority": "Low"
+      },
+      "link": {
+        "view": "invoices",
+        "label": "Open AR Invoices"
+      },
+      "status": "Ready",
+      "estimatedHours": 0.5
+    },
+    {
+      "id": "JOB-SCRUM-FACIL",
+      "title": "Facilitate daily scrum · Q3 gasket fulfilment",
+      "departmentId": "D-PMO",
+      "projectId": "PRJ-GASKET-Q3",
+      "milestoneId": "MS-1",
+      "allowedRoles": [
+        "Admin",
+        "Manager"
+      ],
+      "criteria": {
+        "priority": "High"
+      },
+      "link": {
+        "view": "projects",
+        "label": "Open Projects / Scrum"
+      },
+      "status": "Assigned",
+      "estimatedHours": 0.25
+    }
+  ],
+  "workPool": [
+    {
+      "id": "WP-1",
+      "jobId": "JOB-70286-BUY",
+      "pool": "department",
+      "departmentId": "D-PUR",
+      "assigneeId": null,
+      "status": "Queued"
+    },
+    {
+      "id": "WP-2",
+      "jobId": "JOB-Q-9001",
+      "pool": "personal",
+      "departmentId": "D-SAL",
+      "assigneeId": "162204",
+      "status": "Assigned"
+    },
+    {
+      "id": "WP-3",
+      "jobId": "JOB-DN-275526",
+      "pool": "department",
+      "departmentId": "D-SHP",
+      "assigneeId": null,
+      "status": "Queued"
+    },
+    {
+      "id": "WP-4",
+      "jobId": "JOB-ROP-P1002",
+      "pool": "department",
+      "departmentId": "D-INV",
+      "assigneeId": null,
+      "status": "Queued"
+    },
+    {
+      "id": "WP-5",
+      "jobId": "JOB-AR-INV1",
+      "pool": "department",
+      "departmentId": "D-FIN",
+      "assigneeId": null,
+      "status": "Queued"
+    },
+    {
+      "id": "WP-6",
+      "jobId": "JOB-SCRUM-FACIL",
+      "pool": "personal",
+      "departmentId": "D-PMO",
+      "assigneeId": "210007",
+      "status": "Assigned"
+    }
+  ],
+  "timeCards": [
+    {
+      "id": "TC-154981-1109",
+      "employeeId": "154981",
+      "date": "11/09/2026",
+      "clockedIn": false,
+      "clockInAt": null,
+      "clockOutAt": null,
+      "entries": []
+    },
+    {
+      "id": "TC-162204-1109",
+      "employeeId": "162204",
+      "date": "11/09/2026",
+      "clockedIn": true,
+      "clockInAt": "08:02",
+      "clockOutAt": null,
+      "entries": [
+        {
+          "jobId": "JOB-Q-9001",
+          "hours": 0.5,
+          "note": "Customer confirm call"
+        }
+      ]
+    },
+    {
+      "id": "TC-170110-1109",
+      "employeeId": "170110",
+      "date": "11/09/2026",
+      "clockedIn": false,
+      "clockInAt": null,
+      "clockOutAt": null,
+      "entries": []
+    },
+    {
+      "id": "TC-180055-1109",
+      "employeeId": "180055",
+      "date": "11/09/2026",
+      "clockedIn": false,
+      "clockInAt": null,
+      "clockOutAt": null,
+      "entries": []
+    },
+    {
+      "id": "TC-190301-1109",
+      "employeeId": "190301",
+      "date": "11/09/2026",
+      "clockedIn": false,
+      "clockInAt": null,
+      "clockOutAt": null,
+      "entries": []
+    },
+    {
+      "id": "TC-200001-1109",
+      "employeeId": "200001",
+      "date": "11/09/2026",
+      "clockedIn": true,
+      "clockInAt": "07:55",
+      "clockOutAt": null,
+      "entries": []
+    },
+    {
+      "id": "TC-210007-1109",
+      "employeeId": "210007",
+      "date": "11/09/2026",
+      "clockedIn": true,
+      "clockInAt": "07:50",
+      "clockOutAt": null,
+      "entries": [
+        {
+          "jobId": "JOB-SCRUM-FACIL",
+          "hours": 0.25,
+          "note": "Stand-up"
+        }
+      ]
+    }
+  ],
+  "loggedOn": [
+    "162204",
+    "200001",
+    "210007"
+  ]
+}
