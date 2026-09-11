@@ -623,7 +623,8 @@
   if (!["tables", "role", "classic"].includes(dashTab)) dashTab = "tables";
   let dashQuery = "";
   let view = "hub";
-  let editMode = sessionStorage.getItem(EDIT_KEY) === "1";
+  // Forms are live by default — role gates still apply. Edit toggle removed.
+  let editMode = true;
   let poNo = "70286";
   let poTab = "lines";
   let shipId = "275525";
@@ -790,7 +791,7 @@
   }
 
   function openRecordDialog(spec) {
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     recordDialog = {
       title: spec.title || "Record",
       note: spec.note || "",
@@ -856,7 +857,7 @@
       const locked = !!(f.readonly || f.disabled);
       let control = "";
       if (f.type === "select") {
-        control = `<select data-rec-key="${escAttr(f.key)}" ${locked ? "disabled" : ""} ${f.required ? "required" : ""}>
+        control = `<select data-rec-key="${escAttr(f.key)}" "" ${f.required ? "required" : ""}>
           ${(f.options || []).map((o) => {
             const val = typeof o === "object" ? o.value : o;
             const lab = typeof o === "object" ? o.label : o;
@@ -864,9 +865,9 @@
           }).join("")}
         </select>`;
       } else if (f.type === "textarea") {
-        control = `<textarea data-rec-key="${escAttr(f.key)}" rows="3" ${locked ? "disabled" : ""} ${f.required ? "required" : ""}>${escAttr(f.value ?? "")}</textarea>`;
+        control = `<textarea data-rec-key="${escAttr(f.key)}" rows="3" "" ${f.required ? "required" : ""}>${escAttr(f.value ?? "")}</textarea>`;
       } else if (f.type === "checkbox") {
-        control = `<input type="checkbox" data-rec-key="${escAttr(f.key)}" ${f.value ? "checked" : ""} ${locked ? "disabled" : ""} />`;
+        control = `<input type="checkbox" data-rec-key="${escAttr(f.key)}" ${f.value ? "checked" : ""} "" />`;
       } else {
         const t = f.type || "text";
         control = `<input type="${escAttr(t)}" data-rec-key="${escAttr(f.key)}" value="${escAttr(f.value ?? "")}" ${locked ? "readonly" : ""} ${f.required ? "required" : ""} ${f.step != null ? `step="${escAttr(f.step)}"` : ""} ${f.min != null ? `min="${escAttr(f.min)}"` : ""} placeholder="${escAttr(f.placeholder || "")}" autocomplete="off" />`;
@@ -938,10 +939,6 @@
   }
 
   function mutate(label, fn, opts = {}) {
-    if (!editMode && !opts.force) {
-      toast("Turn on Edit first.");
-      return false;
-    }
     undoStack.push({ label, data: clone(working) });
     if (undoStack.length > 40) undoStack.shift();
     redoStack = [];
@@ -1023,10 +1020,8 @@
   }
 
   function updatePill() {
-    const pill = document.getElementById("copyPill");
-    const dirty = isDirty();
-    pill.classList.toggle("is-dirty", dirty);
-    pill.textContent = dirty ? `Working · ${countChanges()} Δ` : "Working · clean";
+    // Pill text owned by syncButtons (WORKING · N Δ) for live-copy chrome.
+    syncButtons();
   }
 
   function countChanges() {
@@ -1046,14 +1041,65 @@
   function syncButtons() {
     const dirty = isDirty();
     const staged = pending.length;
-    document.getElementById("btnEdit").classList.toggle("is-active", editMode);
-    document.getElementById("btnEdit").textContent = editMode ? "Editing" : "Edit";
+    const deltas = countChanges();
     document.getElementById("btnUndo").disabled = !undoStack.length;
     document.getElementById("btnRedo").disabled = !redoStack.length;
     const postBtn = document.getElementById("btnPost");
     postBtn.disabled = !dirty && staged === 0;
     postBtn.textContent = staged ? `Post (${staged})` : "Post";
-    document.getElementById("btnDiscard").disabled = !dirty && !undoStack.length && staged === 0;
+    const reverseBtn = document.getElementById("btnReverse");
+    if (reverseBtn) reverseBtn.disabled = !dirty && !undoStack.length && staged === 0 && !posted;
+    const updateBtn = document.getElementById("btnUpdate");
+    if (updateBtn) updateBtn.disabled = false;
+    const pill = document.getElementById("copyPill");
+    if (pill) {
+      pill.classList.toggle("is-dirty", dirty || staged > 0);
+      pill.textContent = staged || deltas
+        ? `WORKING · ${staged || deltas} Δ`
+        : "WORKING · clean";
+      pill.title = "Live working copy — Post commits; Reverse restores last posted/server state";
+    }
+  }
+
+  /** Pull authoritative lists from server/master into the live working copy (role-safe refresh). */
+  function updateFromServer() {
+    const snap = posted && posted.data ? normalize(clone(posted.data)) : normalize(clone(MASTER));
+    // Refresh lookup lists + masters; keep in-progress staged docs when possible.
+    const keepShipId = shipId;
+    const keepPoNo = poNo;
+    const lists = ["customers", "products", "suppliers", "quotes", "orders", "purchaseOrders", "goodsReceipts", "shipments", "invoices"];
+    mutate("update() refresh lists", () => {
+      for (const key of lists) {
+        if (Array.isArray(snap[key])) working[key] = clone(snap[key]);
+      }
+    }, { force: true });
+    if (keepShipId && working.shipments.some((s) => s.shipmentId === keepShipId)) shipId = keepShipId;
+    if (keepPoNo && working.purchaseOrders.some((p) => p.poNo === keepPoNo)) poNo = keepPoNo;
+    Promise.all([
+      typeof refreshEmployeesFromServer === "function" ? refreshEmployeesFromServer() : null,
+      typeof refreshSessionFromServer === "function" ? refreshSessionFromServer() : null,
+      typeof refreshWorkloadFromServer === "function" ? refreshWorkloadFromServer() : null,
+      typeof refreshProjectsFromServer === "function" ? refreshProjectsFromServer() : null,
+    ].filter(Boolean)).then(() => {
+      toast("update() — lists refreshed from server");
+      render();
+    }).catch(() => {
+      toast("update() — local lists refreshed (server unreachable)");
+      render();
+    });
+  }
+
+  function reverseToPosted() {
+    const snap = posted && posted.data ? normalize(clone(posted.data)) : normalize(clone(MASTER));
+    working = snap;
+    undoStack = [];
+    redoStack = [];
+    pending = [];
+    persistPending();
+    persist();
+    log("Reverse → last posted/server state", "reverse");
+    toast(posted ? "Reversed to last Post snapshot." : "Reversed to master (no Post snapshot yet).");
+    render();
   }
 
   function applyCustomerToShipment(ship, customerId) {
@@ -1770,7 +1816,7 @@
     }
     poNo = po.poNo;
     const idx = working.purchaseOrders.findIndex((p) => p.poNo === po.poNo);
-    const locked = !editMode;
+    const locked = false;
 
     document.getElementById("poRibbon").innerHTML = `
       <button type="button" class="btn" data-action="new-po">New</button>
@@ -1815,9 +1861,9 @@
       .map(
         (l, li) => `<tr>
           <td class="mono">${l.line}</td>
-          <td><input data-path="purchaseOrders.${idx}.lines.${li}.sku" value="${l.sku}" ${!editMode || !canEdit("purchaseOrders.lines.sku") ? "disabled" : ""} /></td>
-          <td><input type="number" data-path="purchaseOrders.${idx}.lines.${li}.qty" value="${l.qty}" ${!editMode || !canEdit("purchaseOrders.lines.qty") ? "disabled" : ""} /></td>
-          <td><input type="number" step="0.01" data-path="purchaseOrders.${idx}.lines.${li}.unitCost" value="${l.unitCost}" ${!editMode || !canEdit("purchaseOrders.lines.unitCost") ? "disabled" : ""} /></td>
+          <td><input data-path="purchaseOrders.${idx}.lines.${li}.sku" value="${l.sku}" ${!canEdit("purchaseOrders.lines.sku") ? "disabled" : ""} /></td>
+          <td><input type="number" data-path="purchaseOrders.${idx}.lines.${li}.qty" value="${l.qty}" ${!canEdit("purchaseOrders.lines.qty") ? "disabled" : ""} /></td>
+          <td><input type="number" step="0.01" data-path="purchaseOrders.${idx}.lines.${li}.unitCost" value="${l.unitCost}" ${!canEdit("purchaseOrders.lines.unitCost") ? "disabled" : ""} /></td>
           <td class="mono">${money(l.qty * l.unitCost)}</td>
         </tr>`
       )
@@ -1854,15 +1900,15 @@
       </div>
       <div class="po-section"><div class="po-section-head">Supplier Info</div>
         <div class="field-grid">
-          ${field("Supplier ID *", `<select data-path="purchaseOrders.${idx}.supplierId" ${!editMode || !canEdit("purchaseOrders.supplierId") ? "disabled" : ""}>${working.suppliers.map((s) => `<option value="${s.id}" ${s.id === po.supplierId ? "selected" : ""}>${s.id} — ${s.name}</option>`).join("")}</select>`)}
-          ${field("Inv. Location", `<input data-path="purchaseOrders.${idx}.invLocation" value="${po.invLocation || ""}" ${!editMode || !canEdit("purchaseOrders.invLocation") ? "disabled" : ""} />`)}
-          ${field("Pur. Location", `<input data-path="purchaseOrders.${idx}.purLocation" value="${po.purLocation || ""}" ${!editMode || !canEdit("purchaseOrders.purLocation") ? "disabled" : ""} />`)}
-          ${field("Org Account ID", `<input data-path="purchaseOrders.${idx}.orgAccountId" value="${po.orgAccountId || ""}" ${locked ? "disabled" : ""} />`)}
-          ${field("Drop Ship Org ID", `<input data-path="purchaseOrders.${idx}.dropShipOrgId" value="${po.dropShipOrgId || ""}" ${locked ? "disabled" : ""} />`)}
-          ${field("Drop Ship Location", `<input data-path="purchaseOrders.${idx}.dropShipLocation" value="${po.dropShipLocation || ""}" ${locked ? "disabled" : ""} />`)}
-          ${field("Accounting Contact (AP)", `<input data-path="purchaseOrders.${idx}.apContact" value="${po.apContact || ""}" ${!editMode || !canEdit("purchaseOrders.apContact") ? "disabled" : ""} />`)}
-          ${field("Purchasing Contact", `<input data-path="purchaseOrders.${idx}.purchasingContact" value="${po.purchasingContact || ""}" ${!editMode || !canEdit("purchaseOrders.purchasingContact") ? "disabled" : ""} />`)}
-          ${field("Drop Ship Contact", `<input data-path="purchaseOrders.${idx}.dropShipContact" value="${po.dropShipContact || ""}" ${!editMode || !canEdit("purchaseOrders.dropShipContact") ? "disabled" : ""} />`)}
+          ${field("Supplier ID *", `<select data-path="purchaseOrders.${idx}.supplierId" ${!canEdit("purchaseOrders.supplierId") ? "disabled" : ""}>${working.suppliers.map((s) => `<option value="${s.id}" ${s.id === po.supplierId ? "selected" : ""}>${s.id} — ${s.name}</option>`).join("")}</select>`)}
+          ${field("Inv. Location", `<input data-path="purchaseOrders.${idx}.invLocation" value="${po.invLocation || ""}" ${!canEdit("purchaseOrders.invLocation") ? "disabled" : ""} />`)}
+          ${field("Pur. Location", `<input data-path="purchaseOrders.${idx}.purLocation" value="${po.purLocation || ""}" ${!canEdit("purchaseOrders.purLocation") ? "disabled" : ""} />`)}
+          ${field("Org Account ID", `<input data-path="purchaseOrders.${idx}.orgAccountId" value="${po.orgAccountId || ""}" "" />`)}
+          ${field("Drop Ship Org ID", `<input data-path="purchaseOrders.${idx}.dropShipOrgId" value="${po.dropShipOrgId || ""}" "" />`)}
+          ${field("Drop Ship Location", `<input data-path="purchaseOrders.${idx}.dropShipLocation" value="${po.dropShipLocation || ""}" "" />`)}
+          ${field("Accounting Contact (AP)", `<input data-path="purchaseOrders.${idx}.apContact" value="${po.apContact || ""}" ${!canEdit("purchaseOrders.apContact") ? "disabled" : ""} />`)}
+          ${field("Purchasing Contact", `<input data-path="purchaseOrders.${idx}.purchasingContact" value="${po.purchasingContact || ""}" ${!canEdit("purchaseOrders.purchasingContact") ? "disabled" : ""} />`)}
+          ${field("Drop Ship Contact", `<input data-path="purchaseOrders.${idx}.dropShipContact" value="${po.dropShipContact || ""}" ${!canEdit("purchaseOrders.dropShipContact") ? "disabled" : ""} />`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Supplier Address Info</div>
@@ -1870,28 +1916,28 @@
       </div>
       <div class="po-section"><div class="po-section-head">Shipping Info</div>
         <div class="field-grid">
-          ${field("Payment Terms", `<select data-path="purchaseOrders.${idx}.paymentTerms" ${!editMode || !canEdit("purchaseOrders.paymentTerms") ? "disabled" : ""}>${PAYMENT_TERMS.map((t) => `<option ${t === po.paymentTerms ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
-          ${field("Due Date", `<input data-path="purchaseOrders.${idx}.dueDate" value="${po.dueDate}" ${!editMode || !canEdit("purchaseOrders.dueDate") ? "disabled" : ""} />`)}
-          ${field("Ship Method", `<select data-path="purchaseOrders.${idx}.shipMethod" ${!editMode || !canEdit("purchaseOrders.shipMethod") ? "disabled" : ""}>${SHIP_METHODS.map((t) => `<option ${t === po.shipMethod ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
-          ${field("FOB Description", `<input data-path="purchaseOrders.${idx}.fob" value="${po.fob || ""}" ${!editMode || !canEdit("purchaseOrders.fob") ? "disabled" : ""} />`)}
-          ${field("Supplier Rating", `<input data-path="purchaseOrders.${idx}.supplierRating" value="${po.supplierRating || ""}" ${locked ? "disabled" : ""} />`)}
-          ${field("Landed Cost?", `<input type="checkbox" data-path="purchaseOrders.${idx}.landedCost" ${po.landedCost ? "checked" : ""} ${locked ? "disabled" : ""} />`)}
+          ${field("Payment Terms", `<select data-path="purchaseOrders.${idx}.paymentTerms" ${!canEdit("purchaseOrders.paymentTerms") ? "disabled" : ""}>${PAYMENT_TERMS.map((t) => `<option ${t === po.paymentTerms ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
+          ${field("Due Date", `<input data-path="purchaseOrders.${idx}.dueDate" value="${po.dueDate}" ${!canEdit("purchaseOrders.dueDate") ? "disabled" : ""} />`)}
+          ${field("Ship Method", `<select data-path="purchaseOrders.${idx}.shipMethod" ${!canEdit("purchaseOrders.shipMethod") ? "disabled" : ""}>${SHIP_METHODS.map((t) => `<option ${t === po.shipMethod ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
+          ${field("FOB Description", `<input data-path="purchaseOrders.${idx}.fob" value="${po.fob || ""}" ${!canEdit("purchaseOrders.fob") ? "disabled" : ""} />`)}
+          ${field("Supplier Rating", `<input data-path="purchaseOrders.${idx}.supplierRating" value="${po.supplierRating || ""}" "" />`)}
+          ${field("Landed Cost?", `<input type="checkbox" data-path="purchaseOrders.${idx}.landedCost" ${po.landedCost ? "checked" : ""} "" />`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Other Info</div>
         <div class="field-grid">
-          ${field("Order Date *", `<input data-path="purchaseOrders.${idx}.orderDate" value="${po.orderDate}" ${!editMode || !canEdit("purchaseOrders.orderDate") ? "disabled" : ""} />`)}
-          ${field("Buyer", `<select data-path="purchaseOrders.${idx}.buyer" ${!editMode || !canEdit("purchaseOrders.buyer") ? "disabled" : ""}>${BUYERS.map((t) => `<option ${t === po.buyer ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
-          ${field("Standard Message", `<input data-path="purchaseOrders.${idx}.standardMessage" value="${po.standardMessage || ""}" ${!editMode || !canEdit("purchaseOrders.standardMessage") ? "disabled" : ""} />`)}
-          ${field("Ready to Print?", `<input type="checkbox" data-path="purchaseOrders.${idx}.readyToPrint" ${po.readyToPrint ? "checked" : ""} ${!editMode || !canEdit("purchaseOrders.readyToPrint") ? "disabled" : ""} />`)}
-          ${field("Order Comments", `<textarea data-path="purchaseOrders.${idx}.comments" ${!editMode || !canEdit("purchaseOrders.comments") ? "disabled" : ""}>${po.comments || ""}</textarea>`, true)}
+          ${field("Order Date *", `<input data-path="purchaseOrders.${idx}.orderDate" value="${po.orderDate}" ${!canEdit("purchaseOrders.orderDate") ? "disabled" : ""} />`)}
+          ${field("Buyer", `<select data-path="purchaseOrders.${idx}.buyer" ${!canEdit("purchaseOrders.buyer") ? "disabled" : ""}>${BUYERS.map((t) => `<option ${t === po.buyer ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
+          ${field("Standard Message", `<input data-path="purchaseOrders.${idx}.standardMessage" value="${po.standardMessage || ""}" ${!canEdit("purchaseOrders.standardMessage") ? "disabled" : ""} />`)}
+          ${field("Ready to Print?", `<input type="checkbox" data-path="purchaseOrders.${idx}.readyToPrint" ${po.readyToPrint ? "checked" : ""} ${!canEdit("purchaseOrders.readyToPrint") ? "disabled" : ""} />`)}
+          ${field("Order Comments", `<textarea data-path="purchaseOrders.${idx}.comments" ${!canEdit("purchaseOrders.comments") ? "disabled" : ""}>${po.comments || ""}</textarea>`, true)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Currency Info</div>
         <div class="field-grid">
-          ${field("Currency *", `<input data-path="purchaseOrders.${idx}.currency" value="${po.currency}" ${!editMode || !canEdit("purchaseOrders.currency") ? "disabled" : ""} />`)}
-          ${field("Exchange Rate", `<input type="number" step="0.000001" data-path="purchaseOrders.${idx}.exchangeRate" value="${po.exchangeRate}" ${locked ? "disabled" : ""} />`)}
-          ${field("Custom Rate?", `<input type="checkbox" data-path="purchaseOrders.${idx}.customRate" ${po.customRate ? "checked" : ""} ${locked ? "disabled" : ""} />`)}
+          ${field("Currency *", `<input data-path="purchaseOrders.${idx}.currency" value="${po.currency}" ${!canEdit("purchaseOrders.currency") ? "disabled" : ""} />`)}
+          ${field("Exchange Rate", `<input type="number" step="0.000001" data-path="purchaseOrders.${idx}.exchangeRate" value="${po.exchangeRate}" "" />`)}
+          ${field("Custom Rate?", `<input type="checkbox" data-path="purchaseOrders.${idx}.customRate" ${po.customRate ? "checked" : ""} "" />`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Related Documents</div>
@@ -1900,7 +1946,7 @@
       </div>
       <div class="po-section"><div class="po-section-head">Status Info</div>
         <div class="field-grid">
-          ${field("Status *", `<select data-path="purchaseOrders.${idx}.status" ${!editMode || !canEdit("purchaseOrders.status") ? "disabled" : ""}>${PO_STATUSES.map((t) => `<option ${t === po.status ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
+          ${field("Status *", `<select data-path="purchaseOrders.${idx}.status" ${!canEdit("purchaseOrders.status") ? "disabled" : ""}>${PO_STATUSES.map((t) => `<option ${t === po.status ? "selected" : ""}>${t}</option>`).join("")}</select>`)}
         </div>
       </div>
       ${child}`;
@@ -1914,7 +1960,7 @@
 
   function addPo() {
     if (!canAdd("purchaseOrders")) return toast("Role cannot add purchase orders.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const nums = working.purchaseOrders.map((p) => Number(p.poNo) || 70000);
     const next = String(Math.max(70000, ...nums) + 1);
     const fields = [];
@@ -2082,7 +2128,7 @@
 
   function addShipment() {
     if (!canAdd("shipments")) return toast("Role cannot add shipments.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const id = nextShipmentId();
     const fields = [];
     fields.push({
@@ -2256,13 +2302,13 @@
   }
 
   function openAddFromOrder() {
-    if (!canAdd("shipmentLines") && !editMode) {
-      return toast("Turn on Edit to add from order (despatch).");
+    if (!canAdd("shipmentLines") === false && false) {
+      return toast("Role cannot add shipment lines.");
     }
     if (!canAdd("shipmentLines") && !canEdit("shipments.lines.sku")) {
       return toast("Role cannot add shipment lines.");
     }
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     addFromOrderOpen = true;
     if (!addFromOrderAck) {
       const open = working.orders.find((o) => o.status === "Open" || o.status === "Picked");
@@ -2316,13 +2362,13 @@
       ? (ord.lines || []).reduce((s, l) => s + Math.max(0, Number(l.qty) - qtyAlreadyShipped(ord.orderNo, l.sku)), 0)
       : 0;
 
-    const statusDis = !editMode || oi < 0 || !canEdit("orders.status");
-    const custDis = !editMode || oi < 0 || !canEdit("orders.customerId");
-    const printDis = !editMode || oi < 0 || !canEdit("orders.readyToPrint");
-    const methodDis = !editMode || oi < 0 || !canEdit("orders.shipMethod");
-    const viaDis = !editMode || oi < 0 || !canEdit("orders.via") || (ord && ord.shipMethod === "COLLECT");
-    const payDis = !editMode || oi < 0 || !canEdit("orders.shipPaymentType");
-    const canCommit = editMode && ord && (canAdd("shipmentLines") || canEdit("shipments.lines.sku"));
+    const statusDis = oi < 0 || !canEdit("orders.status");
+    const custDis = oi < 0 || !canEdit("orders.customerId");
+    const printDis = oi < 0 || !canEdit("orders.readyToPrint");
+    const methodDis = oi < 0 || !canEdit("orders.shipMethod");
+    const viaDis = oi < 0 || !canEdit("orders.via") || (ord && ord.shipMethod === "COLLECT");
+    const payDis = oi < 0 || !canEdit("orders.shipPaymentType");
+    const canCommit = ord && (canAdd("shipmentLines") || canEdit("shipments.lines.sku"));
 
     const suggestions = working.orders
       .filter((o) => o.status === "Open" || o.status === "Picked" || o.status === "Shipped" || o.readyToPrint)
@@ -2380,9 +2426,9 @@
       const shipped = qtyAlreadyShipped(ord.orderNo, l.sku);
       const remain = Math.max(0, Number(l.qty) - shipped);
       const prod = working.products.find((p) => p.sku === l.sku);
-      const qtyDis = !editMode || !canEdit("orders.lines.qty");
-      const skuDis = !editMode || !canEdit("orders.lines.sku");
-      const priceDis = !editMode || !canEdit("orders.lines.price");
+      const qtyDis = !canEdit("orders.lines.qty");
+      const skuDis = !canEdit("orders.lines.sku");
+      const priceDis = !canEdit("orders.lines.price");
       const marked = addFromOrderLineMarks[l.line] !== false && remain > 0;
       return `<tr>
         <td><input type="checkbox" data-afo-line="${l.line}" ${marked ? "checked" : ""} ${remain <= 0 ? "disabled" : ""} /></td>
@@ -2402,9 +2448,9 @@
       const shipped = qtyAlreadyShipped(ord.orderNo, l.sku);
       const remain = Math.max(0, Number(l.qty) - shipped);
       const prod = working.products.find((p) => p.sku === l.sku);
-      const qtyDis = !editMode || !canEdit("orders.lines.qty");
-      const skuDis = !editMode || !canEdit("orders.lines.sku");
-      const priceDis = !editMode || !canEdit("orders.lines.price");
+      const qtyDis = !canEdit("orders.lines.qty");
+      const skuDis = !canEdit("orders.lines.sku");
+      const priceDis = !canEdit("orders.lines.price");
       const marked = addFromOrderLineMarks[l.line] !== false && remain > 0;
       return `<article class="afo-phone-line">
         <div class="apl-top">
@@ -2553,7 +2599,7 @@
     const ship = currentShipment();
     if (!ship) return;
     if (!canEdit("shipments.status") && !canAdd("shipments")) return toast("Role cannot post shipments.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     if (ship.status === "Posted" && ship.reversalEntry) {
       return unpostShipment();
     }
@@ -2585,7 +2631,7 @@
     const ship = currentShipment();
     if (!ship) return;
     if (!canEdit("shipments.status") && !canAdd("shipments")) return toast("Role cannot unpost shipments.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     if (ship.status !== "Posted") return toast("Only Posted shipments can be unposted.");
     if (isStaged("unpost-shipment", "shipmentId", ship.shipmentId)) {
       return toast(`Shipment ${ship.shipmentId} already staged for unpost.`);
@@ -2611,7 +2657,7 @@
     if (!canEdit("shipments.printPackingSlip") && !canEdit("shipments.status")) {
       return toast("Role cannot issue delivery notes.");
     }
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const reqs = shipmentRequirements(ship);
     if (reqs.length) return toast(reqs[0].text);
     if (!ship.lines.length) return toast("Add lines before issuing a delivery note.");
@@ -2700,7 +2746,7 @@
     }
     shipId = ship.shipmentId;
     const idx = working.shipments.findIndex((s) => s.shipmentId === ship.shipmentId);
-    const locked = !editMode;
+    const locked = false;
     const reqs = shipmentRequirements(ship);
 
     ribbon.innerHTML = `
@@ -2755,15 +2801,15 @@
 
     const linesRows = (ship.lines || [])
       .map((l, li) => `<tr>
-        <td><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} ${!editMode ? "disabled" : ""} /></td>
+        <td><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} "" /></td>
         <td class="mono">${l.line}</td>
-        <td><input data-path="shipments.${idx}.lines.${li}.sku" value="${l.sku}" ${!editMode || !canEdit("shipments.lines.sku") ? "disabled" : ""} /></td>
-        <td><input data-path="shipments.${idx}.lines.${li}.revision" value="${l.revision || ""}" ${locked ? "disabled" : ""} /></td>
-        <td><input data-path="shipments.${idx}.lines.${li}.warehouseBin" value="${l.warehouseBin || ""}" ${!editMode || !canEdit("shipments.lines.warehouseBin") ? "disabled" : ""} /></td>
-        <td><input type="number" data-path="shipments.${idx}.lines.${li}.deliveryQty" value="${l.deliveryQty}" ${!editMode || !canEdit("shipments.lines.deliveryQty") ? "disabled" : ""} /></td>
+        <td><input data-path="shipments.${idx}.lines.${li}.sku" value="${l.sku}" ${!canEdit("shipments.lines.sku") ? "disabled" : ""} /></td>
+        <td><input data-path="shipments.${idx}.lines.${li}.revision" value="${l.revision || ""}" "" /></td>
+        <td><input data-path="shipments.${idx}.lines.${li}.warehouseBin" value="${l.warehouseBin || ""}" ${!canEdit("shipments.lines.warehouseBin") ? "disabled" : ""} /></td>
+        <td><input type="number" data-path="shipments.${idx}.lines.${li}.deliveryQty" value="${l.deliveryQty}" ${!canEdit("shipments.lines.deliveryQty") ? "disabled" : ""} /></td>
         <td>${l.openQty}</td>
         <td>${l.jobQtyShipped || 0}</td>
-        <td><input type="number" data-path="shipments.${idx}.lines.${li}.qtyShipped" value="${l.qtyShipped}" ${!editMode || !canEdit("shipments.lines.qtyShipped") ? "disabled" : ""} /></td>
+        <td><input type="number" data-path="shipments.${idx}.lines.${li}.qtyShipped" value="${l.qtyShipped}" ${!canEdit("shipments.lines.qtyShipped") ? "disabled" : ""} /></td>
         <td>${l.shipComplete ? "Y" : ""}</td>
         <td>${l.invoiceComplete ? "Y" : ""}</td>
         <td>${l.deliveryDate || ""}</td>
@@ -2775,13 +2821,13 @@
     let detail = "";
     if (shipTab === "lines") {
       const phoneCards = (ship.lines || []).map((l, li) => {
-        const skuDis = !editMode || !canEdit("shipments.lines.sku");
-        const qtyDis = !editMode || !canEdit("shipments.lines.qtyShipped");
-        const delDis = !editMode || !canEdit("shipments.lines.deliveryQty");
-        const binDis = !editMode || !canEdit("shipments.lines.warehouseBin");
+        const skuDis = !canEdit("shipments.lines.sku");
+        const qtyDis = !canEdit("shipments.lines.qtyShipped");
+        const delDis = !canEdit("shipments.lines.deliveryQty");
+        const binDis = !canEdit("shipments.lines.warehouseBin");
         return `<article class="phone-line-card">
           <div class="plc-top">
-            <label><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} ${!editMode ? "disabled" : ""} /> Line ${l.line}</label>
+            <label><input type="checkbox" data-path="shipments.${idx}.lines.${li}.marked" ${l.marked ? "checked" : ""} "" /> Line ${l.line}</label>
             <span class="plc-sku">${l.sku || "—"}</span>
           </div>
           <div class="plc-grid">
@@ -2811,29 +2857,29 @@
           </div>
           <div class="phone-line-cards phone-only">${phoneCards}</div>
           <div class="ship-side-actions desktop-only">
-            <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add</button>
-            <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete</button>
-            <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
-            <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
-            <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
-            <button type="button" class="btn" data-action="ship-issue-dn" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>${ship.deliveryNoteIssued ? `DN ${ship.deliveryNoteNo || ship.shipmentId}` : "Issue DN"}</button>
-            <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || (ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
-            <button type="button" class="btn" data-action="ship-unpost" ${!editMode || ship.status !== "Posted" ? "disabled" : ""}>${isStaged("unpost-shipment", "shipmentId", ship.shipmentId) ? "Unpost staged" : "Unpost DN"}</button>
+            <button type="button" class="btn" data-action="ship-add-line" ${!canAdd("shipmentLines") ? "disabled" : ""}>Add</button>
+            <button type="button" class="btn" data-action="ship-delete-lines" "">Delete</button>
+            <button type="button" class="btn btn-primary" data-action="ship-add-from-order" "">Add From Order</button>
+            <button type="button" class="btn" data-action="ship-mark-all" "">Mark All</button>
+            <button type="button" class="btn" data-action="ship-unmark-all" "">Unmark All</button>
+            <button type="button" class="btn" data-action="ship-issue-dn" ${ship.status === "Posted" ? "disabled" : ""}>${ship.deliveryNoteIssued ? `DN ${ship.deliveryNoteNo || ship.shipmentId}` : "Issue DN"}</button>
+            <button type="button" class="btn btn-primary" data-action="ship-post" ${(ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
+            <button type="button" class="btn" data-action="ship-unpost" ${ship.status !== "Posted" ? "disabled" : ""}>${isStaged("unpost-shipment", "shipmentId", ship.shipmentId) ? "Unpost staged" : "Unpost DN"}</button>
           </div>
         </div>
         <div class="ship-phone-bar phone-only">
-          <button type="button" class="btn btn-primary" data-action="ship-add-from-order" ${!editMode ? "disabled" : ""}>Add From Order</button>
-          <button type="button" class="btn btn-primary" data-action="ship-post" ${!editMode || (ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
+          <button type="button" class="btn btn-primary" data-action="ship-add-from-order" "">Add From Order</button>
+          <button type="button" class="btn btn-primary" data-action="ship-post" ${(ship.status === "Posted" && !ship.reversalEntry) ? "disabled" : ""}>${postLabel}</button>
         </div>
         <details class="ribbon-more phone-only" style="margin:0.35rem 0.45rem 0.6rem">
           <summary>More despatch actions</summary>
           <div class="ribbon-more-body">
-            <button type="button" class="btn" data-action="ship-add-line" ${!editMode || !canAdd("shipmentLines") ? "disabled" : ""}>Add blank line</button>
-            <button type="button" class="btn" data-action="ship-delete-lines" ${!editMode ? "disabled" : ""}>Delete marked</button>
-            <button type="button" class="btn" data-action="ship-mark-all" ${!editMode ? "disabled" : ""}>Mark All</button>
-            <button type="button" class="btn" data-action="ship-unmark-all" ${!editMode ? "disabled" : ""}>Unmark All</button>
-            <button type="button" class="btn" data-action="ship-issue-dn" ${!editMode || ship.status === "Posted" ? "disabled" : ""}>Issue DN</button>
-            <button type="button" class="btn" data-action="ship-unpost" ${!editMode || ship.status !== "Posted" ? "disabled" : ""}>Unpost DN</button>
+            <button type="button" class="btn" data-action="ship-add-line" ${!canAdd("shipmentLines") ? "disabled" : ""}>Add blank line</button>
+            <button type="button" class="btn" data-action="ship-delete-lines" "">Delete marked</button>
+            <button type="button" class="btn" data-action="ship-mark-all" "">Mark All</button>
+            <button type="button" class="btn" data-action="ship-unmark-all" "">Unmark All</button>
+            <button type="button" class="btn" data-action="ship-issue-dn" ${ship.status === "Posted" ? "disabled" : ""}>Issue DN</button>
+            <button type="button" class="btn" data-action="ship-unpost" ${ship.status !== "Posted" ? "disabled" : ""}>Unpost DN</button>
           </div>
         </details>
       </div>`;
@@ -2853,58 +2899,58 @@
       <div class="po-section"><div class="po-section-head">ID Info</div>
         <div class="field-grid">
           ${field("Shipment ID", `<input class="mono" value="${ship.shipmentId}" disabled />`)}
-          ${field("Ship Date *", `<input data-path="shipments.${idx}.shipDate" value="${ship.shipDate}" ${!editMode || !canEdit("shipments.shipDate") ? "disabled" : ""} />`)}
-          ${field("Reversal Entry?", `<input type="checkbox" data-path="shipments.${idx}.reversalEntry" ${ship.reversalEntry ? "checked" : ""} ${!editMode || !canEdit("shipments.reversalEntry") ? "disabled" : ""} />`)}
-          ${field("Status", `<select data-path="shipments.${idx}.status" ${!editMode || !canEdit("shipments.status") ? "disabled" : ""}>${SHIPMENT_STATUSES.map((s)=>`<option ${s===ship.status?"selected":""}>${s}</option>`).join("")}</select>`)}
+          ${field("Ship Date *", `<input data-path="shipments.${idx}.shipDate" value="${ship.shipDate}" ${!canEdit("shipments.shipDate") ? "disabled" : ""} />`)}
+          ${field("Reversal Entry?", `<input type="checkbox" data-path="shipments.${idx}.reversalEntry" ${ship.reversalEntry ? "checked" : ""} ${!canEdit("shipments.reversalEntry") ? "disabled" : ""} />`)}
+          ${field("Status", `<select data-path="shipments.${idx}.status" ${!canEdit("shipments.status") ? "disabled" : ""}>${SHIPMENT_STATUSES.map((s)=>`<option ${s===ship.status?"selected":""}>${s}</option>`).join("")}</select>`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Customer Info</div>
         <div class="field-grid">
-          ${field("Customer ID *", lookup(`<select data-path="shipments.${idx}.customerId" ${!editMode || !canEdit("shipments.customerId") ? "disabled" : ""}><option value="">—</option>${working.customers.map((c)=>`<option value="${c.id}" ${c.id===ship.customerId?"selected":""}>${c.id} — ${c.name}</option>`).join("")}</select>`))}
-          ${field("Inv. Location", lookup(`<input data-path="shipments.${idx}.invLocation" value="${ship.invLocation||""}" ${!editMode || !canEdit("shipments.invLocation") ? "disabled" : ""} />`))}
-          ${field("Ship Organisation *", lookup(`<input data-path="shipments.${idx}.shipOrganisation" value="${ship.shipOrganisation||""}" ${!editMode || !canEdit("shipments.shipOrganisation") ? "disabled" : ""} />`))}
-          ${field("Ship Location", lookup(`<input data-path="shipments.${idx}.shipLocation" value="${ship.shipLocation||""}" ${!editMode || !canEdit("shipments.shipLocation") ? "disabled" : ""} />`))}
-          ${field("Accounting Contact (AR)", `<input data-path="shipments.${idx}.arContact" value="${ship.arContact||""}" ${!editMode || !canEdit("shipments.arContact") ? "disabled" : ""} />`)}
-          ${field("Shipping Contact", `<input data-path="shipments.${idx}.shippingContact" value="${ship.shippingContact||""}" ${!editMode || !canEdit("shipments.shippingContact") ? "disabled" : ""} />`)}
-          ${field("Credit Hold?", `<input type="checkbox" data-path="shipments.${idx}.creditHold" ${ship.creditHold ? "checked" : ""} ${!editMode || !canEdit("shipments.creditHold") ? "disabled" : ""} />`)}
+          ${field("Customer ID *", lookup(`<select data-path="shipments.${idx}.customerId" ${!canEdit("shipments.customerId") ? "disabled" : ""}><option value="">—</option>${working.customers.map((c)=>`<option value="${c.id}" ${c.id===ship.customerId?"selected":""}>${c.id} — ${c.name}</option>`).join("")}</select>`))}
+          ${field("Inv. Location", lookup(`<input data-path="shipments.${idx}.invLocation" value="${ship.invLocation||""}" ${!canEdit("shipments.invLocation") ? "disabled" : ""} />`))}
+          ${field("Ship Organisation *", lookup(`<input data-path="shipments.${idx}.shipOrganisation" value="${ship.shipOrganisation||""}" ${!canEdit("shipments.shipOrganisation") ? "disabled" : ""} />`))}
+          ${field("Ship Location", lookup(`<input data-path="shipments.${idx}.shipLocation" value="${ship.shipLocation||""}" ${!canEdit("shipments.shipLocation") ? "disabled" : ""} />`))}
+          ${field("Accounting Contact (AR)", `<input data-path="shipments.${idx}.arContact" value="${ship.arContact||""}" ${!canEdit("shipments.arContact") ? "disabled" : ""} />`)}
+          ${field("Shipping Contact", `<input data-path="shipments.${idx}.shippingContact" value="${ship.shippingContact||""}" ${!canEdit("shipments.shippingContact") ? "disabled" : ""} />`)}
+          ${field("Credit Hold?", `<input type="checkbox" data-path="shipments.${idx}.creditHold" ${ship.creditHold ? "checked" : ""} ${!canEdit("shipments.creditHold") ? "disabled" : ""} />`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Customer Address Info</div>
         <div class="field-grid">
-          ${field("Name", `<input data-path="shipments.${idx}.customerAddress.name" value="${a.name||""}" ${!editMode || !canEdit("shipments.customerAddress.name") ? "disabled" : ""} />`, true)}
-          ${field("Address", `<input data-path="shipments.${idx}.customerAddress.line1" value="${a.line1||""}" ${!editMode || !canEdit("shipments.customerAddress.line1") ? "disabled" : ""} />`, true)}
-          ${field("Address 2", `<input data-path="shipments.${idx}.customerAddress.line2" value="${a.line2||""}" ${!editMode || !canEdit("shipments.customerAddress.line2") ? "disabled" : ""} />`, true)}
-          ${field("City", `<input data-path="shipments.${idx}.customerAddress.city" value="${a.city||""}" ${!editMode || !canEdit("shipments.customerAddress.city") ? "disabled" : ""} />`)}
-          ${field("Postcode", `<input data-path="shipments.${idx}.customerAddress.postcode" value="${a.postcode||""}" ${!editMode || !canEdit("shipments.customerAddress.postcode") ? "disabled" : ""} />`)}
-          ${field("Phone", `<input data-path="shipments.${idx}.customerAddress.phone" value="${a.phone||""}" ${!editMode || !canEdit("shipments.customerAddress.phone") ? "disabled" : ""} />`)}
-          ${field("Fax", `<input data-path="shipments.${idx}.customerAddress.fax" value="${a.fax||""}" ${!editMode || !canEdit("shipments.customerAddress.fax") ? "disabled" : ""} />`)}
+          ${field("Name", `<input data-path="shipments.${idx}.customerAddress.name" value="${a.name||""}" ${!canEdit("shipments.customerAddress.name") ? "disabled" : ""} />`, true)}
+          ${field("Address", `<input data-path="shipments.${idx}.customerAddress.line1" value="${a.line1||""}" ${!canEdit("shipments.customerAddress.line1") ? "disabled" : ""} />`, true)}
+          ${field("Address 2", `<input data-path="shipments.${idx}.customerAddress.line2" value="${a.line2||""}" ${!canEdit("shipments.customerAddress.line2") ? "disabled" : ""} />`, true)}
+          ${field("City", `<input data-path="shipments.${idx}.customerAddress.city" value="${a.city||""}" ${!canEdit("shipments.customerAddress.city") ? "disabled" : ""} />`)}
+          ${field("Postcode", `<input data-path="shipments.${idx}.customerAddress.postcode" value="${a.postcode||""}" ${!canEdit("shipments.customerAddress.postcode") ? "disabled" : ""} />`)}
+          ${field("Phone", `<input data-path="shipments.${idx}.customerAddress.phone" value="${a.phone||""}" ${!canEdit("shipments.customerAddress.phone") ? "disabled" : ""} />`)}
+          ${field("Fax", `<input data-path="shipments.${idx}.customerAddress.fax" value="${a.fax||""}" ${!canEdit("shipments.customerAddress.fax") ? "disabled" : ""} />`)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Shipping Info</div>
         <div class="field-grid">
-          ${field("Ship Method ID", `<select data-path="shipments.${idx}.shipMethodId" ${!editMode || !canEdit("shipments.shipMethodId") ? "disabled" : ""}>${SHIP_METHODS.map((t)=>`<option ${t===ship.shipMethodId?"selected":""}>${t}</option>`).join("")}</select>`)}
-          ${field("Ship Payment Type", `<select data-path="shipments.${idx}.shipPaymentType" ${!editMode || !canEdit("shipments.shipPaymentType") ? "disabled" : ""}>${SHIP_PAYMENT_TYPES.map((t)=>`<option ${t===ship.shipPaymentType?"selected":""}>${t}</option>`).join("")}</select>`)}
-          ${field("Tracking Number", lookup(`<input data-path="shipments.${idx}.trackingNumber" value="${ship.trackingNumber||""}" ${!editMode || !canEdit("shipments.trackingNumber") ? "disabled" : ""} />`))}
+          ${field("Ship Method ID", `<select data-path="shipments.${idx}.shipMethodId" ${!canEdit("shipments.shipMethodId") ? "disabled" : ""}>${SHIP_METHODS.map((t)=>`<option ${t===ship.shipMethodId?"selected":""}>${t}</option>`).join("")}</select>`)}
+          ${field("Ship Payment Type", `<select data-path="shipments.${idx}.shipPaymentType" ${!canEdit("shipments.shipPaymentType") ? "disabled" : ""}>${SHIP_PAYMENT_TYPES.map((t)=>`<option ${t===ship.shipPaymentType?"selected":""}>${t}</option>`).join("")}</select>`)}
+          ${field("Tracking Number", lookup(`<input data-path="shipments.${idx}.trackingNumber" value="${ship.trackingNumber||""}" ${!canEdit("shipments.trackingNumber") ? "disabled" : ""} />`))}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Carrier Freight Info</div>
         <div class="field-grid">
-          ${field("Currency *", `<select data-path="shipments.${idx}.currency" ${!editMode || !canEdit("shipments.currency") ? "disabled" : ""}><option>GBP</option><option>EUR</option><option>USD</option></select>`)}
-          ${field("Exchange Rate", `<input type="number" step="0.0001" data-path="shipments.${idx}.exchangeRate" value="${ship.exchangeRate}" ${!editMode || !canEdit("shipments.exchangeRate") ? "disabled" : ""} />`)}
-          ${field("Custom Rate", `<input type="checkbox" data-path="shipments.${idx}.customRate" ${ship.customRate ? "checked" : ""} ${!editMode || !canEdit("shipments.customRate") ? "disabled" : ""} />`)}
-          ${field("Freight Subtotal", `<input type="number" step="0.01" data-path="shipments.${idx}.freightSubtotal" value="${ship.freightSubtotal}" ${!editMode || !canEdit("shipments.freightSubtotal") ? "disabled" : ""} />`)}
-          ${field("Tax Total", `<input type="number" step="0.01" data-path="shipments.${idx}.taxTotal" value="${ship.taxTotal}" ${!editMode || !canEdit("shipments.taxTotal") ? "disabled" : ""} />`)}
-          ${field("Freight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.freightTotal" value="${ship.freightTotal}" ${!editMode || !canEdit("shipments.freightTotal") ? "disabled" : ""} />`)}
-          ${field("Weight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.weightTotal" value="${ship.weightTotal}" ${!editMode || !canEdit("shipments.weightTotal") ? "disabled" : ""} />`)}
-          ${field("Shipping Comments", `<textarea data-path="shipments.${idx}.shippingComments" rows="3" ${!editMode || !canEdit("shipments.shippingComments") ? "disabled" : ""}>${ship.shippingComments||""}</textarea>`, true)}
+          ${field("Currency *", `<select data-path="shipments.${idx}.currency" ${!canEdit("shipments.currency") ? "disabled" : ""}><option>GBP</option><option>EUR</option><option>USD</option></select>`)}
+          ${field("Exchange Rate", `<input type="number" step="0.0001" data-path="shipments.${idx}.exchangeRate" value="${ship.exchangeRate}" ${!canEdit("shipments.exchangeRate") ? "disabled" : ""} />`)}
+          ${field("Custom Rate", `<input type="checkbox" data-path="shipments.${idx}.customRate" ${ship.customRate ? "checked" : ""} ${!canEdit("shipments.customRate") ? "disabled" : ""} />`)}
+          ${field("Freight Subtotal", `<input type="number" step="0.01" data-path="shipments.${idx}.freightSubtotal" value="${ship.freightSubtotal}" ${!canEdit("shipments.freightSubtotal") ? "disabled" : ""} />`)}
+          ${field("Tax Total", `<input type="number" step="0.01" data-path="shipments.${idx}.taxTotal" value="${ship.taxTotal}" ${!canEdit("shipments.taxTotal") ? "disabled" : ""} />`)}
+          ${field("Freight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.freightTotal" value="${ship.freightTotal}" ${!canEdit("shipments.freightTotal") ? "disabled" : ""} />`)}
+          ${field("Weight Total", `<input type="number" step="0.01" data-path="shipments.${idx}.weightTotal" value="${ship.weightTotal}" ${!canEdit("shipments.weightTotal") ? "disabled" : ""} />`)}
+          ${field("Shipping Comments", `<textarea data-path="shipments.${idx}.shippingComments" rows="3" ${!canEdit("shipments.shippingComments") ? "disabled" : ""}>${ship.shippingComments||""}</textarea>`, true)}
         </div>
       </div>
       <div class="po-section"><div class="po-section-head">Report Info</div>
         <div class="field-grid">
-          ${field("Print Packing Slip / DN?", `<input type="checkbox" data-path="shipments.${idx}.printPackingSlip" ${ship.printPackingSlip ? "checked" : ""} ${!editMode || !canEdit("shipments.printPackingSlip") ? "disabled" : ""} />`)}
-          ${field("Print Labels?", `<input type="checkbox" data-path="shipments.${idx}.printLabels" ${ship.printLabels ? "checked" : ""} ${!editMode || !canEdit("shipments.printLabels") ? "disabled" : ""} />`)}
+          ${field("Print Packing Slip / DN?", `<input type="checkbox" data-path="shipments.${idx}.printPackingSlip" ${ship.printPackingSlip ? "checked" : ""} ${!canEdit("shipments.printPackingSlip") ? "disabled" : ""} />`)}
+          ${field("Print Labels?", `<input type="checkbox" data-path="shipments.${idx}.printLabels" ${ship.printLabels ? "checked" : ""} ${!canEdit("shipments.printLabels") ? "disabled" : ""} />`)}
           ${field("Delivery Note No", `<input class="mono" value="${ship.deliveryNoteNo || (ship.deliveryNoteIssued ? `DN-${ship.shipmentId}` : "—")}" disabled />`)}
-          ${field("Standard Message", `<input data-path="shipments.${idx}.standardMessage" value="${ship.standardMessage||""}" ${!editMode || !canEdit("shipments.standardMessage") ? "disabled" : ""} />`, true)}
+          ${field("Standard Message", `<input data-path="shipments.${idx}.standardMessage" value="${ship.standardMessage||""}" ${!canEdit("shipments.standardMessage") ? "disabled" : ""} />`, true)}
         </div>
       </div>`;
     const linkNote = `<p class="note">Linking keys: <span class="mono">shipmentId=${ship.shipmentId}</span>${ship.deliveryNoteNo ? ` · <span class="mono">DN=${ship.deliveryNoteNo}</span>` : ""} · lines.orderNo → Sales Order · lines.sku → Product · Post / Unpost DN with toolbar Undo while staged</p>`;
@@ -3000,7 +3046,7 @@
 
   function acceptQuote(quoteNo) {
     if (!canAdd("orders")) return toast("Role cannot create sales orders.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const q = working.quotes.find((x) => x.quoteNo === quoteNo);
     if (!q) return toast("Quote not found.");
     if (!q.lines?.length) return toast("Quote has no lines.");
@@ -3022,7 +3068,7 @@
 
   function confirmQuote(quoteNo) {
     if (!canEdit("quotes.status")) return toast("Role cannot confirm quotes.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const q = working.quotes.find((x) => x.quoteNo === quoteNo);
     if (!q) return toast("Quote not found.");
     if (["Won", "Lost", "Confirmed"].includes(q.status)) {
@@ -3091,7 +3137,7 @@
 
   function receivePo(poNo) {
     if (!canAdd("goodsReceipts")) return toast("Role cannot post GRNs.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const po = working.purchaseOrders.find((p) => p.poNo === poNo);
     if (!po) return toast("PO not found.");
     if (!po.lines?.length) return toast("PO has no lines.");
@@ -3244,12 +3290,12 @@
         const until = quoteValidUntilDate(q);
         const canConfirm = !linked && ["Open", "Sent"].includes(q.status) && live && canEdit("quotes.status");
         const canAccept = !linked && !staged && q.status === "Confirmed" && live && canAdd("orders");
-        const statusDisabled = !editMode || !canEdit("quotes.status");
-        const custDisabled = !editMode || !canEdit("quotes.customerId");
-        const dateDis = !editMode || !canEdit("quotes.quotedDate");
-        const daysDis = !editMode || !canEdit("quotes.validDays");
-        const methodDis = !editMode || !canEdit("quotes.shipMethod");
-        const viaDis = !editMode || !canEdit("quotes.via");
+        const statusDisabled = !canEdit("quotes.status");
+        const custDisabled = !canEdit("quotes.customerId");
+        const dateDis = !canEdit("quotes.quotedDate");
+        const daysDis = !canEdit("quotes.validDays");
+        const methodDis = !canEdit("quotes.shipMethod");
+        const viaDis = !canEdit("quotes.via");
         const lifeLabel = until
           ? (live ? `live ${rem}d · until ${formatGbDate(until)}` : `expired ${formatGbDate(until)}`)
           : "set quoted date";
@@ -3290,9 +3336,9 @@
           <p class="note">Quotes stay live ${q.validDays || QUOTE_VALID_DAYS_DEFAULT} days — line price may change until Won. Inventory can look up Confirmed quotes before SO print.</p>
           <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
           <tbody>${q.lines.map((l, li) => {
-            const skuDis = !editMode || !canEdit("quotes.lines.sku");
-            const qtyDis = !editMode || !canEdit("quotes.lines.qty");
-            const priceDis = !editMode || !canEdit("quotes.lines.price") || q.status === "Won" || q.status === "Lost";
+            const skuDis = !canEdit("quotes.lines.sku");
+            const qtyDis = !canEdit("quotes.lines.qty");
+            const priceDis = !canEdit("quotes.lines.price") || q.status === "Won" || q.status === "Lost";
             return `<tr>
               <td>${l.line}</td>
               <td><input class="mono" value="${l.sku}" data-path="quotes.${qi}.lines.${li}.sku" ${skuDis ? "disabled" : ""} /></td>
@@ -3302,10 +3348,10 @@
             </tr>`;
           }).join("")}</tbody></table>
           <div class="card-actions">
-            <button type="button" class="btn" data-action="confirm-quote" data-quote="${q.quoteNo}" ${canConfirm && editMode ? "" : "disabled"}>
+            <button type="button" class="btn" data-action="confirm-quote" data-quote="${q.quoteNo}" ${canConfirm ? "" : "disabled"}>
               ${q.status === "Confirmed" ? "Confirmed" : "Confirm quote (14-day live)"}
             </button>
-            <button type="button" class="btn btn-primary" data-action="accept-quote" data-quote="${q.quoteNo}" ${canAccept && editMode ? "" : "disabled"}>
+            <button type="button" class="btn btn-primary" data-action="accept-quote" data-quote="${q.quoteNo}" ${canAccept ? "" : "disabled"}>
               ${linked ? `Linked → ${linked.orderNo}` : staged ? "Staged — Post to create SO" : "Accept confirmed → SO (ready to print)"}
             </button>
           </div>
@@ -3320,13 +3366,13 @@
     root.innerHTML = working.orders
       .map((o, oi) => {
         const inv = working.invoices.find((i) => i.orderNo === o.orderNo);
-        const statusDis = !editMode || !canEdit("orders.status");
-        const custDis = !editMode || !canEdit("orders.customerId");
-        const quoteDis = !editMode || !canEdit("orders.quoteNo");
-        const printDis = !editMode || !canEdit("orders.readyToPrint");
-        const methodDis = !editMode || !canEdit("orders.shipMethod");
-        const viaDis = !editMode || !canEdit("orders.via");
-        const payDis = !editMode || !canEdit("orders.shipPaymentType");
+        const statusDis = !canEdit("orders.status");
+        const custDis = !canEdit("orders.customerId");
+        const quoteDis = !canEdit("orders.quoteNo");
+        const printDis = !canEdit("orders.readyToPrint");
+        const methodDis = !canEdit("orders.shipMethod");
+        const viaDis = !canEdit("orders.via");
+        const payDis = !canEdit("orders.shipPaymentType");
         return `
         <article class="card">
           <div class="card-head">
@@ -3370,9 +3416,9 @@
           <p class="note">Fulfilment: ${o.shipMethod === "COLLECT" ? "Customer collect" : `Ship ${o.shipMethod || "—"}`}${o.via ? ` · procurement via ${providerName(o.via)}` : " · direct"}.</p>
           <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
           <tbody>${o.lines.map((l, li) => {
-            const skuDis = !editMode || !canEdit("orders.lines.sku");
-            const qtyDis = !editMode || !canEdit("orders.lines.qty");
-            const priceDis = !editMode || !canEdit("orders.lines.price");
+            const skuDis = !canEdit("orders.lines.sku");
+            const qtyDis = !canEdit("orders.lines.qty");
+            const priceDis = !canEdit("orders.lines.price");
             return `<tr>
               <td>${l.line}</td>
               <td><input class="mono" data-path="orders.${oi}.lines.${li}.sku" value="${l.sku}" ${skuDis ? "disabled" : ""} /></td>
@@ -3393,18 +3439,18 @@
     root.innerHTML = `
       <article class="card">
         <div class="card-actions" style="padding:0.55rem 0.55rem 0">
-          <button type="button" class="btn btn-primary" data-action="add-product" ${editMode && canAdd("products") ? "" : "disabled"}>Add product</button>
+          <button type="button" class="btn btn-primary" data-action="add-product" ${canAdd("products") ? "" : "disabled"}>Add product</button>
         </div>
         <div class="table-wrap"><table class="data">
         <thead><tr><th>SKU</th><th>Description</th><th>OH</th><th>ROP</th><th>Lead</th><th>Cost</th><th>Sell</th><th>Flag</th></tr></thead>
         <tbody>${working.products
           .map((p, pi) => {
-            const ohDis = !editMode || !canEdit("products.onHand");
-            const ropDis = !editMode || !canEdit("products.reorderPoint");
-            const leadDis = !editMode || !canEdit("products.leadDays");
-            const costDis = !editMode || !canEdit("products.cost");
-            const sellDis = !editMode || !canEdit("products.sell");
-            const descDis = !editMode || !canEdit("products.description");
+            const ohDis = !canEdit("products.onHand");
+            const ropDis = !canEdit("products.reorderPoint");
+            const leadDis = !canEdit("products.leadDays");
+            const costDis = !canEdit("products.cost");
+            const sellDis = !canEdit("products.sell");
+            const descDis = !canEdit("products.description");
             return `<tr>
               <td class="mono">${p.sku}</td>
               <td><input type="text" value="${p.description}" data-path="products.${pi}.description" ${descDis ? "disabled" : ""} /></td>
@@ -3443,7 +3489,7 @@
 
   function addCustomer() {
     if (!canAdd("customers")) return toast("Role cannot add customers.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const id = nextCustomerId();
     const fields = [];
     fields.push({
@@ -3523,7 +3569,7 @@
 
   function addProduct() {
     if (!canAdd("products")) return toast("Role cannot add products.");
-    if (!editMode) return toast("Turn on Edit first.");
+    // live form — role checks follow
     const skuDefault = nextProductSku();
     const fields = [];
     pushCreateField(fields, "products", {
@@ -3637,7 +3683,7 @@
         <span class="meta">Sales-owned · links quotes, orders, shipments, AR</span></div>
       <p class="note">Edit contact fields here. Follow-ups and calls live on <button type="button" class="linkish" data-view="shipment" data-open-ship-tab="followups">Shipment Entry</button>.</p>
       <div class="card-actions">
-        <button type="button" class="btn btn-primary" data-action="add-customer" ${editMode && canAdd("customers") ? "" : "disabled"}>Add customer</button>
+        <button type="button" class="btn btn-primary" data-action="add-customer" ${canAdd("customers") ? "" : "disabled"}>Add customer</button>
         <button type="button" class="btn" data-view="quotes">Quotes</button>
         <button type="button" class="btn" data-view="orders">Sales Orders</button>
         <button type="button" class="btn" data-view="invoices">AR Invoices</button>
@@ -3645,10 +3691,10 @@
     </article>`;
     const cards = working.customers
       .map((c, ci) => {
-        const nameDis = !editMode || !canEdit("customers.name");
-        const emailDis = !editMode || !canEdit("customers.email");
-        const pcDis = !editMode || !canEdit("customers.postcode");
-        const stDis = !editMode || !canEdit("customers.status");
+        const nameDis = !canEdit("customers.name");
+        const emailDis = !canEdit("customers.email");
+        const pcDis = !canEdit("customers.postcode");
+        const stDis = !canEdit("customers.status");
         const acct = working.accounts.find((a) => a.customerId === c.id);
         const quotes = working.quotes.filter((q) => q.customerId === c.id);
         const orders = working.orders.filter((o) => o.customerId === c.id);
@@ -3726,7 +3772,7 @@
         return `<tr><td>${pl.line}</td><td class="mono">${pl.sku}</td><td>${pl.qty}</td><td>${recv}</td><td>${remain}</td></tr>`;
       }).join("");
       const stagedRecv = isStaged("receive-po", "poNo", po.poNo);
-      const canRecv = !stagedRecv && canAdd("goodsReceipts") && editMode && po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(po.poNo, pl.line) > 0);
+      const canRecv = !stagedRecv && canAdd("goodsReceipts") && po.lines.some((pl) => Number(pl.qty) - qtyReceivedOnPoLine(po.poNo, pl.line) > 0);
       return `<article class="card">
         <div class="card-head"><h2 class="mono">PO ${po.poNo}</h2><span class="meta">${supplierName(po.supplierId)} · ${po.status}${stagedRecv ? " · staged" : ""}</span></div>
         <table class="data"><thead><tr><th>Line</th><th>SKU</th><th>Ordered</th><th>Received</th><th>Remain</th></tr></thead><tbody>${rows}</tbody></table>
@@ -3745,7 +3791,7 @@
           <tbody>${g.lines.map((l) => `<tr><td>${l.line}</td><td>${l.poLine}</td><td class="mono">${l.sku}</td><td>${l.qtyOrdered}</td><td>${l.qtyReceived}</td></tr>`).join("")}</tbody></table>
           <p class="note">Linking keys: <span class="mono">grnNo=${g.grnNo}</span> · <span class="mono">poNo=${g.poNo}</span> · lines → Product.onHand</p>
         </article>`).join("")
-      : `<article class="card"><p class="note">No GRNs yet. Turn on Edit (Purchasing/Inventory/Manager) and receive against an open PO.</p></article>`;
+      : `<article class="card"><p class="note">No GRNs yet. Receive against an open PO (Purchasing/Inventory/Manager).</p></article>`;
 
     root.innerHTML = `
       <article class="card"><div class="card-head"><h2>Receive goods</h2></div>
@@ -4056,14 +4102,10 @@
   }
 
   function boot() {
-    document.getElementById("btnEdit").onclick = () => {
-      editMode = !editMode;
-      sessionStorage.setItem(EDIT_KEY, editMode ? "1" : "0");
-      log(editMode ? "Edit mode ON" : "Edit mode OFF", "mode");
-      toast(editMode ? "Edit mode on — working copy only." : "Edit mode off.");
-      render();
-    };
+    editMode = true; // live forms
     document.getElementById("btnPost").onclick = () => commitPost();
+    const btnUpdate = document.getElementById("btnUpdate");
+    if (btnUpdate) btnUpdate.onclick = () => updateFromServer();
     document.getElementById("btnUndo").onclick = () => {
       if (!undoStack.length) return;
       const prev = undoStack.pop();
@@ -4084,17 +4126,8 @@
       toast("Redone.");
       render();
     };
-    document.getElementById("btnDiscard").onclick = () => {
-      working = normalize(clone(MASTER));
-      undoStack = [];
-      redoStack = [];
-      pending = [];
-      persistPending();
-      persist();
-      log("Discarded working copy", "discard");
-      toast("Discarded — reloaded master · cleared staged actions.");
-      render();
-    };
+    const btnReverse = document.getElementById("btnReverse") || document.getElementById("btnDiscard");
+    if (btnReverse) btnReverse.onclick = () => reverseToPosted();
 
     function jumpForRole(nextRole) {
       const roleHub = {
@@ -4265,7 +4298,7 @@
       const action = actionEl?.dataset.action;
 
       if (action === "new-shipment") return addShipment();
-      if (action === "save-shipment") return toast(editMode ? "Shipment fields save to working copy on change." : "Turn on Edit to change the shipment.");
+      if (action === "save-shipment") return toast("Shipment fields save to working copy on change.");
       if (action === "open-shipment") return toast("Use the Shipment picker to open another ID.");
       if (action === "next-ship-id") return addShipment();
       if (action === "prev-shipment" || action === "next-shipment") {
@@ -4276,7 +4309,7 @@
         return render();
       }
       if (action === "delete-shipment") {
-        if (!editMode || !canAdd("shipments")) return toast("Role cannot delete shipments.");
+        if (!canAdd("shipments")) return toast("Role cannot delete shipments.");
         if (working.shipments.length <= 1) return toast("Keep at least one shipment.");
         if (!mutate(`Delete shipment ${shipId}`, () => {
           working.shipments = working.shipments.filter((s) => s.shipmentId !== shipId);
@@ -4349,7 +4382,7 @@
       if (action === "ship-new-followups" || action === "ship-new-calls") {
         const kind = action.endsWith("calls") ? "calls" : "followups";
         const ship = currentShipment();
-        if (!editMode) return toast("Turn on Edit first.");
+        // live form — role checks follow
         openRecordDialog({
           title: kind === "calls" ? "New Call" : "New Follow-up",
           note: `Shipment ${ship.shipmentId} · working copy`,
@@ -4436,7 +4469,7 @@
         });
         return;
       }
-      if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
+      if (action === "save-po") return toast("Fields save to working copy on change.");
       if (action === "print-po") {
         const po = currentPo();
         if (!po) return;
@@ -4464,7 +4497,7 @@
         const kind = action.endsWith("calls") ? "calls" : "followups";
         const po = currentPo();
         if (!po) return;
-        if (!editMode) return toast("Turn on Edit first.");
+        // live form — role checks follow
         openRecordDialog({
           title: kind === "calls" ? "New Call" : "New Follow-up",
           note: `PO ${po.poNo} · working copy`,

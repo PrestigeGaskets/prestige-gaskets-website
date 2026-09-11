@@ -57,7 +57,7 @@ bool Application::handleCommand(const std::string& cmd) {
         ui_->showToast(
             "dashboard|quotes|products|customers|orders|relations|intake|"
             "accept-quote Q-101|receive-po 70286|post-shipment 275525|unpost-shipment 275525|"
-            "edit|post|undo|redo|discard|role|status|actions");
+            "post|reverse|update|undo|redo|role|status|actions");
         return true;
     }
     if (cmd == "dashboard") {
@@ -124,25 +124,9 @@ bool Application::handleCommand(const std::string& cmd) {
         return true;
     }
     if (cmd == "edit") {
-        if (!roles_->canEdit(activeRole_, "products.onHand") &&
-            !roles_->canEdit(activeRole_, "customers.name") &&
-            !roles_->canEdit(activeRole_, "*")) {
-            bool anyAdd = false;
-            for (const auto& entity : {"customers", "products", "quotes", "orders",
-                                       "purchaseOrders", "goodsReceipts", "shipments",
-                                       "customFields", "*"}) {
-                if (roles_->canAdd(activeRole_, entity)) {
-                    anyAdd = true;
-                    break;
-                }
-            }
-            if (!anyAdd && activeRole_ == "Viewer") {
-                ui_->showToast("Viewer cannot enter edit mode.");
-                return true;
-            }
-        }
+        // Live forms — Edit gate removed; kept as a no-op for older scripts.
         session_->setEditMode(true);
-        ui_->showToast("Edit mode ON — mutations go to working copy only.");
+        ui_->showToast("Forms are live — Post commits; Reverse restores last snapshot.");
         return true;
     }
     if (cmd == "post") {
@@ -163,7 +147,7 @@ bool Application::handleCommand(const std::string& cmd) {
         }
         return true;
     }
-    if (cmd == "discard") {
+    if (cmd == "discard" || cmd == "reverse") {
         session_->discardToMaster();
         postCommit_->clearPending();
         customers_->reload();
@@ -171,7 +155,16 @@ bool Application::handleCommand(const std::string& cmd) {
         quotes_->reload();
         orders_->reload();
         inventory_->refreshReorderFlags();
-        ui_->showToast("Discarded working copy → master (cleared staged actions).");
+        ui_->showToast("Reversed working copy → last master/server snapshot (cleared staged).");
+        return true;
+    }
+    if (cmd == "update") {
+        customers_->reload();
+        products_->reload();
+        quotes_->reload();
+        orders_->reload();
+        inventory_->refreshReorderFlags();
+        ui_->showToast("update() — reloaded customers/products/quotes/orders from working store.");
         return true;
     }
     if (cmd == "undo") {
@@ -200,10 +193,6 @@ bool Application::handleCommand(const std::string& cmd) {
     }
 
     if (cmd.rfind("accept-quote ", 0) == 0) {
-        if (!session_->isEditMode()) {
-            ui_->showToast("Enter edit mode first (edit).");
-            return true;
-        }
         if (!roles_->canAdd(activeRole_, "orders") && !roles_->canAdd(activeRole_, "*")) {
             ui_->showToast("Role " + activeRole_ + " cannot create sales orders.");
             return true;
@@ -215,10 +204,6 @@ bool Application::handleCommand(const std::string& cmd) {
     }
 
     if (cmd.rfind("receive-po ", 0) == 0) {
-        if (!session_->isEditMode()) {
-            ui_->showToast("Enter edit mode first (edit).");
-            return true;
-        }
         if (!roles_->canAdd(activeRole_, "goodsReceipts") && !roles_->canAdd(activeRole_, "*")) {
             ui_->showToast("Role " + activeRole_ + " cannot post GRNs.");
             return true;
@@ -230,10 +215,6 @@ bool Application::handleCommand(const std::string& cmd) {
     }
 
     if (cmd.rfind("post-shipment ", 0) == 0) {
-        if (!session_->isEditMode()) {
-            ui_->showToast("Enter edit mode first (edit).");
-            return true;
-        }
         if (!roles_->canAdd(activeRole_, "shipments") &&
             !roles_->canEdit(activeRole_, "shipments.status") &&
             !roles_->canAdd(activeRole_, "*")) {
@@ -247,10 +228,6 @@ bool Application::handleCommand(const std::string& cmd) {
     }
 
     if (cmd.rfind("unpost-shipment ", 0) == 0) {
-        if (!session_->isEditMode()) {
-            ui_->showToast("Enter edit mode first (edit).");
-            return true;
-        }
         if (!roles_->canAdd(activeRole_, "shipments") &&
             !roles_->canEdit(activeRole_, "shipments.status") &&
             !roles_->canAdd(activeRole_, "*")) {
@@ -264,10 +241,6 @@ bool Application::handleCommand(const std::string& cmd) {
     }
 
     if (cmd.rfind("set OH ", 0) == 0) {
-        if (!session_->isEditMode()) {
-            ui_->showToast("Enter edit mode first (edit).");
-            return true;
-        }
         if (!roles_->canEdit(activeRole_, "products.onHand") &&
             !roles_->canEdit(activeRole_, "*")) {
             ui_->showToast("Role " + activeRole_ + " cannot edit products.onHand");

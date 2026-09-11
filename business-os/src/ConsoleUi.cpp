@@ -21,7 +21,7 @@ void ConsoleUi::showBanner() {
               << "  BusinessOS.exe composition root\n"
               << "========================================\n"
               << "Commands: dashboard | quotes | products | customers | orders |\n"
-              << "          relations | edit | post | undo | redo | discard | role | status | actions | help | quit\n"
+              << "          relations | post | reverse | update | undo | redo | role | status | actions | help | quit\n"
               << "          accept-quote Q-101 | receive-po 70286 | post-shipment 275525 | unpost-shipment 275525  (stage; finalize on post)\n\n";
 }
 
