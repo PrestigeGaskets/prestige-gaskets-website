@@ -5,8 +5,9 @@ See also [ACTION_REPOSITORY.md](ACTION_REPOSITORY.md).
 
 ## Sales intake (confirmed quote → Sales Order ready to print)
 
-1. **Edit tables** (Edit mode + Sales/Manager/Admin): update Customer, Quote, QuoteLines,
-   PO accuracy/lookup fields, and product cost/sell (Finance-equivalent) on the working copy.
+1. **Edit tables** (Edit mode + Sales/Manager/Admin): update Customer, Quote, and QuoteLines
+   on the working copy. Inventory, POs, and Despatch are owned by Inventory / Purchasing /
+   Shipping (not Sales).
 2. **Quote life**: quotes are live for **14 days** from `quotedDate` (`validDays`); line
    **price may change** while status is Open / Sent / Confirmed.
 3. **Confirm**: Quotes → **Confirm quote** → status `Confirmed` (Sales sets collect vs ship
@@ -25,7 +26,7 @@ CLI: `edit` then `accept-quote Q-101` then `post`
 
 ## Purchase intake (PO → GRN number)
 
-1. **Edit tables** (Purchasing **or Sales** for accuracy/lookups): PurchaseOrder / PoLines.
+1. **Edit tables** (Purchasing): PurchaseOrder / PoLines.
 2. **Goods received**: Receipt Entry → **Receive remaining → GRN** (stages).
 3. **Toolbar Post**: generates `GoodsReceipt.grnNo` = GRN number (`GRN-…`) + action repo row.
 4. **Linked updates** (on Post):
