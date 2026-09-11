@@ -11,27 +11,20 @@ struct Department {
     std::string code;
 };
 
-struct Skill {
-    std::string id;
-    std::string name;
-    int levelMin = 1;
-};
-
-struct EmployeeSkill {
-    std::string skillId;
-    int level = 1;
-};
-
+/**
+ * Capability is decided by Employee::role (and department).
+ * There is no skills / employee_skills matrix — operators assign who fills each role.
+ */
 struct Employee {
     std::string id;          // member / badge id (server session key)
     std::string username;
     std::string name;
-    std::string role;        // maps to RoleHierarchy
+    std::string role;        // maps to RoleHierarchy — gates what they can do
     std::string departmentId;
     std::string title;
-    std::vector<EmployeeSkill> skills;
 };
 
+/** Links a job to the purchase-order / sales agreement it fulfils. */
 struct JobCriteria {
     std::string poNo;
     std::string quoteNo;
@@ -51,13 +44,18 @@ struct JobLink {
     std::string sku;
 };
 
+/**
+ * Unit of fulfilment work toward a PO / sales agreement.
+ * Pulled from the department work pool when the employee starts their shift
+ * (clock-in), if their role is in allowedRoles.
+ */
 struct Job {
     std::string id;
     std::string title;
     std::string departmentId;
     std::string projectId;
     std::string milestoneId;
-    std::vector<EmployeeSkill> requiredSkills;
+    std::vector<std::string> allowedRoles;  // empty = any role in the department
     JobCriteria criteria;
     JobLink link;
     std::string status;  // Ready | Assigned | In progress | Done

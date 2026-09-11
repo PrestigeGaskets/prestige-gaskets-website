@@ -25,12 +25,16 @@ struct Milestone {
     int sort = 0;
 };
 
+/**
+ * Agile scrum rules for fulfilment work.
+ * Pull eligibility: clocked-in + role + department — never skills.
+ */
 struct ScrumRules {
     int dailyScrumMinutes = 15;
     std::string buildsToward;  // milestones
-    bool pullRequiresSkills = true;
     bool pullRequiresClockedIn = true;
     bool assignmentOverridesPool = true;
+    int wipLimit = 0;  // 0 = no limit
     std::string note;
 };
 
