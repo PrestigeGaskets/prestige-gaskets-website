@@ -764,7 +764,7 @@ button, input, select, textarea { font: inherit; }
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
-  field-sizing: content;
+  line-height: 1.35;
 }
 .field-span { grid-column: 1 / -1; }
 .field.is-locked input,
@@ -1263,19 +1263,31 @@ table.data input {
     font-size: 16px; /* iOS: avoid focus zoom that pans the layout */
   }
   .field textarea {
-    min-height: calc(var(--touch) * 1.35);
+    min-height: 4.25rem;
+    line-height: 1.35;
   }
 
-  /* Typing: free vertical space — dock sits on top of the iOS keyboard otherwise */
-  body.is-field-focus .mobile-dock {
+  /* Typing: free vertical space — dock sits on top of the iOS keyboard otherwise.
+     :has() covers focus before the JS is-field-focus class binds. */
+  body.is-field-focus .mobile-dock,
+  body:has(.field input:focus) .mobile-dock,
+  body:has(.field textarea:focus) .mobile-dock,
+  body:has(.field select:focus) .mobile-dock,
+  body:has(.lookup-wrap input:focus) .mobile-dock,
+  body:has(.phone-line-card input:focus) .mobile-dock {
     transform: translateY(110%);
     pointer-events: none;
-    transition: transform 0.18s ease;
   }
-  body.is-field-focus .ship-phone-bar {
+  body.is-field-focus .ship-phone-bar,
+  body:has(.field input:focus) .ship-phone-bar,
+  body:has(.field textarea:focus) .ship-phone-bar,
+  body:has(.field select:focus) .ship-phone-bar,
+  body:has(.phone-line-card input:focus) .ship-phone-bar {
     bottom: max(0.35rem, var(--safe-b));
   }
-  body.is-field-focus .dash-fab {
+  body.is-field-focus .dash-fab,
+  body:has(.field input:focus) .dash-fab,
+  body:has(.field textarea:focus) .dash-fab {
     opacity: 0;
     pointer-events: none;
   }
@@ -1476,11 +1488,18 @@ table.data input {
     margin-bottom: 0.15rem;
   }
   #view-shipment .field input,
-  #view-shipment .field select,
-  #view-shipment .field textarea {
+  #view-shipment .field select {
     min-height: 2.35rem;
     padding: 0.35rem 0.45rem;
     font-size: 16px; /* keep ≥16px — smaller sizes trigger iOS focus zoom/pan */
+  }
+  #view-shipment .field textarea {
+    min-height: 4.25rem;
+    padding: 0.45rem 0.5rem;
+    font-size: 16px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   #view-shipment .ship-phone-bar {
     gap: 0.35rem;
@@ -1694,11 +1713,18 @@ table.data input {
   /* Form sections denser / single column already */
   .field input,
   .field select,
-  .field textarea,
   .lookup-wrap input,
   .po-picker select {
     font-size: 16px !important; /* iOS no-zoom */
     min-height: var(--touch);
+  }
+  .field textarea {
+    font-size: 16px !important;
+    min-height: 4.25rem !important;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* Collapse long shipment header field blocks on phone (tap head to expand) */
