@@ -994,7 +994,7 @@
   }
 
   function updatePill() {
-    // Pill text owned by syncButtons (WORKING · N Δ) for live-copy chrome.
+    // Pill text owned by syncButtons (LIVE · N Δ) for live-copy chrome.
     syncButtons();
   }
 
@@ -1029,8 +1029,8 @@
     if (pill) {
       pill.classList.toggle("is-dirty", dirty || staged > 0);
       pill.textContent = staged || deltas
-        ? `WORKING · ${staged || deltas} Δ`
-        : "WORKING · clean";
+        ? `LIVE · ${staged || deltas} Δ`
+        : "LIVE · clean";
       pill.title = "Live working copy — Post commits; Reverse restores last posted/server state";
     }
   }
@@ -2979,9 +2979,9 @@
       </div>
       <div class="po-section"><div class="po-section-head">Customer Address Info</div>
         <div class="field-grid">
-          ${field("Name", `<input data-path="shipments.${idx}.customerAddress.name" value="${a.name||""}" ${!canEdit("shipments.customerAddress.name") ? "disabled" : ""} />`, true)}
-          ${field("Address", `<input data-path="shipments.${idx}.customerAddress.line1" value="${a.line1||""}" ${!canEdit("shipments.customerAddress.line1") ? "disabled" : ""} />`, true)}
-          ${field("Address 2", `<input data-path="shipments.${idx}.customerAddress.line2" value="${a.line2||""}" ${!canEdit("shipments.customerAddress.line2") ? "disabled" : ""} />`, true)}
+          ${field("Name", `<textarea data-path="shipments.${idx}.customerAddress.name" rows="2" ${!canEdit("shipments.customerAddress.name") ? "disabled" : ""}>${a.name||""}</textarea>`, true)}
+          ${field("Address", `<textarea data-path="shipments.${idx}.customerAddress.line1" rows="2" ${!canEdit("shipments.customerAddress.line1") ? "disabled" : ""}>${a.line1||""}</textarea>`, true)}
+          ${field("Address 2", `<textarea data-path="shipments.${idx}.customerAddress.line2" rows="2" ${!canEdit("shipments.customerAddress.line2") ? "disabled" : ""}>${a.line2||""}</textarea>`, true)}
           ${field("City", `<input data-path="shipments.${idx}.customerAddress.city" value="${a.city||""}" ${!canEdit("shipments.customerAddress.city") ? "disabled" : ""} />`)}
           ${field("Postcode", `<input data-path="shipments.${idx}.customerAddress.postcode" value="${a.postcode||""}" ${!canEdit("shipments.customerAddress.postcode") ? "disabled" : ""} />`)}
           ${field("Phone", `<input data-path="shipments.${idx}.customerAddress.phone" value="${a.phone||""}" ${!canEdit("shipments.customerAddress.phone") ? "disabled" : ""} />`)}
@@ -4215,6 +4215,67 @@
     if (view === "projects") renderProjects();
   }
 
+  function bindMobileFieldViewport() {
+    const isEditable = (el) =>
+      el &&
+      (el.tagName === "TEXTAREA" ||
+        (el.tagName === "INPUT" && !/^(button|submit|reset|checkbox|radio|file|hidden)$/i.test(el.type || "")) ||
+        el.tagName === "SELECT");
+
+    const clampHorizontalScroll = () => {
+      if (window.scrollX) window.scrollTo(0, window.scrollY);
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      document.querySelectorAll(".stage, .po-form, .po-workspace").forEach((el) => {
+        if (el.scrollLeft) el.scrollLeft = 0;
+      });
+    };
+
+    const syncFocusClass = () => {
+      const on = isEditable(document.activeElement);
+      document.body.classList.toggle("is-field-focus", on);
+      clampHorizontalScroll();
+    };
+
+    document.addEventListener(
+      "focusin",
+      (e) => {
+        if (!isEditable(e.target)) return;
+        document.body.classList.add("is-field-focus");
+        requestAnimationFrame(() => {
+          clampHorizontalScroll();
+          try {
+            e.target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+          } catch (_) {
+            e.target.scrollIntoView(true);
+          }
+          clampHorizontalScroll();
+        });
+      },
+      true
+    );
+    document.addEventListener("focusout", () => {
+      setTimeout(syncFocusClass, 0);
+    });
+
+    window.addEventListener("scroll", clampHorizontalScroll, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("scroll", clampHorizontalScroll, { passive: true });
+      window.visualViewport.addEventListener("resize", () => {
+        clampHorizontalScroll();
+        const el = document.activeElement;
+        if (isEditable(el)) {
+          requestAnimationFrame(() => {
+            try {
+              el.scrollIntoView({ block: "center", inline: "nearest" });
+            } catch (_) { /* ignore */ }
+            clampHorizontalScroll();
+          });
+        }
+      });
+    }
+  }
+
   function boot() {
     document.getElementById("btnPost").onclick = () => commitPost();
     const btnUpdate = document.getElementById("btnUpdate");
@@ -4684,6 +4745,7 @@
     /* Land on Sales Order Management hub (matches M1 screenshot) */
     localStorage.setItem(HUB_KEY, hub);
     showView("hub");
+    bindMobileFieldViewport();
     render();
 
     (async () => {
