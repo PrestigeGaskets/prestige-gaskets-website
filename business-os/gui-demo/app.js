@@ -10,6 +10,7 @@
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
   const EDIT_KEY = "rushmore-edit-v2";
+  const OPERATOR_KEY = "rushmore-operator-v1";
   const POSTED_KEY = "rushmore-posted-v2";
   const ACTIVITY_KEY = "rushmore-activity-v2";
   const PENDING_KEY = "rushmore-pending-v1";
@@ -437,6 +438,89 @@
   const PAYMENT_TERMS = ["30 DAYS EOM", "Net-30", "Net-45", "Net-15"];
   const SHIP_METHODS = ["CARRIER", "COLLECT", "COURIER"];
   const BUYERS = ["JAMES CRAVEN", "A. BUYER"];
+
+  /* Session / workload come from RushmoreServer responses — not a hardcoded chrome list. */
+  let serverEmployees = [];
+  let session = null; // last GET /session payload
+  let workload = null; // last GET /workload payload
+  let projectsPayload = null;
+
+  function operatorById(id) {
+    return serverEmployees.find((op) => op.id === id) || (session && session.employee) || null;
+  }
+
+  function operatorForRole(roleName) {
+    return serverEmployees.find((op) => op.role === roleName) || serverEmployees[0] || null;
+  }
+
+  function currentEmployee() {
+    return (session && session.employee) || operatorById(operatorId) || null;
+  }
+
+  function accountInitials(op) {
+    const parts = String((op && (op.name || op.username)) || "?")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return String(parts[0] || "?").slice(0, 2).toUpperCase();
+  }
+
+  async function refreshSessionFromServer() {
+    if (!window.RushmoreServer) return null;
+    const res = await RushmoreServer.getSession();
+    if (!res.ok) return null;
+    session = res.data;
+    if (session.employee) {
+      operatorId = session.employee.id;
+      localStorage.setItem(OPERATOR_KEY, operatorId);
+      role = session.employee.role;
+      localStorage.setItem(ROLE_KEY, role);
+    }
+    return session;
+  }
+
+  async function refreshEmployeesFromServer() {
+    if (!window.RushmoreServer) return;
+    const res = await RushmoreServer.listEmployees();
+    if (res.ok) serverEmployees = res.data.employees || [];
+  }
+
+  async function refreshWorkloadFromServer() {
+    if (!window.RushmoreServer) return null;
+    const res = await RushmoreServer.getWorkload();
+    if (!res.ok) {
+      workload = null;
+      return null;
+    }
+    workload = res.data;
+    if (workload.session) session = workload.session;
+    return workload;
+  }
+
+  async function refreshProjectsFromServer() {
+    if (!window.RushmoreServer) return null;
+    const res = await RushmoreServer.getProjects();
+    if (!res.ok) {
+      projectsPayload = null;
+      return null;
+    }
+    projectsPayload = res.data;
+    if (projectsPayload.session) session = projectsPayload.session;
+    return projectsPayload;
+  }
+
+  async function loginViaServer(employeeId) {
+    const res = await RushmoreServer.login(employeeId);
+    if (!res.ok) throw new Error((res.data && res.data.error) || "Login failed");
+    session = res.data;
+    operatorId = session.employee.id;
+    localStorage.setItem(OPERATOR_KEY, operatorId);
+    role = session.employee.role;
+    localStorage.setItem(ROLE_KEY, role);
+    await refreshWorkloadFromServer();
+    return session;
+  }
   const QUOTE_STATUSES = ["Open", "Sent", "Confirmed", "Won", "Lost"];
   const ORDER_STATUSES = ["Open", "Picked", "Shipped", "Closed"];
   const CUSTOMER_STATUSES = ["Active", "Inactive"];
@@ -447,6 +531,8 @@
 
   /* My Shortcuts — same set as M1 rail */
   const ICONS = [
+    { id: "workload", label: "My Workload", ico: "📋" },
+    { id: "projects", label: "Projects / Scrum", ico: "🏁" },
     { id: "quotes", label: "Quote Entry", ico: "📝" },
     { id: "orders", label: "Sales Order Entry", ico: "📦" },
     { id: "customers", label: "Contact Management", ico: "👤" },
@@ -489,6 +575,7 @@
       filter: "Production",
       open: true,
       items: [
+        { label: "My Workload", view: "workload" },
         { label: "Inventory Management", hub: "inventory" },
         { label: "Purchasing Management", hub: "purchasing" },
         { label: "Receipt Management", view: "receipt" },
@@ -513,6 +600,8 @@
       filter: "All",
       open: false,
       items: [
+        { label: "Projects & Daily Scrum", view: "projects" },
+        { label: "My Workload", view: "workload" },
         { label: "End-to-end Intake Map", view: "intake" },
         { label: "Planned v Actual", view: "intake" },
         { label: "Relations", view: "relations" },
@@ -523,6 +612,7 @@
 
   let working = loadWorking();
   let role = localStorage.getItem(ROLE_KEY) || "Purchasing";
+  let operatorId = localStorage.getItem(OPERATOR_KEY) || "154981";
   let hub = localStorage.getItem(HUB_KEY) || "sales";
   let treeFilter = localStorage.getItem("rushmore-tree-filter-v1") || "All";
   if (!TREE_FILTERS.includes(treeFilter)) {
@@ -1021,8 +1111,10 @@
     if (backdrop) backdrop.hidden = true;
     const btnModules = document.getElementById("btnModules");
     const btnShortcuts = document.getElementById("btnShortcuts");
+    const btnAccountMobile = document.getElementById("btnAccountMobile");
     if (btnModules) btnModules.setAttribute("aria-expanded", "false");
     if (btnShortcuts) btnShortcuts.setAttribute("aria-expanded", "false");
+    if (btnAccountMobile) btnAccountMobile.setAttribute("aria-expanded", "false");
   }
 
   function openMobileNav(which) {
@@ -1034,6 +1126,7 @@
     } else if (which === "shortcuts") {
       app.classList.add("is-shortcuts-open");
       document.getElementById("btnShortcuts")?.setAttribute("aria-expanded", "true");
+      document.getElementById("btnAccountMobile")?.setAttribute("aria-expanded", "true");
     }
     document.body.classList.add("nav-open");
     const backdrop = document.getElementById("navBackdrop");
@@ -1063,6 +1156,8 @@
       intake: "End-to-end Intake",
       relations: "Relations",
       fields: "Field network",
+      workload: "My Workload",
+      projects: "Projects & Daily Scrum",
     };
     return labels[view] || view;
   }
@@ -1080,6 +1175,67 @@
         (key === "quotes" && view === "quotes");
       btn.classList.toggle("is-active", on);
     });
+    const shortcutsOpen = document.getElementById("app")?.classList.contains("is-shortcuts-open");
+    const btnAccountMobile = document.getElementById("btnAccountMobile");
+    if (btnAccountMobile) {
+      btnAccountMobile.setAttribute("aria-expanded", shortcutsOpen ? "true" : "false");
+    }
+  }
+
+  function syncAccountChrome() {
+    const op = currentEmployee() || { id: "—", name: "…", username: "…", role };
+    const idEls = document.querySelectorAll("[data-account-id]");
+    idEls.forEach((el) => {
+      el.textContent = op.id;
+    });
+    const nameEls = document.querySelectorAll("[data-account-name]");
+    nameEls.forEach((el) => {
+      el.textContent = op.name;
+    });
+    const userEls = document.querySelectorAll("[data-account-user]");
+    userEls.forEach((el) => {
+      el.textContent = op.username;
+    });
+    const avatarEls = document.querySelectorAll("[data-account-avatar]");
+    avatarEls.forEach((el) => {
+      el.textContent = accountInitials(op);
+    });
+    const meta = document.getElementById("sessionUserMeta");
+    if (meta) {
+      meta.setAttribute("title", `${op.name} · ${op.username} · ${op.id}`);
+    }
+    const select = document.getElementById("operatorSelect");
+    if (select) {
+      const list = serverEmployees.length ? serverEmployees : op.id !== "—" ? [op] : [];
+      select.innerHTML = list
+        .map((o) => `<option value="${o.id}" ${o.id === op.id ? "selected" : ""}>${o.name} (${o.id})</option>`)
+        .join("");
+    }
+    const presence = document.getElementById("accountPresence");
+    if (presence) {
+      const clocked = session && session.clockedIn ? "Clocked in" : "Clocked out";
+      const onCount = session && session.loggedOnCount != null ? session.loggedOnCount : "—";
+      presence.textContent = `${clocked} · ${onCount} logged on (server)`;
+    }
+    const taskBox = document.getElementById("accountTaskLinks");
+    if (taskBox) {
+      const links = (workload && workload.taskLinks) || [];
+      if (!links.length) {
+        taskBox.hidden = true;
+        taskBox.innerHTML = "";
+      } else {
+        taskBox.hidden = false;
+        taskBox.innerHTML = links
+          .slice(0, 4)
+          .map((lnk) => {
+            const attrs = [`data-view="${lnk.view}"`];
+            if (lnk.shipmentId) attrs.push(`data-open-ship-id="${lnk.shipmentId}"`);
+            if (lnk.poNo) attrs.push(`data-open-po-no="${lnk.poNo}"`);
+            return `<button type="button" class="account-task-link" ${attrs.join(" ")}>${lnk.label}</button>`;
+          })
+          .join("");
+      }
+    }
   }
 
   /* —— chrome —— */
@@ -1147,6 +1303,7 @@
       .map((r) => `<option value="${r}" ${r === role ? "selected" : ""}>${r}</option>`)
       .join("");
 
+    syncAccountChrome();
     syncMobileChrome();
   }
 
@@ -1200,7 +1357,7 @@
       hub = "sales";
       localStorage.setItem(HUB_KEY, hub);
     }
-    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "invoices", "shipment", "receipt", "intake", "relations", "fields", "hub"];
+    const known = ["quotes", "orders", "po-entry", "purchasing", "products", "customers", "invoices", "shipment", "receipt", "intake", "relations", "fields", "hub", "workload", "projects"];
     if (!known.includes(target)) {
       closeMobileNav();
       return toast(`Unknown view: ${target}`);
@@ -1296,6 +1453,8 @@
         title: "My Start Page",
         explorer: "Business Explorer",
         entry: [
+          { label: "My Workload", view: "workload", ico: "⚡", live: true },
+          { label: "Projects & Daily Scrum", view: "projects", ico: "⚡", live: true },
           { label: "Sales Order Entry", view: "orders", ico: "⚡", live: true },
           { label: "Quote Entry", view: "quotes", ico: "⚡", live: true },
           { label: "Contact Management", view: "customers", ico: "⚡", live: true },
@@ -1411,6 +1570,8 @@
       { id: "shipment", label: "Despatch", hint: "Shipment master", ico: "ship", view: "shipment", entity: "shipments", fieldPrefix: "shipments", count: () => working.shipments.length },
       { id: "relations", label: "Vendors & Links", hint: "Suppliers / tags", ico: "vendors", view: "relations", entity: null, fieldPrefix: null, count: () => working.suppliers.length },
       { id: "intake", label: "Intake Map", hint: "Quote → cash", ico: "intake", view: "intake", entity: null, fieldPrefix: null, count: null },
+      { id: "workload", label: "My Workload", hint: "Assigned + dept pool", ico: "fields", view: "workload", entity: null, fieldPrefix: null, count: null },
+      { id: "projects", label: "Projects / Scrum", hint: "Milestones & approach", ico: "fields", view: "projects", entity: null, fieldPrefix: null, count: null },
       { id: "fields", label: "Role Matrix", hint: "What you can do", ico: "fields", view: "fields", entity: null, fieldPrefix: null, count: null },
     ];
   }
@@ -1530,6 +1691,7 @@
           <div class="dash-role" title="${blurb.replace(/"/g, "&quot;")}">
             <span class="dash-role-name">${role}</span>
             <span class="dash-role-blurb">${blurb}</span>
+            <span class="dash-role-account">${(currentEmployee() || { name: "…", id: "—" }).name} · ${(currentEmployee() || { id: "—" }).id}</span>
           </div>
         </header>
         <nav class="dash-tabs" aria-label="Dashboard sections">${tabs}</nav>
@@ -3704,6 +3866,172 @@
       </table></div></article>`;
   }
 
+  function skillChips(job) {
+    const req = (job && job.requiredSkills) || [];
+    if (!req.length) return "<span class='note'>No skill gate</span>";
+    return req
+      .map((r) => `<span class="skill-chip mono">${r.skillId.replace("SK-", "")}≥${r.level || 1}</span>`)
+      .join(" ");
+  }
+
+  function jobLinkButtons(job) {
+    if (!job || !job.link) return "";
+    const lnk = job.link;
+    const attrs = [`data-view="${lnk.view}"`];
+    if (lnk.shipmentId) attrs.push(`data-open-ship-id="${lnk.shipmentId}"`);
+    if (lnk.poNo) attrs.push(`data-open-po-no="${lnk.poNo}"`);
+    return `<button type="button" class="btn btn-primary" ${attrs.join(" ")}>${lnk.label}</button>`;
+  }
+
+  function renderWorkload() {
+    const root = document.getElementById("workloadRoot");
+    const head = document.getElementById("workloadHeadActions");
+    if (!root) return;
+    if (!workload) {
+      root.innerHTML = `<article class="card"><p class="note">Loading workload from server…</p></article>`;
+      if (head) head.innerHTML = "";
+      refreshWorkloadFromServer().then(() => {
+        if (view === "workload") renderWorkload();
+        syncAccountChrome();
+      });
+      return;
+    }
+    const emp = workload.session && workload.session.employee;
+    const clocked = workload.session && workload.session.clockedIn;
+    const summary = workload.departmentPool && workload.departmentPool.summary;
+    const assigned = workload.assigned || [];
+    const eligible = (workload.departmentPool && workload.departmentPool.eligible) || [];
+    const blocked = (workload.departmentPool && workload.departmentPool.blocked) || [];
+    const rules = workload.scrumRules || {};
+
+    if (head) {
+      head.innerHTML = `
+        <button type="button" class="btn" data-action="wl-refresh">Refresh</button>
+        <button type="button" class="btn ${clocked ? "" : "btn-primary"}" data-action="wl-clock" data-clock="${clocked ? "out" : "in"}">${clocked ? "Clock out" : "Clock in"}</button>
+        <button type="button" class="btn" data-view="projects">Projects / Scrum</button>`;
+    }
+
+    const assignedHtml = assigned.length
+      ? assigned
+          .map((row) => {
+            const job = row.job || {};
+            return `<tr>
+              <td class="mono">${job.id || row.jobId}</td>
+              <td>${job.title || "—"}<div class="note">${skillChips(job)}</div></td>
+              <td>${row.status}</td>
+              <td class="card-actions">${jobLinkButtons(job)}
+                <button type="button" class="btn" data-action="wl-book" data-job="${job.id}">Book 0.25h</button>
+              </td>
+            </tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="4">No personal assignments — pull from the department pool if eligible.</td></tr>`;
+
+    const eligibleHtml = eligible.length
+      ? eligible
+          .map((row) => {
+            const job = row.job || {};
+            return `<tr>
+              <td class="mono">${job.id || row.jobId}</td>
+              <td>${job.title || "—"}<div class="note">${skillChips(job)}</div></td>
+              <td>${row.departmentName || ""}</td>
+              <td><button type="button" class="btn btn-primary" data-action="wl-pull" data-pool="${row.id}">Pull job</button> ${jobLinkButtons(job)}</td>
+            </tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="4">No eligible department-pool jobs for your skills / criteria right now.</td></tr>`;
+
+    const blockedHtml = blocked.length
+      ? `<article class="card"><div class="card-head"><h2>Queued but not pullable</h2></div>
+          <ul class="note-list">${blocked
+            .map((b) => `<li><span class="mono">${(b.job && b.job.id) || b.jobId}</span> — ${b.reason}</li>`)
+            .join("")}</ul></article>`
+      : "";
+
+    const onPeople = ((summary && summary.loggedOn) || [])
+      .map((p) => `${p.name}`)
+      .join(", ") || "—";
+
+    root.innerHTML = `
+      <article class="card">
+        <div class="card-head"><h2>Server session</h2></div>
+        <p class="note"><strong>${(emp && emp.name) || "—"}</strong> · <span class="mono">${(emp && emp.id) || "—"}</span> · ${(emp && emp.title) || ""} · ${role}</p>
+        <p class="note">${clocked ? "Clocked in" : "Clocked out"} · approach <strong>${workload.approach || "pull"}</strong> (PM/scrum master) · logged on in dept: ${onPeople}</p>
+        <p class="note">${rules.note || ""}</p>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Assigned to me</h2></div>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Job</th><th>Title / skills</th><th>Status</th><th>Links</th></tr></thead>
+          <tbody>${assignedHtml}</tbody>
+        </table></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Department work pool · ${(summary && summary.departmentName) || "—"}</h2></div>
+        <p class="note">Queued ${summary ? summary.queued : 0} · eligible for you ${summary ? summary.eligible : 0}. Pools belong to jobs; presence comes from time cards + who is logged on.</p>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Job</th><th>Title / skills</th><th>Dept</th><th>Actions</th></tr></thead>
+          <tbody>${eligibleHtml}</tbody>
+        </table></div>
+      </article>
+      ${blockedHtml}`;
+  }
+
+  function renderProjects() {
+    const root = document.getElementById("projectsRoot");
+    if (!root) return;
+    if (!projectsPayload) {
+      root.innerHTML = `<article class="card"><p class="note">Loading projects from server…</p></article>`;
+      refreshProjectsFromServer().then(() => {
+        if (view === "projects") renderProjects();
+      });
+      return;
+    }
+    const rules = projectsPayload.scrumRules || {};
+    const daily = projectsPayload.dailyScrum || {};
+    const projects = projectsPayload.projects || [];
+
+    root.innerHTML = `
+      <article class="card">
+        <div class="card-head"><h2>Daily scrum rules</h2></div>
+        <p class="note">${rules.note || ""}</p>
+        <p class="note">Stand-up ${rules.dailyScrumMinutes || 15} min · builds toward <strong>${rules.buildsToward || "milestones"}</strong> · pull requires skills=${!!rules.pullRequiresSkills} · clocked-in=${!!rules.pullRequiresClockedIn}</p>
+        <p class="note"><strong>${daily.date || ""}</strong> · project <span class="mono">${daily.projectId || ""}</span></p>
+        <ul class="note-list">${(daily.agenda || []).map((a) => `<li>${a}</li>`).join("")}</ul>
+        <p class="note">${daily.notes || ""}</p>
+        <div class="card-actions">
+          <button type="button" class="btn" data-action="wl-refresh">Refresh server</button>
+          <button type="button" class="btn btn-primary" data-view="workload">Open my workload</button>
+        </div>
+      </article>
+      ${projects
+        .map((p) => {
+          const ms = (p.milestones || [])
+            .map(
+              (m) =>
+                `<tr><td class="mono">${m.id}</td><td>${m.name}</td><td>${m.dueDate}</td><td>${m.status}</td></tr>`
+            )
+            .join("");
+          const jobs = (p.jobs || [])
+            .map((j) => `<tr><td class="mono">${j.id}</td><td>${j.title}</td><td>${j.status}</td><td>${jobLinkButtons(j)}</td></tr>`)
+            .join("");
+          return `<article class="card">
+            <div class="card-head"><h2>${p.name}</h2></div>
+            <p class="note">Goal: ${p.goal}</p>
+            <p class="note">PM: ${(p.projectManager && p.projectManager.name) || "—"} · Scrum master: ${(p.scrumMaster && p.scrumMaster.name) || "—"}</p>
+            <p class="note">Approach: <strong>${p.approach}</strong>
+              <button type="button" class="btn" data-action="prj-approach" data-project="${p.id}" data-approach="pull">Set pull</button>
+              <button type="button" class="btn" data-action="prj-approach" data-project="${p.id}" data-approach="assign">Set assign</button>
+            </p>
+            <h3 class="subhead">Milestones</h3>
+            <div class="table-wrap"><table class="data"><thead><tr><th>ID</th><th>Milestone</th><th>Due</th><th>Status</th></tr></thead><tbody>${ms}</tbody></table></div>
+            <h3 class="subhead">Jobs feeding the pools</h3>
+            <div class="table-wrap"><table class="data"><thead><tr><th>Job</th><th>Title</th><th>Status</th><th>Link</th></tr></thead><tbody>${jobs}</tbody></table></div>
+          </article>`;
+        })
+        .join("")}`;
+  }
+
   function render() {
     renderChrome();
     renderAddFromOrderPanel();
@@ -3723,6 +4051,8 @@
     if (view === "intake") renderIntake();
     if (view === "relations") renderRelations();
     if (view === "fields") renderFields();
+    if (view === "workload") renderWorkload();
+    if (view === "projects") renderProjects();
   }
 
   function boot() {
@@ -3766,10 +4096,7 @@
       render();
     };
 
-    document.getElementById("roleSelect").onchange = (e) => {
-      role = e.target.value;
-      localStorage.setItem(ROLE_KEY, role);
-      // Jump to this role's dashboard so Hub tabs/tiles match permissions immediately.
+    function jumpForRole(nextRole) {
       const roleHub = {
         Viewer: "home",
         Sales: "sales",
@@ -3780,7 +4107,7 @@
         Manager: "home",
         Admin: "home",
       };
-      hub = roleHub[role] || "home";
+      hub = roleHub[nextRole] || "home";
       localStorage.setItem(HUB_KEY, hub);
       dashTab = "role";
       localStorage.setItem("rushmore-dash-tab-v1", dashTab);
@@ -3788,9 +4115,55 @@
       showView("hub");
       closeMobileNav();
       closeToolbarMore();
-      log(`Role → ${role}`, "mode");
-      toast(`Role → ${role} · ${ROLES[role]?.blurb || "dashboard ready"}`);
-      render();
+    }
+
+    document.getElementById("roleSelect").onchange = async (e) => {
+      const nextRole = e.target.value;
+      const matched = operatorForRole(nextRole);
+      try {
+        if (matched && matched.role === nextRole) {
+          await loginViaServer(matched.id);
+        } else {
+          role = nextRole;
+          localStorage.setItem(ROLE_KEY, role);
+          await refreshSessionFromServer();
+          await refreshWorkloadFromServer();
+        }
+        jumpForRole(role);
+        const op = currentEmployee() || { name: role, id: "—", username: role };
+        log(`Role → ${role} · server session ${op.username}`, "mode");
+        toast(`Server · ${op.name} (${op.id}) · Role → ${role}`);
+        render();
+      } catch (err) {
+        toast(err.message || "Session update failed");
+        render();
+      }
+    };
+
+    document.getElementById("operatorSelect").onchange = async (e) => {
+      try {
+        await loginViaServer(e.target.value);
+        jumpForRole(role);
+        const op = currentEmployee();
+        log(`Server login → ${op.username} (${op.id})`, "mode");
+        toast(`Server signed in · ${op.name} · ${op.id}`);
+        render();
+      } catch (err) {
+        toast(err.message || "Login failed");
+        render();
+      }
+    };
+
+    document.getElementById("btnAccount").onclick = () => {
+      const app = document.getElementById("app");
+      const isMobile = window.matchMedia("(max-width: 960px)").matches;
+      if (isMobile) {
+        const open = app.classList.contains("is-shortcuts-open");
+        if (open) closeMobileNav();
+        else openMobileNav("shortcuts");
+      } else {
+        go("workload");
+      }
     };
 
     // Dismiss ⋯ menu as soon as the user taps/clicks elsewhere.
@@ -3835,6 +4208,11 @@
       else openMobileNav("modules");
     };
     document.getElementById("btnShortcuts").onclick = () => {
+      const open = document.getElementById("app").classList.contains("is-shortcuts-open");
+      if (open) closeMobileNav();
+      else openMobileNav("shortcuts");
+    };
+    document.getElementById("btnAccountMobile").onclick = () => {
       const open = document.getElementById("app").classList.contains("is-shortcuts-open");
       if (open) closeMobileNav();
       else openMobileNav("shortcuts");
@@ -4010,6 +4388,54 @@
       if (action === "confirm-quote") return confirmQuote(actionEl.dataset.quote);
       if (action === "accept-quote") return acceptQuote(actionEl.dataset.quote);
       if (action === "receive-po") return receivePo(actionEl.dataset.po);
+      if (action === "wl-refresh") {
+        Promise.all([refreshSessionFromServer(), refreshWorkloadFromServer(), refreshProjectsFromServer()]).then(() => {
+          toast("Refreshed from server");
+          render();
+        });
+        return;
+      }
+      if (action === "wl-clock") {
+        const clockAction = actionEl.dataset.clock || "in";
+        RushmoreServer.clock(clockAction).then(async (res) => {
+          if (!res.ok) return toast((res.data && res.data.error) || "Clock failed");
+          workload = res.data;
+          if (workload.session) session = workload.session;
+          toast(clockAction === "in" ? "Clocked in — department pool updated" : "Clocked out");
+          render();
+        });
+        return;
+      }
+      if (action === "wl-pull") {
+        RushmoreServer.pullJob(actionEl.dataset.pool).then(async (res) => {
+          if (!res.ok) return toast((res.data && res.data.error) || "Pull failed");
+          workload = res.data;
+          if (workload.session) session = workload.session;
+          toast("Pulled job from department pool");
+          render();
+        });
+        return;
+      }
+      if (action === "wl-book") {
+        RushmoreServer.clock("book", actionEl.dataset.job, 0.25, "Progress from My Workload").then(async (res) => {
+          if (!res.ok) return toast((res.data && res.data.error) || "Time booking failed");
+          workload = res.data;
+          if (workload.session) session = workload.session;
+          toast("Time card updated · job progress refreshed");
+          render();
+        });
+        return;
+      }
+      if (action === "prj-approach") {
+        RushmoreServer.setApproach(actionEl.dataset.project, actionEl.dataset.approach).then(async (res) => {
+          if (!res.ok) return toast((res.data && res.data.error) || "Cannot set approach");
+          projectsPayload = res.data;
+          await refreshWorkloadFromServer();
+          toast(`Approach → ${actionEl.dataset.approach}`);
+          render();
+        });
+        return;
+      }
       if (action === "save-po") return toast(editMode ? "Fields save to working copy on change." : "Turn on Edit to change the PO.");
       if (action === "print-po") {
         const po = currentPo();
@@ -4068,7 +4494,7 @@
         return;
       }
 
-      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view]");
+      const viewBtn = e.target.closest("button[data-view], .hub-link[data-view], .tree-leaf[data-view], .account-task-link[data-view]");
       if (viewBtn) {
         if (viewBtn.dataset.openShipTab) {
           shipTab = viewBtn.dataset.openShipTab;
@@ -4080,6 +4506,13 @@
           }
         }
         if (viewBtn.dataset.openPoTab) poTab = viewBtn.dataset.openPoTab;
+        if (viewBtn.dataset.openShipId) {
+          shipId = viewBtn.dataset.openShipId;
+          shipTab = "lines";
+        }
+        if (viewBtn.dataset.openPoNo) {
+          poNo = viewBtn.dataset.openPoNo;
+        }
         return go(viewBtn.dataset.view);
       }
 
@@ -4106,6 +4539,21 @@
     localStorage.setItem(HUB_KEY, hub);
     showView("hub");
     render();
+
+    (async () => {
+      try {
+        await refreshEmployeesFromServer();
+        const saved = localStorage.getItem(OPERATOR_KEY) || localStorage.getItem("rushmore-server-session-v1") || operatorId;
+        await loginViaServer(saved);
+        jumpForRole(role);
+        await refreshProjectsFromServer();
+        render();
+      } catch (err) {
+        console.warn("Server session bootstrap failed", err);
+        toast("Could not reach workforce server — using last local chrome");
+        render();
+      }
+    })();
   }
 
   boot();
