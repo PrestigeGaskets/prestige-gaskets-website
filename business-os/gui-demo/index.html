@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=role-pool-1" />
+  <link rel="stylesheet" href="styles.css?v=live-toolbar-2" />
 </head>
 <body>
   <div id="app" class="shell">
@@ -41,19 +41,14 @@
             <span class="session-label">Role</span>
             <select id="roleSelect" aria-label="Active role"></select>
           </label>
-          <span id="copyPill" class="pill" title="Live working copy">WORKING · clean</span>
+          <span id="copyPill" class="pill" title="Live working copy — no Edit gate">LIVE · clean</span>
         </div>
-        <div class="toolbar" role="toolbar" aria-label="Workspace">
+        <div class="toolbar toolbar-live" role="toolbar" aria-label="Workspace">
+          <button type="button" id="btnUpdate" class="btn" title="Refresh lists from server">Update</button>
+          <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
+          <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
+          <button type="button" id="btnReverse" class="btn btn-danger" disabled title="Restore last posted / server snapshot">Reverse</button>
           <button type="button" id="btnPost" class="btn btn-primary" title="Commit staged work and field edits">Post</button>
-          <details class="toolbar-more">
-            <summary aria-label="More workspace actions">⋯</summary>
-            <div class="toolbar-more-body">
-              <button type="button" id="btnUpdate" class="btn" title="Refresh lists from server">Update</button>
-              <button type="button" id="btnUndo" class="btn" disabled>Undo</button>
-              <button type="button" id="btnRedo" class="btn" disabled>Redo</button>
-              <button type="button" id="btnReverse" class="btn btn-danger" disabled title="Restore last posted / server snapshot">Reverse</button>
-            </div>
-          </details>
         </div>
       </div>
     </header>
@@ -226,8 +221,8 @@
     <div id="addFromOrderPanel" class="afo-overlay" hidden></div>
     <div id="recordDialogPanel" class="afo-overlay rec-overlay" hidden></div>
   </div>
-  <script src="workforce-server.js?v=spring-1"></script>
-  <script src="api-client.js?v=spring-1"></script>
-  <script src="app.js?v=spring-1"></script>
+  <script src="workforce-server.js?v=live-toolbar-2"></script>
+  <script src="api-client.js?v=live-toolbar-2"></script>
+  <script src="app.js?v=live-toolbar-2"></script>
 </body>
 </html>

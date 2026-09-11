@@ -42,13 +42,14 @@ Open **PO Entry** for order `70286` / supplier `CITY0002`.
 - Toolbar **Post** runs through polymorphic `PostCommitService` (SO / GRN / OH /
   unpost) and writes a **daily action repository** for the active Role
   (backend/report lookup — no Activity UI).
-- Turn **Edit** on; role-gated fields update the working copy (master stays sealed).
+- Forms are **live** (no Edit toggle); role still gates fields. **Reverse**
+  restores the last posted/server snapshot; **Update** refreshes lists.
 
 Other views: Quotes, Products, Contact Management, AR Invoices, Sales Orders,
 Receipt Entry, Intake Map, Relations, Fields.
 
 Defaults: **GBP** currency (`en-GB`) and UK **postcode** on customers.
-Edits are role-gated and write to a working copy only (master stays sealed).
+Edits are role-gated on the live working copy (master stays sealed).
 
 The dashboard mirrors M1 chrome: **My Shortcuts** rail, module tree with
 All/Sales/Production/Financial filters, and hub panels

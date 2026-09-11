@@ -1323,11 +1323,26 @@ table.data input {
 .session-compact .toolbar {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 0.3rem;
   margin-left: auto;
+  align-items: center;
+}
+.session-compact .toolbar-live {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, auto));
+  gap: 0.28rem;
+  width: auto;
+}
+.session-compact .toolbar-live .btn {
+  min-height: 2.35rem;
+  padding: 0 0.55rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 .session-compact #btnPost {
-  min-width: 4.5rem;
+  min-width: 4.25rem;
+  font-weight: 700;
 }
 .pill[title] { cursor: help; }
 
@@ -1367,16 +1382,24 @@ table.data input {
     white-space: nowrap;
     align-self: stretch;
   }
-  .session-compact .toolbar {
+  .session-compact .toolbar,
+  .session-compact .toolbar-live {
     width: 100%;
     margin-left: 0;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.28rem;
   }
+  .session-compact .toolbar-live .btn,
   .session-compact #btnPost {
     width: 100%;
+    min-width: 0;
     min-height: 2.5rem;
+    padding: 0 0.2rem;
+    font-size: 0.68rem;
   }
+  /* No overflow menu — Update / Undo / Redo / Reverse / Post share one row */
+  .toolbar-more { display: none !important; }
 
   /* Shipment entry: denser fields so qty / actions appear sooner */
   #view-shipment .po-ribbon {
@@ -1435,47 +1458,15 @@ table.data input {
     display: none !important;
   }
 
-  /* Shrink chrome: Post primary; Update / Undo / Redo / Reverse behind More */
-  .toolbar {
-    grid-template-columns: 1fr auto;
-    gap: 0.35rem;
+  /* Live toolbar: Update · Undo · Redo · Reverse · Post on one row */
+  .toolbar,
+  .toolbar-live {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.28rem;
   }
   .toolbar-more {
-    display: block;
-    position: relative;
-  }
-  .toolbar-more > summary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    list-style: none;
-    cursor: pointer;
-    min-width: var(--touch);
-    min-height: var(--touch);
-    border: 1px solid var(--line);
-    background: #fff;
-    font-size: 1.25rem;
-    line-height: 1;
-    border-radius: 0;
-  }
-  .toolbar-more > summary::-webkit-details-marker { display: none; }
-  .toolbar-more[open] > summary { background: #eef2f5; }
-  .toolbar-more-body {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 0.25rem);
-    z-index: 45;
-    display: grid;
-    gap: 0.25rem;
-    min-width: 7.5rem;
-    padding: 0.25rem;
-    background: #fff;
-    border: 1px solid var(--line);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-  }
-  .toolbar-more-body .btn {
-    width: 100%;
-    min-height: var(--touch);
+    display: none !important;
   }
 
   .session-role select { max-width: none; }
