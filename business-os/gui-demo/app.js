@@ -10,6 +10,7 @@
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
   const EDIT_KEY = "rushmore-edit-v2";
+  const OPERATOR_KEY = "rushmore-operator-v1";
   const POSTED_KEY = "rushmore-posted-v2";
   const ACTIVITY_KEY = "rushmore-activity-v2";
   const PENDING_KEY = "rushmore-pending-v1";
@@ -437,6 +438,41 @@
   const PAYMENT_TERMS = ["30 DAYS EOM", "Net-30", "Net-45", "Net-15"];
   const SHIP_METHODS = ["CARRIER", "COLLECT", "COURIER"];
   const BUYERS = ["JAMES CRAVEN", "A. BUYER"];
+
+  /* Demo signed-in operators — member ID shown like Copart “My account · 154981”. */
+  const OPERATORS = [
+    { id: "154981", username: "jcraven", name: "James Craven", role: "Purchasing" },
+    { id: "162204", username: "abuyer", name: "A. Buyer", role: "Sales" },
+    { id: "170110", username: "shipdesk", name: "Shipping Desk", role: "Shipping" },
+    { id: "180055", username: "stockctl", name: "Stock Control", role: "Inventory" },
+    { id: "190301", username: "finance", name: "Finance Office", role: "Finance" },
+    { id: "200001", username: "manager", name: "Site Manager", role: "Manager" },
+    { id: "210007", username: "admin", name: "System Admin", role: "Admin" },
+    { id: "100001", username: "viewer", name: "Read Only", role: "Viewer" },
+  ];
+
+  function operatorById(id) {
+    return OPERATORS.find((op) => op.id === id) || OPERATORS[0];
+  }
+
+  function operatorForRole(roleName) {
+    return OPERATORS.find((op) => op.role === roleName) || OPERATORS[0];
+  }
+
+  function loadOperatorId() {
+    const saved = localStorage.getItem(OPERATOR_KEY);
+    if (saved && OPERATORS.some((op) => op.id === saved)) return saved;
+    return operatorForRole(localStorage.getItem(ROLE_KEY) || "Purchasing").id;
+  }
+
+  function accountInitials(op) {
+    const parts = String(op.name || op.username || "?")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return String(parts[0] || "?").slice(0, 2).toUpperCase();
+  }
   const QUOTE_STATUSES = ["Open", "Sent", "Confirmed", "Won", "Lost"];
   const ORDER_STATUSES = ["Open", "Picked", "Shipped", "Closed"];
   const CUSTOMER_STATUSES = ["Active", "Inactive"];
@@ -523,6 +559,7 @@
 
   let working = loadWorking();
   let role = localStorage.getItem(ROLE_KEY) || "Purchasing";
+  let operatorId = loadOperatorId();
   let hub = localStorage.getItem(HUB_KEY) || "sales";
   let treeFilter = localStorage.getItem("rushmore-tree-filter-v1") || "All";
   if (!TREE_FILTERS.includes(treeFilter)) {
@@ -1021,8 +1058,10 @@
     if (backdrop) backdrop.hidden = true;
     const btnModules = document.getElementById("btnModules");
     const btnShortcuts = document.getElementById("btnShortcuts");
+    const btnAccountMobile = document.getElementById("btnAccountMobile");
     if (btnModules) btnModules.setAttribute("aria-expanded", "false");
     if (btnShortcuts) btnShortcuts.setAttribute("aria-expanded", "false");
+    if (btnAccountMobile) btnAccountMobile.setAttribute("aria-expanded", "false");
   }
 
   function openMobileNav(which) {
@@ -1034,6 +1073,7 @@
     } else if (which === "shortcuts") {
       app.classList.add("is-shortcuts-open");
       document.getElementById("btnShortcuts")?.setAttribute("aria-expanded", "true");
+      document.getElementById("btnAccountMobile")?.setAttribute("aria-expanded", "true");
     }
     document.body.classList.add("nav-open");
     const backdrop = document.getElementById("navBackdrop");
@@ -1080,6 +1120,42 @@
         (key === "quotes" && view === "quotes");
       btn.classList.toggle("is-active", on);
     });
+    const shortcutsOpen = document.getElementById("app")?.classList.contains("is-shortcuts-open");
+    const btnAccountMobile = document.getElementById("btnAccountMobile");
+    if (btnAccountMobile) {
+      btnAccountMobile.setAttribute("aria-expanded", shortcutsOpen ? "true" : "false");
+    }
+  }
+
+  function syncAccountChrome() {
+    const op = operatorById(operatorId);
+    const idEls = document.querySelectorAll("[data-account-id]");
+    idEls.forEach((el) => {
+      el.textContent = op.id;
+    });
+    const nameEls = document.querySelectorAll("[data-account-name]");
+    nameEls.forEach((el) => {
+      el.textContent = op.name;
+    });
+    const userEls = document.querySelectorAll("[data-account-user]");
+    userEls.forEach((el) => {
+      el.textContent = op.username;
+    });
+    const avatarEls = document.querySelectorAll("[data-account-avatar]");
+    avatarEls.forEach((el) => {
+      el.textContent = accountInitials(op);
+    });
+    const meta = document.getElementById("sessionUserMeta");
+    if (meta) {
+      meta.setAttribute("title", `${op.name} · ${op.username} · ${op.id}`);
+    }
+    const select = document.getElementById("operatorSelect");
+    if (select) {
+      select.innerHTML = OPERATORS.map(
+        (o) =>
+          `<option value="${o.id}" ${o.id === op.id ? "selected" : ""}>${o.name} (${o.id})</option>`
+      ).join("");
+    }
   }
 
   /* —— chrome —— */
@@ -1147,6 +1223,7 @@
       .map((r) => `<option value="${r}" ${r === role ? "selected" : ""}>${r}</option>`)
       .join("");
 
+    syncAccountChrome();
     syncMobileChrome();
   }
 
@@ -1530,6 +1607,7 @@
           <div class="dash-role" title="${blurb.replace(/"/g, "&quot;")}">
             <span class="dash-role-name">${role}</span>
             <span class="dash-role-blurb">${blurb}</span>
+            <span class="dash-role-account">${operatorById(operatorId).name} · ${operatorById(operatorId).id}</span>
           </div>
         </header>
         <nav class="dash-tabs" aria-label="Dashboard sections">${tabs}</nav>
@@ -3769,6 +3847,12 @@
     document.getElementById("roleSelect").onchange = (e) => {
       role = e.target.value;
       localStorage.setItem(ROLE_KEY, role);
+      // Prefer an operator whose default role matches, otherwise keep the signed-in person.
+      const matched = operatorForRole(role);
+      if (matched && matched.role === role) {
+        operatorId = matched.id;
+        localStorage.setItem(OPERATOR_KEY, operatorId);
+      }
       // Jump to this role's dashboard so Hub tabs/tiles match permissions immediately.
       const roleHub = {
         Viewer: "home",
@@ -3788,9 +3872,51 @@
       showView("hub");
       closeMobileNav();
       closeToolbarMore();
-      log(`Role → ${role}`, "mode");
-      toast(`Role → ${role} · ${ROLES[role]?.blurb || "dashboard ready"}`);
+      const op = operatorById(operatorId);
+      log(`Role → ${role} · signed in as ${op.username}`, "mode");
+      toast(`Signed in · ${op.name} (${op.id}) · Role → ${role}`);
       render();
+    };
+
+    document.getElementById("operatorSelect").onchange = (e) => {
+      operatorId = e.target.value;
+      localStorage.setItem(OPERATOR_KEY, operatorId);
+      const op = operatorById(operatorId);
+      role = op.role;
+      localStorage.setItem(ROLE_KEY, role);
+      const roleHub = {
+        Viewer: "home",
+        Sales: "sales",
+        Inventory: "inventory",
+        Finance: "sales",
+        Purchasing: "purchasing",
+        Shipping: "shipping",
+        Manager: "home",
+        Admin: "home",
+      };
+      hub = roleHub[role] || "home";
+      localStorage.setItem(HUB_KEY, hub);
+      dashTab = "role";
+      localStorage.setItem("rushmore-dash-tab-v1", dashTab);
+      dashQuery = "";
+      showView("hub");
+      closeMobileNav();
+      closeToolbarMore();
+      log(`Signed in → ${op.username} (${op.id}) · role ${role}`, "mode");
+      toast(`Signed in · ${op.name} · ${op.id}`);
+      render();
+    };
+
+    document.getElementById("btnAccount").onclick = () => {
+      const app = document.getElementById("app");
+      const isMobile = window.matchMedia("(max-width: 960px)").matches;
+      if (isMobile) {
+        const open = app.classList.contains("is-shortcuts-open");
+        if (open) closeMobileNav();
+        else openMobileNav("shortcuts");
+      } else {
+        document.getElementById("operatorSelect")?.focus();
+      }
     };
 
     // Dismiss ⋯ menu as soon as the user taps/clicks elsewhere.
@@ -3835,6 +3961,11 @@
       else openMobileNav("modules");
     };
     document.getElementById("btnShortcuts").onclick = () => {
+      const open = document.getElementById("app").classList.contains("is-shortcuts-open");
+      if (open) closeMobileNav();
+      else openMobileNav("shortcuts");
+    };
+    document.getElementById("btnAccountMobile").onclick = () => {
       const open = document.getElementById("app").classList.contains("is-shortcuts-open");
       if (open) closeMobileNav();
       else openMobileNav("shortcuts");

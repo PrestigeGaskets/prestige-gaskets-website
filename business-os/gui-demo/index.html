@@ -18,10 +18,24 @@
           <span class="brand-name">RUSHMORE</span>
           <span class="brand-product">Business OS</span>
         </div>
-        <button type="button" class="btn mobile-only" id="btnShortcuts" aria-controls="iconRailPane" aria-expanded="false" title="My Shortcuts">⚡</button>
+        <button type="button" class="session-user-avatar-btn mobile-only" id="btnAccountMobile" aria-controls="iconRailPane" aria-expanded="false" title="My account">
+          <span class="session-user-avatar" data-account-avatar>JC</span>
+        </button>
+        <button type="button" class="btn mobile-only" id="btnShortcuts" aria-controls="iconRailPane" aria-expanded="false" title="My Shortcuts" hidden>⚡</button>
       </div>
       <p class="mobile-context mobile-only" id="mobileContext">Sales Order Management</p>
       <div class="session">
+        <button type="button" class="session-user" id="btnAccount" title="My account">
+          <span class="session-user-avatar" data-account-avatar>JC</span>
+          <span class="session-user-meta" id="sessionUserMeta">
+            <span class="session-user-name" data-account-name>James Craven</span>
+            <span class="session-user-id" data-account-id>154981</span>
+          </span>
+        </button>
+        <label class="session-role session-operator">
+          Signed in
+          <select id="operatorSelect" aria-label="Signed-in operator"></select>
+        </label>
         <label class="session-role">
           Role
           <select id="roleSelect"></select>
@@ -48,6 +62,13 @@
       <div class="drawer-head mobile-only">
         <strong>My Shortcuts</strong>
         <button type="button" class="btn" data-close-nav aria-label="Close shortcuts">Close</button>
+      </div>
+      <div class="account-strip" id="accountStrip" aria-label="Signed-in account">
+        <div class="account-strip-row">
+          <span class="account-strip-label">My account</span>
+          <span class="account-strip-id" data-account-id>154981</span>
+        </div>
+        <p class="account-strip-user"><span data-account-name>James Craven</span> · <span data-account-user>jcraven</span></p>
       </div>
       <div class="icon-rail-scroll" id="iconRail"></div>
       <div class="icon-rail-foot">My Shortcuts</div>
