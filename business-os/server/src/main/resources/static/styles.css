@@ -1178,6 +1178,7 @@ table.data input {
     border-top: 1px solid #2a2a2a;
     padding-bottom: max(0.15rem, var(--safe-b));
     z-index: 35;
+    transition: transform 0.18s ease;
   }
   .dock-btn {
     appearance: none;
