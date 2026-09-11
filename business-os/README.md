@@ -54,6 +54,11 @@ The dashboard mirrors M1 chrome: **My Shortcuts** rail, module tree with
 All/Sales/Production/Financial filters, and hub panels
 Entry Screens · Reports · Maintenance | M1 Business Analysis · Custom Reports.
 
+**Workforce / projects (server-backed):** session identity, My Workload (assigned
+jobs + department pool pull by skills), time cards, and Projects & Daily Scrum
+come from `gui-demo/workforce-server.js` responses — see
+[docs/WORKFORCE_PROJECTS.md](docs/WORKFORCE_PROJECTS.md).
+
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
 plus a bottom dock (Hub / Orders / **Despatch** / PO / More). On Despatch, phone
 layout collapses the ribbon/toolbar button walls, shows shipment lines as cards,

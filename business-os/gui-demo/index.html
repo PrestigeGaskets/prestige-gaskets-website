@@ -66,9 +66,11 @@
       <div class="account-strip" id="accountStrip" aria-label="Signed-in account">
         <div class="account-strip-row">
           <span class="account-strip-label">My account</span>
-          <span class="account-strip-id" data-account-id>154981</span>
+          <span class="account-strip-id" data-account-id>—</span>
         </div>
-        <p class="account-strip-user"><span data-account-name>James Craven</span> · <span data-account-user>jcraven</span></p>
+        <p class="account-strip-user"><span data-account-name>…</span> · <span data-account-user>…</span></p>
+        <div class="account-strip-tasks" id="accountTaskLinks" hidden></div>
+        <p class="account-strip-status" id="accountPresence">Server session…</p>
       </div>
       <div class="icon-rail-scroll" id="iconRail"></div>
       <div class="icon-rail-foot">My Shortcuts</div>
@@ -181,6 +183,25 @@
         <header class="view-head"><h1>Field network</h1><p>Role permissions</p></header>
         <div id="fieldsRoot" class="stack"></div>
       </section>
+
+      <section id="view-workload" class="view" data-view="workload" hidden>
+        <header class="view-head row">
+          <div>
+            <h1>My workload</h1>
+            <p>Assigned jobs · department work pool · skill / criteria pull · time card</p>
+          </div>
+          <div class="view-head-actions" id="workloadHeadActions"></div>
+        </header>
+        <div id="workloadRoot" class="stack"></div>
+      </section>
+
+      <section id="view-projects" class="view" data-view="projects" hidden>
+        <header class="view-head">
+          <h1>Projects &amp; daily scrum</h1>
+          <p>Milestones · PM / scrum master approach · goals from daily stand-ups</p>
+        </header>
+        <div id="projectsRoot" class="stack"></div>
+      </section>
     </main>
 
     <nav class="mobile-dock mobile-only" aria-label="Primary mobile navigation">
@@ -203,6 +224,7 @@
     <div id="addFromOrderPanel" class="afo-overlay" hidden></div>
     <div id="recordDialogPanel" class="afo-overlay rec-overlay" hidden></div>
   </div>
+  <script src="workforce-server.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
