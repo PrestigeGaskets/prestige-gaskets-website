@@ -286,14 +286,6 @@ button, input, select, textarea { font: inherit; }
   background: rgba(255, 255, 255, 0.2);
 }
 
-.skill-chip {
-  display: inline-block;
-  margin: 0.1rem 0.15rem 0 0;
-  padding: 0.08rem 0.28rem;
-  border: 1px solid var(--line-soft);
-  background: #fff;
-  font-size: 0.65rem;
-}
 .note-list {
   margin: 0.35rem 0 0;
   padding-left: 1.1rem;

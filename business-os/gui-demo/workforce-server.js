@@ -1,12 +1,12 @@
 /**
  * Rushmore workforce / project mock API.
- * Simulates server responses for session, workload pools, time cards, and scrum rules.
- * Persists authoritative state separately from the ERP working copy.
+ * Role + department + clock-in gate pool pulls. No skills matrix.
+ * Jobs exist to fulfil purchase-order / sales agreements via agile scrum.
  */
 (() => {
   "use strict";
 
-  const SERVER_KEY = "rushmore-workforce-server-v1";
+  const SERVER_KEY = "rushmore-workforce-server-v2";
   const SESSION_KEY = "rushmore-server-session-v1";
 
   const seed = () => ({
@@ -18,16 +18,6 @@
       { id: "D-FIN", name: "Finance", code: "FIN" },
       { id: "D-PMO", name: "Project Office", code: "PMO" },
     ],
-    skills: [
-      { id: "SK-BUY", name: "Buyer", levelMin: 1 },
-      { id: "SK-QUOTE", name: "Quoting", levelMin: 1 },
-      { id: "SK-PICK", name: "Pick/Pack", levelMin: 1 },
-      { id: "SK-SHIP", name: "Despatch", levelMin: 2 },
-      { id: "SK-STOCK", name: "Stock control", levelMin: 1 },
-      { id: "SK-AR", name: "Accounts receivable", levelMin: 1 },
-      { id: "SK-SCRUM", name: "Scrum facilitation", levelMin: 2 },
-      { id: "SK-PM", name: "Project management", levelMin: 2 },
-    ],
     employees: [
       {
         id: "154981",
@@ -36,7 +26,6 @@
         role: "Purchasing",
         departmentId: "D-PUR",
         title: "Buyer",
-        skills: [{ skillId: "SK-BUY", level: 3 }],
       },
       {
         id: "162204",
@@ -45,10 +34,6 @@
         role: "Sales",
         departmentId: "D-SAL",
         title: "Sales executive",
-        skills: [
-          { skillId: "SK-QUOTE", level: 3 },
-          { skillId: "SK-BUY", level: 1 },
-        ],
       },
       {
         id: "170110",
@@ -57,10 +42,6 @@
         role: "Shipping",
         departmentId: "D-SHP",
         title: "Despatch clerk",
-        skills: [
-          { skillId: "SK-PICK", level: 2 },
-          { skillId: "SK-SHIP", level: 3 },
-        ],
       },
       {
         id: "180055",
@@ -69,7 +50,6 @@
         role: "Inventory",
         departmentId: "D-INV",
         title: "Stock controller",
-        skills: [{ skillId: "SK-STOCK", level: 3 }],
       },
       {
         id: "190301",
@@ -78,7 +58,6 @@
         role: "Finance",
         departmentId: "D-FIN",
         title: "AR clerk",
-        skills: [{ skillId: "SK-AR", level: 2 }],
       },
       {
         id: "200001",
@@ -87,10 +66,6 @@
         role: "Manager",
         departmentId: "D-PMO",
         title: "Project manager",
-        skills: [
-          { skillId: "SK-PM", level: 3 },
-          { skillId: "SK-SCRUM", level: 2 },
-        ],
       },
       {
         id: "210007",
@@ -99,10 +74,6 @@
         role: "Admin",
         departmentId: "D-PMO",
         title: "Scrum master",
-        skills: [
-          { skillId: "SK-SCRUM", level: 3 },
-          { skillId: "SK-PM", level: 2 },
-        ],
       },
       {
         id: "100001",
@@ -111,14 +82,13 @@
         role: "Viewer",
         departmentId: "D-PMO",
         title: "Observer",
-        skills: [],
       },
     ],
     projects: [
       {
         id: "PRJ-GASKET-Q3",
         name: "Q3 gasket fulfilment",
-        goal: "Clear open SO despatch + PO replenishment for Prestige Pilot",
+        goal: "Fulfil open sales orders and linked supplier POs for Prestige Pilot via daily scrum pulls",
         status: "Active",
         projectManagerId: "200001",
         scrumMasterId: "210007",
@@ -155,20 +125,20 @@
     scrumRules: {
       dailyScrumMinutes: 15,
       buildsToward: "milestones",
-      pullRequiresSkills: true,
       pullRequiresClockedIn: true,
       assignmentOverridesPool: true,
+      wipLimit: 3,
       note:
-        "Daily scrum confirms yesterday / today / blockers. PM & scrum master set approach (pull vs assign). Work pools belong to jobs; time cards and logged-on presence refresh department availability.",
+        "Daily scrum confirms yesterday / today / blockers toward PO & sales-order fulfilment. PM & scrum master set approach (pull vs assign). On clock-in, pull from the department pool — role decides eligibility.",
     },
     dailyScrum: {
       date: "11/09/2026",
       projectId: "PRJ-GASKET-Q3",
       facilitatedById: "210007",
       agenda: [
-        "What did we complete toward MS-1?",
-        "What will we pull or finish today?",
-        "Blockers on skills / materials / carriers?",
+        "What did we complete toward MS-1 (quote → SO)?",
+        "What PO / SO fulfilment will we pull today after clock-in?",
+        "Blockers on materials / carriers / agreement terms?",
       ],
       notes: "Focus despatch pull for O-500 and buyer follow-up on CITY0002 PO 70286.",
     },
@@ -179,7 +149,7 @@
         departmentId: "D-PUR",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-2",
-        requiredSkills: [{ skillId: "SK-BUY", level: 2 }],
+        allowedRoles: ["Purchasing", "Manager", "Admin"],
         criteria: { poNo: "70286", priority: "High" },
         link: { view: "po-entry", label: "Open PO Entry", poNo: "70286" },
         status: "Ready",
@@ -187,11 +157,11 @@
       },
       {
         id: "JOB-Q-9001",
-        title: "Confirm quote Q-9001 (14-day window)",
+        title: "Confirm quote Q-9001 (14-day window) → SO",
         departmentId: "D-SAL",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-1",
-        requiredSkills: [{ skillId: "SK-QUOTE", level: 2 }],
+        allowedRoles: ["Sales", "Manager", "Admin"],
         criteria: { quoteNo: "Q-9001", priority: "High" },
         link: { view: "quotes", label: "Open Quotes", quoteNo: "Q-9001" },
         status: "Ready",
@@ -203,10 +173,7 @@
         departmentId: "D-SHP",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-3",
-        requiredSkills: [
-          { skillId: "SK-PICK", level: 1 },
-          { skillId: "SK-SHIP", level: 2 },
-        ],
+        allowedRoles: ["Shipping", "Manager", "Admin"],
         criteria: { shipmentId: "275526", orderNo: "O-500", priority: "High" },
         link: { view: "shipment", label: "Open Shipment Entry", shipmentId: "275526" },
         status: "Ready",
@@ -214,11 +181,11 @@
       },
       {
         id: "JOB-ROP-P1002",
-        title: "Review ROP breach · P1002 Cone seal B",
+        title: "Review ROP breach · P1002 → raise PO demand",
         departmentId: "D-INV",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-2",
-        requiredSkills: [{ skillId: "SK-STOCK", level: 2 }],
+        allowedRoles: ["Inventory", "Purchasing", "Manager", "Admin"],
         criteria: { sku: "P1002", priority: "Medium" },
         link: { view: "products", label: "Open Inventory", sku: "P1002" },
         status: "Ready",
@@ -226,11 +193,11 @@
       },
       {
         id: "JOB-AR-INV1",
-        title: "Chase AR for Prestige Pilot invoice",
+        title: "Chase AR for Prestige Pilot invoice (fulfilled SO)",
         departmentId: "D-FIN",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-1",
-        requiredSkills: [{ skillId: "SK-AR", level: 1 }],
+        allowedRoles: ["Finance", "Manager", "Admin"],
         criteria: { customerId: "C004", priority: "Low" },
         link: { view: "invoices", label: "Open AR Invoices" },
         status: "Ready",
@@ -242,7 +209,7 @@
         departmentId: "D-PMO",
         projectId: "PRJ-GASKET-Q3",
         milestoneId: "MS-1",
-        requiredSkills: [{ skillId: "SK-SCRUM", level: 2 }],
+        allowedRoles: ["Admin", "Manager"],
         criteria: { priority: "High" },
         link: { view: "projects", label: "Open Projects / Scrum" },
         status: "Assigned",
@@ -290,8 +257,8 @@
         id: "TC-180055-1109",
         employeeId: "180055",
         date: "11/09/2026",
-        clockedIn: true,
-        clockInAt: "07:45",
+        clockedIn: false,
+        clockInAt: null,
         clockOutAt: null,
         entries: [],
       },
@@ -309,7 +276,7 @@
         employeeId: "200001",
         date: "11/09/2026",
         clockedIn: true,
-        clockInAt: "08:30",
+        clockInAt: "07:55",
         clockOutAt: null,
         entries: [],
       },
@@ -318,22 +285,12 @@
         employeeId: "210007",
         date: "11/09/2026",
         clockedIn: true,
-        clockInAt: "08:15",
+        clockInAt: "07:50",
         clockOutAt: null,
-        entries: [{ jobId: "JOB-SCRUM-FACIL", hours: 0.25, note: "Prep scrum board" }],
-      },
-      {
-        id: "TC-100001-1109",
-        employeeId: "100001",
-        date: "11/09/2026",
-        clockedIn: false,
-        clockInAt: null,
-        clockOutAt: null,
-        entries: [],
+        entries: [{ jobId: "JOB-SCRUM-FACIL", hours: 0.25, note: "Stand-up" }],
       },
     ],
-    /* Presence refreshed from time cards + explicit login. */
-    loggedOn: ["162204", "180055", "200001", "210007"],
+    loggedOn: ["162204", "200001", "210007"],
   });
 
   function clone(v) {
@@ -343,11 +300,10 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(SERVER_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.employees) && Array.isArray(parsed.jobs)) return parsed;
-      }
-    } catch (_) {}
+      if (raw) return JSON.parse(raw);
+    } catch (_) {
+      /* fall through */
+    }
     const fresh = seed();
     saveState(fresh);
     return fresh;
@@ -373,20 +329,16 @@
     return state.timeCards.find((t) => t.employeeId === employeeId) || null;
   }
 
-  function skillOk(employee, required) {
-    return required.every((req) => {
-      const have = (employee.skills || []).find((s) => s.skillId === req.skillId);
-      return have && have.level >= (req.level || 1);
-    });
+  /** Role gate — empty allowedRoles means any role in the department may pull. */
+  function roleOk(employee, job) {
+    const allowed = job.allowedRoles || [];
+    if (!allowed.length) return true;
+    return allowed.includes(employee.role);
   }
 
-  function criteriaOk(job, employee) {
-    if (!job.criteria) return true;
-    if (job.departmentId && employee.departmentId !== job.departmentId) {
-      // Cross-dept pull only if approach allows and skills match — default deny.
-      return false;
-    }
-    return true;
+  function departmentOk(job, employee) {
+    if (!job.departmentId) return true;
+    return employee.departmentId === job.departmentId;
   }
 
   function refreshLoggedOnFromTimeCards(state) {
@@ -406,7 +358,6 @@
       role: emp.role,
       departmentId: emp.departmentId,
       title: emp.title,
-      skills: clone(emp.skills || []),
     };
   }
 
@@ -420,6 +371,14 @@
       assignee: publicEmployee(assignee),
       departmentName: dept ? dept.name : row.departmentId,
     };
+  }
+
+  function activeWipCount(state, employeeId) {
+    return state.workPool.filter(
+      (w) =>
+        w.assigneeId === employeeId &&
+        (w.status === "Assigned" || w.status === "In progress")
+    ).length;
   }
 
   async function respond(payload, status = 200) {
@@ -531,8 +490,9 @@
           note: note || "",
           at: now,
         });
-        // Time against a job progresses pool status.
-        const row = state.workPool.find((w) => w.jobId === jobId && (w.assigneeId === emp.id || w.pool === "personal"));
+        const row = state.workPool.find(
+          (w) => w.jobId === jobId && (w.assigneeId === emp.id || w.pool === "personal")
+        );
         if (row && row.status === "Assigned") row.status = "In progress";
         if (job.status === "Ready" || job.status === "Assigned") job.status = "In progress";
       } else {
@@ -554,13 +514,19 @@
       const project = state.projects[0];
       const rules = clone(state.scrumRules);
       const approach = project ? project.approach : "pull";
+      const wipLimit = Number(rules.wipLimit) || 0;
+      const wip = activeWipCount(state, emp.id);
 
       const assigned = state.workPool
         .filter((w) => w.assigneeId === emp.id && (w.status === "Assigned" || w.status === "In progress"))
         .map((w) => enrichPoolRow(state, w));
 
       const deptQueued = state.workPool.filter(
-        (w) => w.pool === "department" && w.departmentId === emp.departmentId && w.status === "Queued" && !w.assigneeId
+        (w) =>
+          w.pool === "department" &&
+          w.departmentId === emp.departmentId &&
+          w.status === "Queued" &&
+          !w.assigneeId
       );
 
       const eligible = [];
@@ -570,16 +536,19 @@
         if (!job) continue;
         const enriched = enrichPoolRow(state, row);
         const clockOk = !rules.pullRequiresClockedIn || sessionRes.data.clockedIn;
-        const skillsMatch = !rules.pullRequiresSkills || skillOk(full, job.requiredSkills || []);
-        const critMatch = criteriaOk(job, full);
+        const rolesMatch = roleOk(full, job);
+        const deptMatch = departmentOk(job, full);
+        const wipOk = !wipLimit || wip < wipLimit;
         if (approach === "assign" && rules.assignmentOverridesPool) {
           blocked.push({ ...enriched, reason: "PM approach is assign-only — wait for assignment" });
         } else if (!clockOk) {
-          blocked.push({ ...enriched, reason: "Clock in to pull from department pool" });
-        } else if (!skillsMatch) {
-          blocked.push({ ...enriched, reason: "Skills do not meet job criteria" });
-        } else if (!critMatch) {
-          blocked.push({ ...enriched, reason: "Job criteria / department mismatch" });
+          blocked.push({ ...enriched, reason: "Clock in (start shift) to pull from department pool" });
+        } else if (!rolesMatch) {
+          blocked.push({ ...enriched, reason: `Role ${full.role} not allowed for this fulfilment job` });
+        } else if (!deptMatch) {
+          blocked.push({ ...enriched, reason: "Job department mismatch" });
+        } else if (!wipOk) {
+          blocked.push({ ...enriched, reason: `WIP limit (${wipLimit}) reached — finish or clock work first` });
         } else {
           eligible.push(enriched);
         }
@@ -596,6 +565,8 @@
         queued: deptQueued.length,
         eligible: eligible.length,
         loggedOn: loggedOnDept,
+        wip,
+        wipLimit,
       };
 
       return respond({
@@ -626,7 +597,11 @@
         return respond({ error: "Project approach is assign-only (PM/scrum master)" }, 403);
       }
       if (rules.pullRequiresClockedIn && !sessionRes.data.clockedIn) {
-        return respond({ error: "Clock in before pulling from the department pool" }, 403);
+        return respond({ error: "Clock in (start shift) before pulling from the department pool" }, 403);
+      }
+      const wipLimit = Number(rules.wipLimit) || 0;
+      if (wipLimit && activeWipCount(state, emp.id) >= wipLimit) {
+        return respond({ error: `WIP limit (${wipLimit}) reached` }, 403);
       }
       const row = state.workPool.find((w) => w.id === workPoolId);
       if (!row || row.pool !== "department" || row.status !== "Queued") {
@@ -637,11 +612,11 @@
       }
       const job = jobById(state, row.jobId);
       if (!job) return respond({ error: "Job missing" }, 404);
-      if (rules.pullRequiresSkills && !skillOk(full, job.requiredSkills || [])) {
-        return respond({ error: "Skills do not meet job criteria" }, 403);
+      if (!roleOk(full, job)) {
+        return respond({ error: "Your role cannot pull this fulfilment job" }, 403);
       }
-      if (!criteriaOk(job, full)) {
-        return respond({ error: "Job criteria not met" }, 403);
+      if (!departmentOk(job, full)) {
+        return respond({ error: "Job department mismatch" }, 403);
       }
       row.pool = "personal";
       row.assigneeId = emp.id;

@@ -3912,12 +3912,20 @@
       </table></div></article>`;
   }
 
-  function skillChips(job) {
-    const req = (job && job.requiredSkills) || [];
-    if (!req.length) return "<span class='note'>No skill gate</span>";
-    return req
-      .map((r) => `<span class="skill-chip mono">${r.skillId.replace("SK-", "")}≥${r.level || 1}</span>`)
-      .join(" ");
+  function fulfilmentNote(job) {
+    if (!job) return "";
+    const c = job.criteria || {};
+    const bits = [];
+    if (c.poNo) bits.push(`PO ${c.poNo}`);
+    if (c.orderNo) bits.push(`SO ${c.orderNo}`);
+    if (c.quoteNo) bits.push(`Quote ${c.quoteNo}`);
+    if (c.shipmentId) bits.push(`Ship ${c.shipmentId}`);
+    if (c.sku) bits.push(`SKU ${c.sku}`);
+    const roles = (job.allowedRoles || []).join(", ");
+    const roleBit = roles ? `roles: ${roles}` : "any dept role";
+    return bits.length
+      ? `<span class="note">${bits.join(" · ")} · ${roleBit}</span>`
+      : `<span class="note">${roleBit}</span>`;
   }
 
   function jobLinkButtons(job) {
@@ -3963,7 +3971,7 @@
             const job = row.job || {};
             return `<tr>
               <td class="mono">${job.id || row.jobId}</td>
-              <td>${job.title || "—"}<div class="note">${skillChips(job)}</div></td>
+              <td>${job.title || "—"}<div>${fulfilmentNote(job)}</div></td>
               <td>${row.status}</td>
               <td class="card-actions">${jobLinkButtons(job)}
                 <button type="button" class="btn" data-action="wl-book" data-job="${job.id}">Book 0.25h</button>
@@ -3971,7 +3979,7 @@
             </tr>`;
           })
           .join("")
-      : `<tr><td colspan="4">No personal assignments — pull from the department pool if eligible.</td></tr>`;
+      : `<tr><td colspan="4">No personal assignments — clock in and pull from the department pool.</td></tr>`;
 
     const eligibleHtml = eligible.length
       ? eligible
@@ -3979,13 +3987,13 @@
             const job = row.job || {};
             return `<tr>
               <td class="mono">${job.id || row.jobId}</td>
-              <td>${job.title || "—"}<div class="note">${skillChips(job)}</div></td>
+              <td>${job.title || "—"}<div>${fulfilmentNote(job)}</div></td>
               <td>${row.departmentName || ""}</td>
               <td><button type="button" class="btn btn-primary" data-action="wl-pull" data-pool="${row.id}">Pull job</button> ${jobLinkButtons(job)}</td>
             </tr>`;
           })
           .join("")
-      : `<tr><td colspan="4">No eligible department-pool jobs for your skills / criteria right now.</td></tr>`;
+      : `<tr><td colspan="4">No eligible pool jobs for your role right now — clock in to start your shift.</td></tr>`;
 
     const blockedHtml = blocked.length
       ? `<article class="card"><div class="card-head"><h2>Queued but not pullable</h2></div>
@@ -4002,21 +4010,21 @@
       <article class="card">
         <div class="card-head"><h2>Server session</h2></div>
         <p class="note"><strong>${(emp && emp.name) || "—"}</strong> · <span class="mono">${(emp && emp.id) || "—"}</span> · ${(emp && emp.title) || ""} · ${role}</p>
-        <p class="note">${clocked ? "Clocked in" : "Clocked out"} · approach <strong>${workload.approach || "pull"}</strong> (PM/scrum master) · logged on in dept: ${onPeople}</p>
+        <p class="note">${clocked ? "Clocked in (shift started)" : "Clocked out"} · role <strong>${(emp && emp.role) || role}</strong> · approach <strong>${workload.approach || "pull"}</strong> · logged on in dept: ${onPeople}</p>
         <p class="note">${rules.note || ""}</p>
       </article>
       <article class="card">
         <div class="card-head"><h2>Assigned to me</h2></div>
         <div class="table-wrap"><table class="data">
-          <thead><tr><th>Job</th><th>Title / skills</th><th>Status</th><th>Links</th></tr></thead>
+          <thead><tr><th>Job</th><th>Fulfilment</th><th>Status</th><th>Links</th></tr></thead>
           <tbody>${assignedHtml}</tbody>
         </table></div>
       </article>
       <article class="card">
         <div class="card-head"><h2>Department work pool · ${(summary && summary.departmentName) || "—"}</h2></div>
-        <p class="note">Queued ${summary ? summary.queued : 0} · eligible for you ${summary ? summary.eligible : 0}. Pools belong to jobs; presence comes from time cards + who is logged on.</p>
+        <p class="note">Queued ${summary ? summary.queued : 0} · eligible for your role ${summary ? summary.eligible : 0}${summary && summary.wipLimit ? ` · WIP ${summary.wip}/${summary.wipLimit}` : ""}. Clock in, then pull PO/SO fulfilment work from the pool.</p>
         <div class="table-wrap"><table class="data">
-          <thead><tr><th>Job</th><th>Title / skills</th><th>Dept</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Job</th><th>Fulfilment</th><th>Dept</th><th>Actions</th></tr></thead>
           <tbody>${eligibleHtml}</tbody>
         </table></div>
       </article>
@@ -4041,7 +4049,7 @@
       <article class="card">
         <div class="card-head"><h2>Daily scrum rules</h2></div>
         <p class="note">${rules.note || ""}</p>
-        <p class="note">Stand-up ${rules.dailyScrumMinutes || 15} min · builds toward <strong>${rules.buildsToward || "milestones"}</strong> · pull requires skills=${!!rules.pullRequiresSkills} · clocked-in=${!!rules.pullRequiresClockedIn}</p>
+        <p class="note">Stand-up ${rules.dailyScrumMinutes || 15} min · builds toward <strong>${rules.buildsToward || "milestones"}</strong> · pull requires clock-in=${!!rules.pullRequiresClockedIn}${rules.wipLimit ? ` · WIP limit ${rules.wipLimit}` : ""} · gated by <strong>role</strong> (no skills matrix)</p>
         <p class="note"><strong>${daily.date || ""}</strong> · project <span class="mono">${daily.projectId || ""}</span></p>
         <ul class="note-list">${(daily.agenda || []).map((a) => `<li>${a}</li>`).join("")}</ul>
         <p class="note">${daily.notes || ""}</p>
