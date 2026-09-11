@@ -9,7 +9,6 @@
   const STORAGE = "rushmore-bos-v9";
   const ROLE_KEY = "rushmore-role-v2";
   const HUB_KEY = "rushmore-hub-v2";
-  const EDIT_KEY = "rushmore-edit-v2";
   const OPERATOR_KEY = "rushmore-operator-v1";
   const POSTED_KEY = "rushmore-posted-v2";
   const ACTIVITY_KEY = "rushmore-activity-v2";
@@ -623,8 +622,7 @@
   if (!["tables", "role", "classic"].includes(dashTab)) dashTab = "tables";
   let dashQuery = "";
   let view = "hub";
-  // Forms are live by default — role gates still apply. Edit toggle removed.
-  let editMode = true;
+  // Forms are always live — role gates still apply. No Edit toggle.
   let poNo = "70286";
   let poTab = "lines";
   let shipId = "275525";
@@ -4102,7 +4100,6 @@
   }
 
   function boot() {
-    editMode = true; // live forms
     document.getElementById("btnPost").onclick = () => commitPost();
     const btnUpdate = document.getElementById("btnUpdate");
     if (btnUpdate) btnUpdate.onclick = () => updateFromServer();
