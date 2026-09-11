@@ -22,9 +22,9 @@ M1 Business Analysis / Custom Reports). Hub and module-tree links are **live onl
 AR invoices. Follow-ups / calls open on **Shipment Entry**. Choosing a shipment
 customer fills AR/shipping contact from the customer email.
 
-**Sales** has Finance-equivalent cost/order fields plus PO accuracy/lookups.
-**Confirm** a live quote (14-day window) → Accept → Post creates a ready-to-print
-SO with collect / ship **via** white-label providers. **Shipping** can Issue DN,
+**Sales** owns contacts, quotes, and sales orders (confirm → ready-to-print SO with
+collect / ship **via** white-label). Inventory, Raise PO, and Despatch are outside
+Sales role exposure (Purchasing / Inventory / Shipping). **Shipping** can Issue DN,
 Post (OH out), and **Unpost DN** (OH restore).
 
 Open **Shipment Entry** (`275525` draft / `275526` with lines from `O-500`) —
@@ -63,15 +63,15 @@ matrix. Spring Boot API lives in [`server/`](server/) — see [docs/API.md](docs
 [docs/DATA_MODEL.md](docs/DATA_MODEL.md).
 
 **Mobile (≤960px):** same M1 content in drawers — Modules (☰) and My Shortcuts (⚡) —
-plus a bottom dock (Hub / Orders / **Despatch** / PO / More). On Despatch, phone
-layout collapses the ribbon/toolbar button walls, shows shipment lines as cards,
+plus a bottom dock (Hub / Orders / Despatch / PO / More). Despatch and PO dock
+buttons hide when the active role has no PO / shipment write exposure. On Despatch,
+phone layout collapses the ribbon/toolbar button walls, shows shipment lines as cards,
 keeps **Add From Order** + **Post DN** in a sticky bar, and opens Add From Order
 as a full-screen sheet. Desktop layout unchanged.
-**Sales** (with **Edit** on) has Finance-equivalent product cost/sell rights, PO
-accuracy/lookup fields, quote confirm (14-day live window) → SO ready-to-print, and
-collect/ship **via** white-label procurement providers. **Shipping** issues delivery
-notes with Post / Unpost DN (OH out / restore). See the Fields view for the full
-permission network.
+**Sales** owns contacts, quotes, and sales orders (confirm → ready-to-print SO with
+collect/ship **via** white-label). Inventory, Raise PO, and Despatch are not in
+Sales role exposure. **Shipping** issues delivery notes with Post / Unpost DN
+(OH out / restore). See the Fields view for the full permission network.
 
 ## Build the `.exe` (Visual Studio)
 

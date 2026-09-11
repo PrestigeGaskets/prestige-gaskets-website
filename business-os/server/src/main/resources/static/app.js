@@ -332,7 +332,7 @@
     Viewer: { inherits: [], blurb: "Read-only.", canEdit: [], canAdd: [] },
     Sales: {
       inherits: ["Viewer"],
-      blurb: "Sales + Finance fields; PO accuracy/lookups; confirm quotes (14-day) → SO ready-to-print; collect/via white-label.",
+      blurb: "Contacts, quotes & sales orders; confirm quotes (14-day) → SO ready-to-print; collect/via white-label. No Inventory / Raise PO / Despatch.",
       canEdit: [
         // Customer master (sales-owned contact fields)
         "customers.name", "customers.email", "customers.postcode", "customers.status",
@@ -344,33 +344,9 @@
         "orders.status", "orders.customerId", "orders.quoteNo", "orders.readyToPrint",
         "orders.shipMethod", "orders.via", "orders.shipPaymentType",
         "orders.lines.qty", "orders.lines.price", "orders.lines.sku",
-        // Finance-equivalent product/order money fields
-        "products.sell", "products.cost", "products.description",
-        // PO accuracy + lookup fields (shared with Purchasing for quote/inventory handoff)
-        "purchaseOrders.status", "purchaseOrders.buyer", "purchaseOrders.paymentTerms",
-        "purchaseOrders.dueDate", "purchaseOrders.shipMethod", "purchaseOrders.comments",
-        "purchaseOrders.currency", "purchaseOrders.readyToPrint", "purchaseOrders.supplierId",
-        "purchaseOrders.lines.qty", "purchaseOrders.lines.unitCost", "purchaseOrders.lines.sku",
-        "purchaseOrders.invLocation", "purchaseOrders.purLocation", "purchaseOrders.apContact",
-        "purchaseOrders.purchasingContact", "purchaseOrders.dropShipContact",
-        "purchaseOrders.fob", "purchaseOrders.orderDate", "purchaseOrders.standardMessage",
-        // Customer shipment prep (not freight/cost posting)
-        "shipments.status", "shipments.customerId", "shipments.shipDate",
-        "shipments.shipOrganisation", "shipments.shipLocation",
-        "shipments.shippingContact", "shipments.arContact",
-        "shipments.shipMethodId", "shipments.shipPaymentType", "shipments.trackingNumber",
-        "shipments.shippingComments", "shipments.printPackingSlip", "shipments.printLabels",
-        "shipments.standardMessage",
-        "shipments.customerAddress.name", "shipments.customerAddress.line1",
-        "shipments.customerAddress.line2", "shipments.customerAddress.city",
-        "shipments.customerAddress.postcode", "shipments.customerAddress.phone",
-        "shipments.customerAddress.fax",
-        "shipments.lines.sku", "shipments.lines.qtyShipped", "shipments.lines.deliveryQty",
-        "shipments.lines.orderNo", "shipments.lines.marked",
       ],
       canAdd: [
-        "customers", "quotes", "quoteLines", "orders", "orderLines", "shipments", "shipmentLines",
-        "products", "purchaseOrders", "poLines",
+        "customers", "quotes", "quoteLines", "orders", "orderLines",
       ],
     },
     Inventory: {
@@ -1269,15 +1245,26 @@
   function syncMobileChrome() {
     const ctx = document.getElementById("mobileContext");
     if (ctx) ctx.textContent = contextLabel();
+    const canPo = canAdd("purchaseOrders") || canTouchPrefix("purchaseOrders");
+    const canShip = canAdd("shipments") || canTouchPrefix("shipments");
     document.querySelectorAll(".dock-btn[data-dock]").forEach((btn) => {
       const key = btn.dataset.dock;
+      if (key === "po-entry") {
+        btn.hidden = !canPo;
+        btn.disabled = !canPo;
+        btn.setAttribute("aria-hidden", canPo ? "false" : "true");
+      } else if (key === "shipment") {
+        btn.hidden = !canShip;
+        btn.disabled = !canShip;
+        btn.setAttribute("aria-hidden", canShip ? "false" : "true");
+      }
       const on =
         (key === "hub" && view === "hub") ||
         (key === "orders" && view === "orders") ||
         (key === "po-entry" && view === "po-entry") ||
         (key === "shipment" && view === "shipment") ||
         (key === "quotes" && view === "quotes");
-      btn.classList.toggle("is-active", on);
+      btn.classList.toggle("is-active", on && !btn.hidden);
     });
     const shortcutsOpen = document.getElementById("app")?.classList.contains("is-shortcuts-open");
     const btnAccountMobile = document.getElementById("btnAccountMobile");
@@ -1712,29 +1699,44 @@
     }
     push({ id: "act-fields", label: "Role Matrix", hint: ROLES[role]?.blurb || "Permissions", ico: "fields", view: "fields", badge: role });
     push({ id: "act-intake", label: "Intake Map", hint: "End-to-end trail", ico: "intake", view: "intake", badge: "Map" });
-    // Module hubs
-    [
-      { id: "hub-sales", label: "Sales Hub", hub: "sales", ico: "hub" },
-      { id: "hub-quoting", label: "Quoting Hub", hub: "quoting", ico: "quotes" },
-      { id: "hub-purchasing", label: "Purchasing Hub", hub: "purchasing", ico: "po" },
-      { id: "hub-shipping", label: "Shipping Hub", hub: "shipping", ico: "ship" },
-      { id: "hub-inventory", label: "Inventory Hub", hub: "inventory", ico: "products" },
-    ].forEach((h) => push({ ...h, hint: "Module start page", badge: "Hub" }));
+    // Module hubs — only when role intersects that module's write surface
+    const hubs = [{ id: "hub-sales", label: "Sales Hub", hub: "sales", ico: "hub" }];
+    if (canAdd("quotes") || canTouchPrefix("quotes")) {
+      hubs.push({ id: "hub-quoting", label: "Quoting Hub", hub: "quoting", ico: "quotes" });
+    }
+    if (canAdd("purchaseOrders") || canTouchPrefix("purchaseOrders")) {
+      hubs.push({ id: "hub-purchasing", label: "Purchasing Hub", hub: "purchasing", ico: "po" });
+    }
+    if (canAdd("shipments") || canTouchPrefix("shipments")) {
+      hubs.push({ id: "hub-shipping", label: "Shipping Hub", hub: "shipping", ico: "ship" });
+    }
+    if (canAdd("products") || canTouchPrefix("products")) {
+      hubs.push({ id: "hub-inventory", label: "Inventory Hub", hub: "inventory", ico: "products" });
+    }
+    hubs.forEach((h) => push({ ...h, hint: "Module start page", badge: "Hub" }));
     return tiles;
   }
 
   function dashTileHtml(tile) {
     const access = tile.badge ? { mode: tile.badge === "View" || tile.badge === "Map" || tile.badge === "Hub" || tile.badge === role ? "view" : "write", badge: tile.badge } : tileAccess(tile);
+    const gated = !!(tile.entity || tile.fieldPrefix);
+    const hasWrite = (tile.entity && canAdd(tile.entity)) || (tile.fieldPrefix && canTouchPrefix(tile.fieldPrefix));
+    const locked = gated && !hasWrite && access.mode === "view" && !tile.badge;
     const count = typeof tile.count === "function" ? tile.count() : tile.count;
     const countHtml = count == null ? "" : `<span class="dash-tile-count">${count}</span>`;
     let attrs = "";
-    if (tile.view) attrs = `data-view="${tile.view}"`;
-    else if (tile.hub) attrs = `data-hub="${tile.hub}"`;
+    if (!locked) {
+      if (tile.view) attrs = `data-view="${tile.view}"`;
+      else if (tile.hub) attrs = `data-hub="${tile.hub}"`;
+    }
     const q = `${tile.label} ${tile.hint || ""} ${access.badge}`.toLowerCase();
-    return `<button type="button" class="dash-tile is-${access.mode}" ${attrs} data-dash-q="${q.replace(/"/g, "")}">
+    const lockAttrs = locked
+      ? `disabled aria-disabled="true" title="No ${role} access"`
+      : "";
+    return `<button type="button" class="dash-tile is-${access.mode}${locked ? " is-locked" : ""}" ${attrs} ${lockAttrs} data-dash-q="${q.replace(/"/g, "")}">
       <span class="dash-tile-ico">${dashIco(tile.ico)}</span>
       <span class="dash-tile-label">${tile.label}</span>
-      <span class="dash-tile-badge">${access.badge}</span>
+      <span class="dash-tile-badge">${locked ? "No access" : access.badge}</span>
       ${countHtml}
     </button>`;
   }

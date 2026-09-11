@@ -1936,6 +1936,20 @@ table.data input {
 }
 .dash-tile:hover { background: var(--dash-tile-hover); }
 .dash-tile:active { transform: scale(0.98); }
+.dash-tile.is-locked,
+.dash-tile:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+.dash-tile.is-locked:hover,
+.dash-tile:disabled:hover {
+  background: var(--dash-tile);
+}
+.dash-tile.is-locked:active,
+.dash-tile:disabled:active {
+  transform: none;
+}
 .dash-tile-ico {
   width: 2.35rem;
   height: 2.35rem;
